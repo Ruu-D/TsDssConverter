@@ -5,9 +5,10 @@
 TsDssConverter is a small Windows tray application that watches a folder for TopSolid nesting exports and
 converts them, without any manual work, into a job that the Duivestein automatic warehouse understands.
 
-> **Status: under development.** The conversion engine, its input checks and a command line tool are finished
-> and tested (stages 1 and 2 of 5). The tray application, the folder watching and the installation at the
-> customer are still to be built. See [Status and roadmap](#status-and-roadmap).
+> **Status: under development.** The conversion engine, its input checks, a command line tool and the shell of
+> the tray application (icon, menu, settings window) are finished and tested (stages 1 to 3 of 5). The automatic
+> folder watching and the installation at the customer are still to be built.
+> See [Status and roadmap](#status-and-roadmap).
 
 ---
 
@@ -92,8 +93,9 @@ A wrong job in an automatic warehouse means a wrong board on the machine, so the
   of the two files, duplicate parts, unknown materials, sheets of one material with different sizes, unreadable
   dimensions, angles that are not a multiple of 90 and labels that lie outside their sheet are all errors.
   Nothing is written when there is an error.
-- **Every problem is reported at once, in plain Dutch,** with the name of the part or column concerned, so
-  the export can be corrected in one go instead of one error at a time.
+- **Every problem is reported at once, in plain language,** with the name of the part or column concerned, so
+  the export can be corrected in one go instead of one error at a time. The messages are in Dutch, French
+  or English, as selected in the settings.
 - **Warnings do not stop a job, but are reported:** a CNC program that is not (yet) in the export folder, a part
   number that occurs more than once in the batch, and a material thickness in `materials.csv` that differs from
   the one in the TopSolid export.
@@ -106,16 +108,22 @@ A wrong job in an automatic warehouse means a wrong board on the machine, so the
 |---|---|---|
 | 1 | **Core + command line tool**: read, join, map, write XML and CSVs; automated tests | **Done (first draft)** |
 | 2 | **Validation**: all checks and warnings, one clear report, exit code for errors | **Done (first draft)** |
-| 3 | **Tray application**: icon, settings window, start with Windows | Next |
-| 4 | **Folder watching and processing**: trigger file, queue, `_Verwerkt` / `_Fout` folders, log files | Planned |
+| 3 | **Tray application (shell)**: icon with four looks (normal, busy, error, paused), menu, settings window, `settings.json`, start with Windows, log files. No conversion yet | **Done (first draft)** |
+| 4 | **Folder watching and processing**: trigger file, queue, `_Verwerkt` / `_Fout` folders, notifications | Next |
 | 5 | **Delivery**: single-file installation, install at the customer, physical test sheet | Planned |
 
 **What is verified so far**
 
-- 142 automated tests pass.
+- 256 automated tests pass.
 - Converting the sample TopSolid export gives exactly the expected files (compared byte for byte).
 - Every error and warning listed above is covered by a test, including a wrong pair of files and several
   problems at once.
+- The tray application starts, creates its files, refuses a second copy, and can be published as one
+  self-contained `.exe` (about 126 MB, no .NET installation needed on the customer PC).
+- The settings window (saving, cancelling, hiding instead of closing, the history list) and the
+  "start with Windows" registry setting are covered by tests.
+- Every text of the interface exists in Dutch, French and English: a test checks all of them, so a missing
+  translation cannot slip in.
 
 **What is *not* verified yet**
 
@@ -126,6 +134,14 @@ A wrong job in an automatic warehouse means a wrong board on the machine, so the
 
 ## Decisions taken so far
 
+- **One folder for everything:** the program is installed in `C:\TsDssConverter\`. The exe, `settings.json`,
+  `materials.csv` and the log files all live there. Removing the program means deleting that folder.
+- **Three languages:** the whole interface (window, tray menu, notifications and error messages) is available
+  in Dutch, French and English. Dutch is the default. The language is chosen with a drop-down at the top of the
+  settings window and takes effect when the settings are saved. The files for the warehouse are not translated.
+- **Quiet operation:** the program lives in the Windows tray. There are no pop-ups on success; on an error there
+  is one notification and the icon turns red until the next success or until the settings window is opened.
+  While the program is paused, a pause symbol appears in the bottom right of the tray icon (like OneDrive).
 - The TopSolid file with the suffix `-TR` is the **last** file that TopSolid writes. When it appears, the
   other export files and the CNC programs are complete.
 - CNC programs have the extension `.xcs`.
@@ -163,8 +179,28 @@ Options for the command line tool:
 | `--flipx` | Label zero point at the other side in X (X = sheet length − X) |
 | `--flipy` | Label zero point at the other side in Y (Y = sheet width − Y) |
 | `--export-path <path>` | TopSolid export folder as used in the CNC paths (default `Z:\TopSolid\Export\`) |
+| `--lang <nl\|fr\|en>` | Language of the messages (default `nl`) |
 
 Exit code: `0` = OK, `1` = a problem in the input (message in Dutch), `2` = unexpected error.
+
+### Trying out the tray application
+
+```
+dotnet run --project src/TsDssConverter.Tray -- --demo --show --data C:\Temp\TsDssData
+```
+
+`--data <folder>` keeps all files in another folder than `C:\TsDssConverter`, so a test never touches a real
+installation. `--demo` adds three menu items to try out the icon looks "OK", "busy" and "error" and the list of
+conversions; the "paused" look is switched on with the menu item *Pauzeren*. `--show` opens the settings window
+right away. The icon appears next to the clock (possibly under the `^` arrow); double-click it for the
+settings window. The window adapts to the screen scaling (100%, 125%, 150%, ...) and opens at the height of its
+content, so the list of conversions is visible at once.
+
+To build the single-file version for the customer PC:
+
+```
+dotnet publish src/TsDssConverter.Tray -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+```
 
 ### Material mapping
 
@@ -189,6 +225,7 @@ samples/
 src/
   TsDssConverter.Core/   All conversion logic (no Windows or user interface dependencies)
   TsDssConverter.Cli/    Command line tool for manual testing
+  TsDssConverter.Tray/   The tray application (Windows Forms): icon, menu, settings window
 tests/
   TsDssConverter.Tests/  Automated tests, using the files in samples/
 media/                   Application icon, banner and the colour theme used by the whole project
@@ -202,4 +239,8 @@ The complete technical specification (input columns, output format, validation r
 ## Technology
 
 C# on .NET 10, [ClosedXML](https://github.com/ClosedXML/ClosedXML) to read XLSX files (no Excel needed),
-xUnit for the tests. The tray application will use Windows Forms.
+xUnit for the tests. The tray application uses Windows Forms.
+
+## Credits
+
+Developed by Daan Verhoost for [ROGIERS NV/SA](https://www.rogiers.be/).

@@ -1,7 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <!-- "-windows": the tests also cover the Tray project (registry, settings window) -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -19,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\TsDssConverter.Core\TsDssConverter.Core.csproj" />
+    <ProjectReference Include="..\..\src\TsDssConverter.Tray\TsDssConverter.Tray.csproj" />
   </ItemGroup>
 
 </Project>

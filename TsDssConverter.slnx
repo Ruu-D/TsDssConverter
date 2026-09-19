@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/TsDssConverter.Cli/TsDssConverter.Cli.csproj" />
     <Project Path="src/TsDssConverter.Core/TsDssConverter.Core.csproj" />
+    <Project Path="src/TsDssConverter.Tray/TsDssConverter.Tray.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/TsDssConverter.Tests/TsDssConverter.Tests.csproj" />

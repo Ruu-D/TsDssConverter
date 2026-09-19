@@ -113,7 +113,7 @@ public class MaterialTable
         int highestColumn = Math.Max(Math.Max(nameColumn, dssColumn), Math.Max(thicknessColumn, grainColumn));
         if (cells.Length <= highestColumn)
         {
-            throw new ConversionException(Messages.MaterialsBadLine(lineNumber, "te weinig kolommen."));
+            throw new ConversionException(Messages.MaterialsBadLine(lineNumber, Messages.MaterialsTooFewColumns));
         }
 
         string name = cells[nameColumn].Trim();
@@ -121,7 +121,7 @@ public class MaterialTable
 
         if (name == "")
         {
-            throw new ConversionException(Messages.MaterialsBadLine(lineNumber, "TopSolidMaterial is leeg."));
+            throw new ConversionException(Messages.MaterialsBadLine(lineNumber, Messages.MaterialsEmptyName));
         }
 
         if (name.Contains('#'))
@@ -131,23 +131,23 @@ public class MaterialTable
 
         if (dssName == "")
         {
-            throw new ConversionException(Messages.MaterialsBadLine(lineNumber, "DssMaterial is leeg."));
+            throw new ConversionException(Messages.MaterialsBadLine(lineNumber, Messages.MaterialsEmptyDssName));
         }
 
         if (!NumberFormat.TryParseLenient(cells[thicknessColumn], out double thickness) || thickness <= 0)
         {
-            throw new ConversionException(Messages.MaterialsBadLine(lineNumber, $"Thickness '{cells[thicknessColumn].Trim()}' is geen geldig getal."));
+            throw new ConversionException(Messages.MaterialsBadLine(lineNumber, Messages.MaterialsBadThickness(cells[thicknessColumn].Trim())));
         }
 
         if (!int.TryParse(cells[grainColumn].Trim(), out int grain) || grain < 0 || grain > 2)
         {
-            throw new ConversionException(Messages.MaterialsBadLine(lineNumber, $"Grain '{cells[grainColumn].Trim()}' moet 0, 1 of 2 zijn."));
+            throw new ConversionException(Messages.MaterialsBadLine(lineNumber, Messages.MaterialsBadGrain(cells[grainColumn].Trim())));
         }
 
         var material = new Material { TopSolidName = name, DssName = dssName, Thickness = thickness, Grain = grain };
         if (!_byName.TryAdd(name, material))
         {
-            throw new ConversionException(Messages.MaterialsBadLine(lineNumber, $"'{name}' staat er twee keer in."));
+            throw new ConversionException(Messages.MaterialsBadLine(lineNumber, Messages.MaterialsDuplicate(name)));
         }
     }
 

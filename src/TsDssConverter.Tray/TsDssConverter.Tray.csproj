@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- The exe is called TsDssConverter.exe: it is installed as C:\TsDssConverter\TsDssConverter.exe -->
+    <AssemblyName>TsDssConverter</AssemblyName>
+    <RootNamespace>TsDssConverter.Tray</RootNamespace>
+
+    <!-- The version shown at the bottom of the settings window and written in the log. Change it here. -->
+    <Version>1.0.0</Version>
+
+    <!-- Sharp on high-DPI screens and on a second monitor with another scaling -->
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+
+    <!-- The icon of the exe itself (Explorer, taskbar) -->
+    <ApplicationIcon>..\..\media\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TsDssConverter.Core\TsDssConverter.Core.csproj" />
+  </ItemGroup>
+
+  <!-- The graphics from the media folder are built into the exe: it stays one single file. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\media\app.ico" LogicalName="app.ico" />
+    <EmbeddedResource Include="..\..\media\app-busy.ico" LogicalName="app-busy.ico" />
+    <EmbeddedResource Include="..\..\media\app-error.ico" LogicalName="app-error.ico" />
+    <EmbeddedResource Include="..\..\media\app-paused.ico" LogicalName="app-paused.ico" />
+    <EmbeddedResource Include="..\..\media\header@2x.png" LogicalName="header.png" />
+  </ItemGroup>
+
+  <!-- Lets the tests reach the internal classes of this project -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="TsDssConverter.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -31,8 +31,11 @@ The tool only produces files. It does not print labels, talk to the machine or t
 - Do not modify the input files in `samples/topsolid/`. `samples/duivestein/` and
   `samples/materials.sample.csv` are our own expected output / data concept (regenerated on Daan's request).
 - Daan writes in Dutch or English: answer in the language of his message.
-  Code, identifiers and comments in English. UI text in Dutch (Flemish customer); keep all UI strings
-  together in one place so they are easy to change.
+  Code, identifiers and comments in English. UI text in **three languages** (Dutch, French, English; Dutch
+  is the default because the customer is Flemish). Every text a user can see is written with
+  `Localizer.T("nl", "fr", "en")` in ONE of two places: `Core\Messages.cs` (conversion errors and warnings)
+  and `Tray\Strings.cs` (everything else). Never a loose text in a form or in code. A new text gets all three
+  languages at once; a test checks that no text is missing.
 - Keep the **Status** section at the bottom of this file up to date at the end of each stage.
   Do the same for `README.md` (status table, "verified so far", decisions and open questions).
   The README stays in **English** (for Daan's superiors), whatever language Daan writes in.
@@ -77,6 +80,8 @@ window and the README. Do not invent other colours or another icon style.
 | `media/app-icon.svg`, `icon-256.png`, `icon-512.png` | Source / large versions of the icon |
 | `media/header.png`, `header@2x.png`, `header.svg` | Banner (540 × 84, and 2× for high-DPI) with name and tagline. README header and top of the settings window |
 | `media/preview.png` | Overview of the icon at 16 – 128 px on light and dark backgrounds (for documentation) |
+| `media/app-busy.ico`, `app-error.ico`, `app-paused.ico` | The tray icon in the "busy", "error" and "paused" state (made in stage 3 from `app.ico`) |
+| `media/tray-states.png` | Overview of the four tray icon looks on light and dark backgrounds |
 
 Palette (taken from the SVG files):
 
@@ -98,8 +103,10 @@ Rules:
   and only for errors (tray icon, balloon, error rows in the list).
 - All colours live in **one** small `Theme` class in the Tray project (like the UI texts in one place),
   never as loose hex values in forms.
-- Tray icon states (OK / busy / error): OK is the base icon; busy and error are variants of the SAME artwork
-  (for example a different badge), made in stage 3. Show them to Daan before committing.
+- Tray icon looks (OK / busy / error / paused): OK is the base icon; the others are variants of the SAME artwork
+  with a round badge at the bottom right (where the sync badge of the base icon is, like OneDrive):
+  busy = navy badge with three dots, error = red badge with "!", paused = white badge with a navy ring and a
+  navy pause symbol. Made in stage 3, approved by Daan. New looks are always shown to Daan first.
 
 ## Input: TopSolid exports
 
@@ -312,10 +319,11 @@ Warnings (logged only):
 
 ## Tray application
 
-Settings window (the only window), Dutch labels:
+Settings window (the only window), in the selected language (Dutch, French or English):
 
 | # | Setting | Default |
 |---|---|---|
+| 0 | Language: drop-down right above "start with Windows", with the items `Dutch - Nederlands`, `French - Français`, `English - Engels` (title `Taal / Langue / Language`). Changes the whole interface, applied on Save | Dutch (`"Language": "nl"` in settings.json; `nl`, `fr` or `en`) |
 | 1 | Checkbox: start with Windows | off |
 | 2 | TopSolid export folder (XLSX + CNC programs .xcs) | `Z:\TopSolid\Export\` |
 | 3 | Duivestein batch XML folder (jobs) | `Z:\Duivestein\Batch` |
@@ -323,26 +331,52 @@ Settings window (the only window), Dutch labels:
 | 5 | Checkbox: label zero point — flip in X | off |
 | 6 | Checkbox: label zero point — flip in Y | off |
 
-- Folder fields with a Browse button. Save / Cancel. Warn (don't block) when a folder is not reachable.
+- Folder fields with a Browse button. Save / Cancel at the bottom right. Warn (don't block) when a folder is not reachable.
 - Below the settings: read-only list of the last 20 conversions (time, project, OK/Error, message).
 - Closing the window only hides it. The app keeps running in the tray.
+- **Footer, bottom left, below the list of conversions**, in the normal font size (an earlier version in half
+  size was unreadable): `Dev.: Daan Verhoost  |  ROGIERS NV/SA` (only the company name is a link to
+  https://www.rogiers.be/) and below it `App version: 1.0.0` (translated: `App-versie`, `Version de l'application`).
+  The version comes from `<Version>` in `TsDssConverter.Tray.csproj` (`AppInfo.Version`). The credit texts and
+  the URL are in `Strings` (not translated).
+- **Scaling and size of the window** (must keep working at 100%, 125%, 150%, ...): sizes are written for 96 dpi with
+  `AutoScaleMode.Dpi`, and the window MUST be built between `SuspendLayout()` and `ResumeLayout()` (without that
+  WinForms does not scale the pixel sizes: on a 150% screen the text grew but the window stayed small and the
+  list of conversions was out of view). A ListView does not scale its columns: `ScaleHistoryColumns`.
+  On opening, the window takes the height of its content (`SizeToContent`, room for the folder warnings
+  reserved) limited to the free screen area (`FitToArea`); if the screen is too small the settings scroll and
+  the list keeps a minimum height. Test changes to the window at a scaling above 100% (`--show`, see Status).
+  All buttons (Browse, Save, Cancel) have ONE fixed size, 100 x 28 (`ButtonSize`, not AutoSize: bold Save text made
+  it a different size than Cancel). Save and Cancel sit in one line, **at the bottom right of the window, below the
+  list of conversions and on the same line as the footer** (`BuildBottomRow`), and end at the same right edge as
+  the Browse buttons, the list and the divider lines (no default control margins on those rows).
+- What the language switch covers: the window, tray menu, tooltip, balloons, dialogs, log lines AND the
+  conversion messages (also the future `fout.txt`). It does NOT cover the files for Duivestein (label CSV and
+  batch XML are data: `GRAINSTR` stays `Geen`/`Langs`/`Dwars`) and not the banner picture (fixed, English).
 
 Advanced settings, only in `settings.json` (no UI for now): `CncExtension` (`.xcs`),
 `CncPathPrefixInXml` (empty), `CsvEncoding` (`utf-8`), `RescanSeconds` (30), `RequireTriggerFile` (true).
 
 Tray behaviour (silent mode):
-- Small tray icon (embedded, based on `media/app.ico`) with three states: OK, busy, error.
+- Small tray icon (embedded, based on `media/app.ico`) with four looks: OK, busy, error and paused
+  (a pause symbol at the bottom right while the user has paused the program).
+  Priority when several apply: error, then busy, then paused, then OK (`TrayStateRules.Displayed`).
   The settings window uses the colour theme and the banner from `media/` (see "Visual identity").
 - Tooltip: last result, short (e.g. `Laatste: Verschuren-P-20 OK 14:32`).
 - Double-click: open settings window.
 - Right-click menu: Instellingen… / Nu scannen / Pauzeren–Hervatten / Open logmap / Open materiaaltabel / Afsluiten.
 - No popups on success. On error: one balloon notification, icon stays red until the next success or
   until the window is opened.
-- Only one instance (named `Mutex`); a second start exits quietly.
+- Only one instance (named `Mutex`, `Global\` so it also holds across Windows users, one per data folder);
+  a second start exits quietly.
 - Start with Windows: registry value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
   (no admin rights needed). The checkbox reads the real registry state when the window opens.
-- Data folder `%AppData%\TsDssConverter\`: `settings.json`, `materials.csv`, `logs\yyyy-MM-dd.log`
-  (keep 30 days). Simple own log writer, no logging framework.
+- **Install folder = data folder = `C:\TsDssConverter\`** (decided by Daan: the tool is very light, so
+  everything lives together): `TsDssConverter.exe`, `settings.json`, `materials.csv`, `logs\yyyy-MM-dd.log`
+  (keep 30 days). Uninstall = delete the folder. The path is one constant (`AppDataFolder.DefaultRoot`).
+  A development run can use another folder with `--data <folder>`, so it never touches the real install.
+  If the folder cannot be created (C:\ locked down), show a clear Dutch message and exit.
+  Simple own log writer, no logging framework.
 
 ## Folder watching and processing
 
@@ -355,7 +389,7 @@ Tray behaviour (silent mode):
 - One conversion at a time (simple queue on one background thread).
 - After success: move LI, LP and TR to `{export}\_Verwerkt\{yyyyMMdd-HHmmss} {project}\`.
 - After an error: move them to `{export}\_Fout\{yyyyMMdd-HHmmss} {project}\` together with `fout.txt`
-  containing the reason in plain Dutch.
+  containing the reason in plain language, in the language selected in the settings.
 - The `Z:` drive may be unavailable (network, PC just started): never crash. Show the error state, keep
   retrying on the next rescan, recover automatically. Recreate the watcher if it raises an Error event.
 
@@ -413,10 +447,11 @@ Physical test sheet:
 
 ## Status
 
-- Stage: 2 (Validation) — first draft done, waiting for confirmation before stage 3 (Tray shell).
-- Built: `TsDssConverter.slnx` with `Core`, `Cli` and `Tests`. `Tray` does not exist yet (stage 3).
+- Stage: 3 (Tray shell) — first draft done, waiting for confirmation before stage 4 (Watcher + processing).
+- Built: `TsDssConverter.slnx` with `Core`, `Cli`, `Tray` and `Tests`.
 - The CLI output of the sample is byte-identical to the golden files in `samples/duivestein/`.
-  142 unit tests pass (`dotnet test`).
+  256 unit tests pass (`dotnet test`). The Tests project targets `net10.0-windows` so it can test `Tray`.
+  Tests run one after the other (the language is one global switch).
 - Stage 1: read, join, map, write XML + CSVs, safe writing (`.tmp` + rename, XML last), never overwrite a batch.
 - Stage 2, errors: everything in the Validation section is implemented, including "label outside the sheet
   (after flip)". `BatchBuilder` first CHECKS and collects all problems, then throws ONE `ConversionException`
@@ -428,6 +463,39 @@ Physical test sheet:
   The CLI prints them as `WAARSCHUWING`; the exit code is 1 for an error, 2 for an unexpected error.
 - The CNC check uses `TopSolidExportPath` on THIS PC, never `CncPathPrefixInXml`. The CLI default
   `Z:\TopSolid\Export\` gives one "not reachable" warning on a PC without that drive.
-- Not yet: writing errors to `fout.txt` and the log (stage 4), reading `settings.json` (stage 3).
+- Stage 3, Core (no Windows dependency, all tested): `AppSettings` + `SettingsStore` (settings.json: comments
+  and trailing commas allowed, a broken file gives defaults + a Dutch note and is never overwritten, wrong
+  values are repaired by `Normalize()`), `AppDataFolder` (`C:\TsDssConverter`), `LogWriter` (`logs\yyyy-MM-dd.log`,
+  30 days, never throws), `ConversionHistory` (last 20, thread-safe, `Changed` event).
+- Stage 3, Tray (`TsDssConverter.exe`): `TrayApp` (icon, menu, tooltip, balloon on errors, window opening),
+  `SettingsForm` (built in code, no designer; banner + theme from `media/`; folder warnings are checked in the
+  background so a dead `Z:` cannot freeze the window; the X only hides), `StartWithWindows` (HKCU Run key),
+  `Theme` (all colours), `Strings` (all Dutch UI texts), `AppIcons` (icons built into the exe).
+  Single instance = a `Global\` mutex per data folder (two Windows users, or two copies, cannot both run).
+- Tray icons: `media/app.ico` (OK), `media/app-busy.ico` (navy badge with three dots), `media/app-error.ico`
+  (red badge with "!") and `media/app-paused.ico` (white badge, navy pause symbol), generated from the same
+  artwork; overview in `media/tray-states.png`. A single red (`#D6322C`) is the only colour outside the icon
+  palette. The pause menu item switches the paused look on and off; `SetState` only takes Ok, Busy or Error.
+- Settings window (feedback round after the first review): banner 1.5x (810 x 126), a divider line below
+  "Start met Windows" and one above "Nulpunt van het label", bold folder titles. Window is 840 px wide (at 100%).
+- Second feedback round: the credit moved from under the banner (unreadable at half size) to a footer at the
+  bottom left in normal size, with the app version. The scaling bug (see "Scaling and size of the window") was
+  found by running the exe on this PC at its real 150% scaling: `bin\latest\TsDssConverter.exe --show --data <folder>`
+  opens the settings window at start, and a screenshot of that window (with `SetProcessDPIAware` and
+  `CopyFromScreen` in PowerShell) shows exactly what the user sees.
+- Languages (nl / fr / en): `Core\Localizer.cs` (the switch), all texts in `Core\Messages.cs` and `Tray\Strings.cs`.
+  `settings.json` has `"Language"`. `TrayApp.ApplyLanguage` rebuilds the tray menu at once and the settings window
+  the next time it is opened. `TrayApp` reads the language before writing its first log line. The CLI has `--lang`.
+- Try it: `dotnet run --project src/TsDssConverter.Tray -- --demo --show --data C:\Temp\TsDssData`.
+  `--demo` adds menu items for the busy and error looks (the pause look is the real Pauzeren menu item);
+  `--show` opens the settings window at start; `--data` keeps the real `C:\TsDssConverter` untouched.
+- A build for a quick look without disturbing a running copy: `dotnet build src/TsDssConverter.Tray -o bin\latest`
+  (`bin\` is ignored by git). A running exe locks the files in `bin\Debug`, so exit it first for a normal build.
+- Prepared for stage 4: `TrayApp.ReportResult(project, success, message)` and `SetState(...)` can be called from any
+  thread; `TrayApp.Settings` and `IsPaused` are read by the watcher. "Nu scannen" is disabled until then.
+  The history list is in memory only (empty after a restart).
+- The single-file publish works (`-r win-x64 --self-contained -p:PublishSingleFile=true`), 126 MB. Stage 5:
+  consider `-p:EnableCompressionInSingleFile=true` to make it smaller.
+- Not yet: writing errors to `fout.txt` (stage 4), the watcher and the conversion thread (stage 4).
 - NuGet packages: ClosedXML (Core), xunit + `Microsoft.NET.Test.Sdk` + `xunit.runner.visualstudio` (Tests;
   the last two are needed to run xUnit tests). `coverlet.collector` from the template was removed.
