@@ -1,0 +1,32 @@
+in de bijlage een voorbeeld Batch-xml die het volgende doet:
+
+	- 1 x plaat MD18 oppakken en wegleggen op de labeltafel. Labels HP002_001.CSV printen. Daana cnc-programma \\server\optim\cnc\HP002_001.XCS aanmelden via de Xilog Supervisor op de SCM. Plaat doorschuiven naar de SCM.
+	- 1 x plaat MD18 oppakken en wegleggen op de labeltafel. Labels HP002_002.CSV printen. Daana cnc-programma \\server\optim\cnc\HP002_002.XCS aanmelden via de Xilog Supervisor op de SCM. Plaat doorschuiven naar de SCM.
+	- 1 x plaat MD18 oppakken en wegleggen op de labeltafel. Labels HP002_003.CSV printen. Daana cnc-programma \\server\optim\cnc\HP002_003.XCS aanmelden via de Xilog Supervisor op de SCM. Plaat doorschuiven naar de SCM.
+	- 1 x plaat SPN18-WIT oppakken en wegleggen op de labeltafel. Labels HP002_004.CSV printen. Daana cnc-programma \\server\optim\cnc\HP002_004.XCS aanmelden via de Xilog Supervisor op de SCM. Plaat doorschuiven naar de SCM.
+
+De indeling is zo eenvoudig mogelijk gehouden. Overbodige nodes zijn weggelaten. 
+Het pad naar de labelbestanden kan meegegeven worden in de xml, maar is ook een instelling tijdens de import.
+
+Indeling van de label-csv is rechttoe-rechtaan. De eerste kolommen zijn verplicht, volgorde is vrij (maar waarom hiervan afwijken?) :
+
+	- MATERIAL = Naam van het materiaal van de plaat
+	- SHEETLENGTH = Totale lengte van de plaat. De lengte is altijd de grootste van de drie dimensies die een plaat heeft.
+	- SHEETWIDTH = Totale breedte van de plaat. De breedte is altijd de middelste van de drie dimensies die een plaat heeft.
+	- SHEETTHICKNESS = Totale dikte van de plaat. De dikte is altijd de kleinste van de drie dimensies die een plaat heeft.
+	- GRAIN = Fineerrichting (0, 1 of 2).
+	- GRAINSTR = Fineerrichtingtekst ('geen', 'langs', 'dwars') of iets anders, bijvoorbeeld in een afwijkende taal.
+	- X = X-coördinaat van het midden van de sticker ten opzichte van een vast hoekpunt van de plaat. De X-as loopt altijd gelijk met de lengterichting van de plaat. Keuze voor hoekpunt (links-onder, linksboven, ...) is instelbaar.
+	- Y = Y-coördinaat van het midden van de sticker ten opzichte van een vast hoekpunt van de plaat. De Y-as loopt altijd gelijk met de breedterichting van de plaat.
+	- ROTATION = Draaiing van de sticker, in graden (0, 90, 180, 270).
+	- N = Volgnummer van de sticker/paneel op de plaat; optioneel.
+	- ID = Unieke referentie naar de sticker/paneel in de hele batch; optioneel.
+	- PANELLENGTH = Lengte van het gezaagde/gefreesde paneel.
+	- PANELWIDTH = Breedte van het gezaagde/gefreesde paneel.
+
+Daarna volgen kolommen naar eigen inzicht. In de labeltemplate kan daar naar worden verwezen. 
+In dit voorbeeld is gekozen voor DESC1, DESC2, ... maar die naamgeving is willekeurig - zolang ze niet overlapt met 
+een van de verplichte kolommen maakt het niet uit. Let op dat namen van kolommen enkel uit letters (zonder accenten), cijfers en underscore of dash mogen bestaan.
+
+Voor deze werking zijn binnen DSSClient wel bepaalde instellingen noodzakelijk. Die heb ik in een testomgeving alvast kunnen simuleren.
+
