@@ -28,7 +28,8 @@ The tool only produces files. It does not print labels, talk to the machine or t
 - The app must **never** require Excel or Office on the PC.
 - **Never rely on the PC's regional settings.** Parse numbers with `CultureInfo.InvariantCulture`,
   write numbers with an explicit comma decimal separator. Belgian PCs use comma decimals.
-- Do not modify anything in `samples/`.
+- Do not modify the input files in `samples/topsolid/`. `samples/duivestein/` and
+  `samples/materials.sample.csv` are our own expected output / data concept (regenerated on Daan's request).
 - Daan writes in Dutch or English: answer in the language of his message.
   Code, identifiers and comments in English. UI text in Dutch (Flemish customer); keep all UI strings
   together in one place so they are easy to change.
@@ -52,8 +53,9 @@ TsDssConverter/
   CLAUDE.md
   samples/
     topsolid/     Verschuren-P-20-LI.xlsx, Verschuren-P-20-LP.xlsx
-    duivestein/   HP002.XML, HP002_001.csv … HP002_004.csv, README  (format reference from Duivestein, Dutch)
-    materials.sample.csv   (created in stage 1, placeholder codes)
+    duivestein/   README (format reference from Duivestein, Dutch)
+                  Verschuren-P-20.xml, Verschuren-P-20_001.csv … _011.csv  (expected output, golden files)
+    materials.sample.csv   (5 TopSolid materials, DSS name = TopSolid name for now)
   docs/           AKSIS___TopSolid-Barbaric.pdf  (background: older installation with the same TopSolid exports)
   src/TsDssConverter.Core/
   src/TsDssConverter.Cli/
@@ -70,7 +72,7 @@ e.g. `Verschuren-P-20-LI.xlsx`. The project name (`Verschuren-P-20`) is everythi
 |---|---|
 | `…-LI.xlsx` | Label info, one row per part |
 | `…-LP.xlsx` | Label position, one row per part |
-| `…-TR.xlsx` | Trigger: signals that LI and LP are complete. Content is irrelevant |
+| `…-TR.xlsx` | Trigger: the very last file TopSolid writes (after LI, LP and the CNC programs). Content is irrelevant |
 
 The sample files come from an earlier installation (other customer, other warehouse brand).
 The new customer's TopSolid will produce the same format.
@@ -115,15 +117,19 @@ A mapping file maintained by the customer translates them:
 
 ```
 TopSolidMaterial;DssMaterial;Thickness;Grain
-White_18;WIT18;18;0
-White_9;WIT9;9;0
-Paars_18;PAARS18;18;0
-H1145_-_ST10_-_Chêne_Bardolino_naturel_Zijdewit_19;H1145-19;19;1
-H1145_-_ST10_-_Chêne_Bardolino_naturel_Zijdewit_40;H1145-40;40;1
+Paars_18;Paars_18;18;0
+White_18;White_18;18;0
+H1145_-_ST10_-_Chêne_Bardolino_naturel_Zijdewit_19;H1145_-_ST10_-_Chêne_Bardolino_naturel_Zijdewit_19;19;1
+H1145_-_ST10_-_Chêne_Bardolino_naturel_Zijdewit_40;H1145_-_ST10_-_Chêne_Bardolino_naturel_Zijdewit_40;40;1
+White_9;White_9;9;0
 ```
 
 - Semicolon-separated (opens correctly in Belgian Excel), header row.
-- The codes above are **placeholders** until Duivestein provides the real codes.
+- **The TopSolid name is the master name.** For now `DssMaterial` is identical to `TopSolidMaterial`,
+  so the batch XML and the label CSVs use the TopSolid names. The column stays, so real warehouse
+  codes can be filled in later without code changes.
+- The key is the material only: **without** the `#nn` sheet number (`White_18`, not `White_18#01`).
+  A `#` in the key is an error with a hint ("remove #01").
 - Matching: trimmed, case-insensitive.
 - Encoding: read as UTF-8 (with or without BOM). If the text contains invalid UTF-8, fall back to
   Windows-1252 (Excel "CSV" saves as ANSI). Note: `Chêne` must survive both ways.
@@ -133,7 +139,13 @@ H1145_-_ST10_-_Chêne_Bardolino_naturel_Zijdewit_40;H1145-40;40;1
 
 ## Output: Duivestein files
 
-Format reference: `samples/duivestein/` (example batch HP002 and README in Dutch). Read them.
+Format reference: `samples/duivestein/README` (from Duivestein, Dutch). Read it. The original Duivestein
+example batch (HP002) was used for syntax only and has been replaced by our own expected output, see below.
+
+`samples/duivestein/` now holds the **expected output for the sample** (`Verschuren-P-20.xml` and
+`Verschuren-P-20_001.csv` … `_011.csv`), created from the TopSolid sample files and `materials.sample.csv`
+with the rules in this file. Use them as golden files in the tests. `PlanDate` in the XML is the date of
+creation (2026-09-19); the test must pass in a fixed date. Not yet confirmed by Duivestein.
 
 ### Batch XML — `{BatchName}.xml` in the Duivestein batch folder
 
@@ -157,7 +169,7 @@ Format reference: `samples/duivestein/` (example batch HP002 and README in Dutch
         <LabelFilename>Verschuren-P-20_001.csv</LabelFilename>
       </LabelFilenames>
       <CNCFilenames>                          <!-- one per sheet, full path, same order -->
-        <CNCFilename>Z:\TopSolid\Export\Verschuren-P-20_Paars_18_01.pgmx</CNCFilename>
+        <CNCFilename>Z:\TopSolid\Export\Verschuren-P-20_Paars_18_01.xcs</CNCFilename>
       </CNCFilenames>
     </Plan>
   </Plans>
@@ -180,12 +192,14 @@ Format reference: `samples/duivestein/` (example batch HP002 and README in Dutch
 
 Not present in the TopSolid export. Until TopSolid confirms their naming convention, build it as
 `{TopSolidExportPath}\{BatchName}_{sheet name with # replaced by _}{CncExtension}`,
-e.g. `Z:\TopSolid\Export\Verschuren-P-20_White_18_01.pgmx`.
+e.g. `Z:\TopSolid\Export\Verschuren-P-20_White_18_01.xcs`.
 Put this logic in **one** small class (`CncPathBuilder`) — it will change.
 If the CNC file does not exist at conversion time: log a **warning**, not an error
 (TopSolid may still be writing the CAM files).
 Advanced setting `CncPathPrefixInXml`: if filled, replace the export-folder part of the path with this
 prefix in the XML (e.g. a UNC path `\\server\topsolid\Export\`), because the machine side may not know `Z:`.
+Decided with the customer: the XML uses the drive-letter path (same `Z:` as the tray settings), so this
+setting stays empty for now.
 
 ### Label CSV — one per sheet, in the Duivestein label folder
 
@@ -265,7 +279,7 @@ Settings window (the only window), Dutch labels:
 | # | Setting | Default |
 |---|---|---|
 | 1 | Checkbox: start with Windows | off |
-| 2 | TopSolid export folder (XLSX + CNC programs .xcs/.pgmx) | `Z:\TopSolid\Export\` |
+| 2 | TopSolid export folder (XLSX + CNC programs .xcs) | `Z:\TopSolid\Export\` |
 | 3 | Duivestein batch XML folder (jobs) | `Z:\Duivestein\Batch` |
 | 4 | Duivestein label CSV folder | `Z:\Duivestein\Label` |
 | 5 | Checkbox: label zero point — flip in X | off |
@@ -275,7 +289,7 @@ Settings window (the only window), Dutch labels:
 - Below the settings: read-only list of the last 20 conversions (time, project, OK/Error, message).
 - Closing the window only hides it. The app keeps running in the tray.
 
-Advanced settings, only in `settings.json` (no UI for now): `CncExtension` (`.pgmx`),
+Advanced settings, only in `settings.json` (no UI for now): `CncExtension` (`.xcs`),
 `CncPathPrefixInXml` (empty), `CsvEncoding` (`utf-8`), `RescanSeconds` (30), `RequireTriggerFile` (true).
 
 Tray behaviour (silent mode):
@@ -321,18 +335,27 @@ Converting `samples/topsolid/Verschuren-P-20-*.xlsx` with the sample materials f
 ## Open points (to confirm; do not invent answers)
 
 TopSolid:
-1. Naming, folder and extension of the CNC program per sheet. Written before or after the TR file?
-2. Keep writing the TR file, as the very last step.
+1. Naming, folder and extension of the CNC program per sheet. (Timing settled, see 2: CNC files are
+   written before the TR file. Extension **decided: `.xcs`** (setting `CncExtension`, used in the golden XML).
+   Naming and folder still open — `CncPathBuilder` stays provisional. The Duivestein example named the
+   CNC file like the label file (`HP002_001.XCS`).)
+2. ~~Keep writing the TR file, as the very last step.~~ **Confirmed:** the TR file is the very last file
+   written. When it appears, LI, LP and the CNC programs are complete.
 3. SUP_D is always 18 — fix in the export.
 4. Are the unnamed LP columns (`Submap1`, `SP1_1`) part of the real export?
 5. Rename LI header `Test` to e.g. `Project`.
 6. Are the XLSX files written to the same folder as the CNC programs (`Z:\TopSolid\Export\`)?
 
 Duivestein:
-7. Real material codes for this customer (fills materials.csv).
-8. CNC path in the XML: drive letter or UNC, as seen from DSSClient / the SCM supervisor?
+7. ~~Real material codes for this customer.~~ **Confirmed:** the TopSolid name is the master and the same
+   name exists in the Duivestein stock (`samples/materials.sample.csv`, `DssMaterial` = `TopSolidMaterial`).
+   Duivestein will check that the stock size matches `XDimSize`/`YDimSize`. The long H1145 names are used as
+   test data for now; Daan will advise the customer to use shorter material names.
+8. ~~CNC path in the XML: drive letter or UNC?~~ **Decided:** drive letter, the same `Z:` drive as the
+   tray settings 2, 3 and 4. `CncPathPrefixInXml` stays empty by default (the path is used as built).
 9. BatchName restrictions (length, characters) and what happens when a batch is re-sent.
-10. CSV encoding for accented characters (UTF-8 or Windows-1252).
+10. CSV encoding for accented characters (UTF-8 or Windows-1252). **Skipped for now:** keep the
+    `CsvEncoding` default `utf-8`.
 
 Physical test sheet:
 11. Is the label position the centre of the label? Which corner, which rotation direction?
@@ -351,4 +374,15 @@ Physical test sheet:
 
 ## Status
 
-- Stage: 0 — project set up, nothing built yet.
+- Stage: 1 (Core + CLI) — first draft done, waiting for confirmation before stage 2.
+- Built: `TsDssConverter.slnx` with `Core`, `Cli` and `Tests`. `Tray` does not exist yet (stage 3).
+- The CLI output of the sample is byte-identical to the golden files in `samples/duivestein/`.
+  96 unit tests pass (`dotnet test`).
+- Already in Core (needed for correct output): missing columns, unmatched/duplicate parts, unknown
+  material, different sheet sizes per material, unreadable `Afmetingen`, angle not a multiple of 90,
+  batch already exists, output folder missing, safe writing (`.tmp` + rename, XML last).
+  These stop at the first problem group and throw a `ConversionException` with a Dutch message.
+- Not yet (stage 2): label position outside the sheet, all warnings (CNC file missing, duplicate part ID,
+  thickness vs `SUP_DESIGNATION`), collecting *all* errors of every kind in one report.
+- NuGet packages: ClosedXML (Core), xunit + `Microsoft.NET.Test.Sdk` + `xunit.runner.visualstudio` (Tests;
+  the last two are needed to run xUnit tests). `coverlet.collector` from the template was removed.

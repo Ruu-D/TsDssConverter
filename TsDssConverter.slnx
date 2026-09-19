@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TsDssConverter.Cli/TsDssConverter.Cli.csproj" />
+    <Project Path="src/TsDssConverter.Core/TsDssConverter.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TsDssConverter.Tests/TsDssConverter.Tests.csproj" />
+  </Folder>
+</Solution>
