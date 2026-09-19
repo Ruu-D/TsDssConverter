@@ -464,6 +464,7 @@ Physical test sheet:
 ## Status
 
 - Stage: 4 (Watcher + processing) — first draft done, waiting for confirmation before stage 5 (Delivery).
+  Paused on 2026-09-20: Daan first collects more sample files from TopSolid and tests with them; stage 5 starts after that.
 - Built: `TsDssConverter.slnx` with `Core`, `Cli`, `Tray` and `Tests`.
 - The CLI output of the sample is byte-identical to the golden files in `samples/duivestein/`.
   299 unit tests pass (`dotnet test`). The Tests project targets `net10.0-windows` so it can test `Tray`.
