@@ -70,17 +70,25 @@ public class XlsxTable
         return table;
     }
 
-    /// <summary>Throws an error that names the first missing column.</summary>
+    /// <summary>Throws an error that names ALL missing columns.</summary>
     /// <param name="fileKind">"LI" or "LP", only used in the message.</param>
     public void RequireColumns(string fileKind, params string[] columns)
     {
-        foreach (string column in columns)
+        var problems = columns
+            .Where(column => !_headers.Contains(column))
+            .Select(column => Messages.MissingColumn(fileKind, column))
+            .ToList();
+
+        if (problems.Count > 0)
         {
-            if (!_headers.Contains(column))
-            {
-                throw new ConversionException(Messages.MissingColumn(fileKind, column));
-            }
+            throw new ConversionException(problems);
         }
+    }
+
+    /// <summary>True if the file has a column with this header name.</summary>
+    public bool HasColumn(string column)
+    {
+        return _headers.Contains(column);
     }
 
     private static bool IsEmptyRow(IXLRow row, int lastColumn)

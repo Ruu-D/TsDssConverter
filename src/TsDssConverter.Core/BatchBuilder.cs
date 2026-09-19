@@ -3,9 +3,10 @@ namespace TsDssConverter.Core;
 /// <summary>
 /// Joins LI and LP, looks up the materials and builds the <see cref="Batch"/> (nothing is written to disk here).
 ///
-/// Stage 1: problems that make the result wrong stop the conversion with a <see cref="ConversionException"/>.
-/// Related problems are collected and reported together (unmatched parts, unknown materials).
-/// Warnings and the remaining checks come in stage 2.
+/// Two steps:
+///  1. CHECK everything and collect ALL errors. If there is any error, nothing is built and one
+///     <see cref="ConversionException"/> lists every problem, so the user can fix them in one go.
+///  2. BUILD the plans, sheets and labels. Warnings (which do not stop the conversion) go into Batch.Warnings.
 /// </summary>
 public static class BatchBuilder
 {
@@ -17,6 +18,9 @@ public static class BatchBuilder
         public string MaterialName { get; set; } = "";
         public int SheetNumber { get; set; }
         public int N { get; set; }
+
+        /// <summary>Filled in during the check step.</summary>
+        public Label? Label { get; set; }
     }
 
     public static Batch Build(
@@ -27,41 +31,31 @@ public static class BatchBuilder
         ConverterSettings settings,
         DateTime planDate)
     {
+        // ---- Step 1: check everything ----
         var problems = new List<string>();
 
         List<MatchedPart> parts = JoinRows(infoRows, positionRows, problems);
-        ThrowIfProblems(problems);
+        List<string> materialNames = GetMaterialNamesInLpOrder(parts);
+        CheckMaterialsAndSheetSizes(parts, materialNames, materials, problems);
 
-        // Materials in order of first appearance in the LP file: this is the plan order.
-        var materialNames = new List<string>();
         foreach (var part in parts)
         {
-            if (!materialNames.Contains(part.MaterialName))
+            try
             {
-                materialNames.Add(part.MaterialName);
+                part.Label = CreateLabel(part, settings);
+            }
+            catch (ConversionException error)
+            {
+                problems.AddRange(error.Problems);
             }
         }
 
-        // Check all materials and sheet sizes first, so the user sees every problem at once.
-        foreach (string materialName in materialNames)
+        if (problems.Count > 0)
         {
-            if (!materials.TryFind(materialName, out _))
-            {
-                problems.Add(Messages.UnknownMaterial(materialName));
-            }
-
-            var sizes = parts
-                .Where(p => p.MaterialName == materialName)
-                .Select(p => (p.Position.SheetLength, p.Position.SheetWidth))
-                .Distinct();
-            if (sizes.Count() > 1)
-            {
-                problems.Add(Messages.DifferentSheetSizes(materialName));
-            }
+            throw new ConversionException(problems);
         }
 
-        ThrowIfProblems(problems);
-
+        // ---- Step 2: build ----
         var batch = new Batch { Name = batchName, PlanDate = planDate };
         int labelFileNumber = 0; // running over the whole batch: 001, 002, ...
 
@@ -98,7 +92,7 @@ public static class BatchBuilder
 
                 foreach (var part in sheetParts)
                 {
-                    sheet.Labels.Add(CreateLabel(part, settings));
+                    sheet.Labels.Add(part.Label!);
                 }
 
                 plan.Sheets.Add(sheet);
@@ -106,6 +100,9 @@ public static class BatchBuilder
 
             batch.Plans.Add(plan);
         }
+
+        AddThicknessWarnings(parts, materialNames, materials, batch.Warnings);
+        AddDuplicatePartIdWarnings(batch, batch.Warnings);
 
         return batch;
     }
@@ -173,13 +170,53 @@ public static class BatchBuilder
         return parts;
     }
 
+    /// <summary>Materials in order of first appearance in the LP file: this is the plan order.</summary>
+    private static List<string> GetMaterialNamesInLpOrder(List<MatchedPart> parts)
+    {
+        var names = new List<string>();
+        foreach (var part in parts)
+        {
+            if (!names.Contains(part.MaterialName))
+            {
+                names.Add(part.MaterialName);
+            }
+        }
+
+        return names;
+    }
+
+    /// <summary>Every material must be in materials.csv, and all sheets of one material must have the same size.</summary>
+    private static void CheckMaterialsAndSheetSizes(
+        List<MatchedPart> parts, List<string> materialNames, MaterialTable materials, List<string> problems)
+    {
+        foreach (string materialName in materialNames)
+        {
+            if (!materials.TryFind(materialName, out _))
+            {
+                problems.Add(Messages.UnknownMaterial(materialName));
+            }
+
+            var sizes = parts
+                .Where(p => p.MaterialName == materialName)
+                .Select(p => (p.Position.SheetLength, p.Position.SheetWidth))
+                .Distinct();
+
+            if (sizes.Count() > 1)
+            {
+                problems.Add(Messages.DifferentSheetSizes(materialName));
+            }
+        }
+    }
+
     private static Label CreateLabel(MatchedPart part, ConverterSettings settings)
     {
         var position = part.Position;
         var info = part.Info;
         string partName = position.SheetName + " / " + position.Description;
 
+        // Each of these throws a ConversionException that names the part if something is wrong.
         TopSolidText.ParseDimensions(info.Dimensions, partName, out double panelLength, out double panelWidth);
+        string partId = TopSolidText.GetPartId(info.Description);
 
         LabelPosition labelPosition = LabelPositionCalculator.Calculate(
             position.SheetLength, position.SheetWidth,
@@ -192,7 +229,7 @@ public static class BatchBuilder
             Y = labelPosition.Y,
             Rotation = labelPosition.Rotation,
             N = part.N,
-            Id = TopSolidText.GetPartId(info.Description),
+            Id = partId,
             PanelLength = panelLength,
             PanelWidth = panelWidth,
             Description = info.Description,
@@ -208,16 +245,64 @@ public static class BatchBuilder
         };
     }
 
+    /// <summary>
+    /// Sanity check: the thickness in materials.csv should be the leading number of SUP_DESIGNATION.
+    /// A difference is only a warning: materials.csv is the truth (SUP_DESIGNATION may be wrong in the export).
+    /// </summary>
+    private static void AddThicknessWarnings(
+        List<MatchedPart> parts, List<string> materialNames, MaterialTable materials, List<string> warnings)
+    {
+        foreach (string materialName in materialNames)
+        {
+            Material material = materials.Find(materialName);
+            var alreadyWarned = new HashSet<double>();
+
+            foreach (var part in parts.Where(p => p.MaterialName == materialName))
+            {
+                bool hasNumber = TopSolidText.TryGetLeadingNumber(part.Position.Designation, out double thickness);
+                if (!hasNumber || !alreadyWarned.Add(thickness))
+                {
+                    continue; // no SUP_DESIGNATION, or already checked this value for this material
+                }
+
+                if (Math.Abs(thickness - material.Thickness) > 0.01)
+                {
+                    warnings.Add(Messages.ThicknessDiffers(materialName, material.Thickness, thickness));
+                }
+            }
+        }
+    }
+
+    /// <summary>The part number (ID column) should be unique in the whole batch, but it is not an error.</summary>
+    private static void AddDuplicatePartIdWarnings(Batch batch, List<string> warnings)
+    {
+        var sheetsPerId = new Dictionary<string, List<string>>();
+
+        foreach (var plan in batch.Plans)
+        {
+            foreach (var sheet in plan.Sheets)
+            {
+                foreach (var label in sheet.Labels)
+                {
+                    if (!sheetsPerId.TryGetValue(label.Id, out List<string>? sheets))
+                    {
+                        sheets = new List<string>();
+                        sheetsPerId[label.Id] = sheets;
+                    }
+
+                    sheets.Add(sheet.Name);
+                }
+            }
+        }
+
+        foreach (var pair in sheetsPerId.Where(p => p.Value.Count > 1))
+        {
+            warnings.Add(Messages.DuplicatePartId(pair.Key, pair.Value.Distinct()));
+        }
+    }
+
     private static string MakeKey(string sheetName, string description)
     {
         return sheetName.Trim() + " | " + description.Trim();
-    }
-
-    private static void ThrowIfProblems(List<string> problems)
-    {
-        if (problems.Count > 0)
-        {
-            throw new ConversionException(string.Join(Environment.NewLine, problems));
-        }
     }
 }

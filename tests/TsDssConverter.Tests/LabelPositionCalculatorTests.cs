@@ -73,6 +73,41 @@ public class LabelPositionCalculatorTests
     }
 
     [Theory]
+    [InlineData(-1, 100)]     // left of the sheet
+    [InlineData(3051, 100)]   // right of the sheet (length 3050)
+    [InlineData(100, -1)]     // below the sheet
+    [InlineData(100, 1301)]   // above the sheet (width 1300)
+    [InlineData(-0.6, 100)]   // rounds to -1
+    [InlineData(3050.6, 100)] // rounds to 3051
+    public void LabelOutsideTheSheet_IsAnError(double x, double y)
+    {
+        var error = Assert.Throws<ConversionException>(() => Calculate(x, y, 0));
+
+        Assert.Contains("buiten de plaat", error.Message);
+        Assert.Contains("test part", error.Message);
+    }
+
+    [Theory]
+    [InlineData(0, 0)]         // exactly on the corner
+    [InlineData(3050, 1300)]   // exactly on the opposite corner
+    [InlineData(-0.4, 100)]    // floating-point noise: rounds to 0
+    [InlineData(3050.4, 100)]  // rounds to 3050
+    public void LabelOnTheEdgeOfTheSheet_IsFine(double x, double y)
+    {
+        var position = Calculate(x, y, 0);
+
+        Assert.InRange(position.X, 0, 3050);
+        Assert.InRange(position.Y, 0, 1300);
+    }
+
+    [Fact]
+    public void FlipMovesTheCheckToo_ALabelNearTheEdgeStaysOnTheSheet()
+    {
+        // 3049.9 flipped in X gives 0.1: still on the sheet.
+        Assert.Equal(0, Calculate(3049.9, 100, 0, flipX: true).X);
+    }
+
+    [Theory]
     [InlineData(45)]
     [InlineData(91)]
     [InlineData(180.5)]

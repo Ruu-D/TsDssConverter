@@ -27,5 +27,6 @@ public static class ColumnNames
     public const string PositionLabelX = "LABEL_X";
     public const string PositionLabelY = "LABEL_Y";
     public const string PositionLabelAngle = "LABEL_ANGLE";
-    // SUP_D is unreliable and not used. SUP_DESIGNATION is only for a warning (stage 2).
+    public const string PositionDesignation = "SUP_DESIGNATION"; // optional: only used for a warning
+    // SUP_D is unreliable and not used.
 }

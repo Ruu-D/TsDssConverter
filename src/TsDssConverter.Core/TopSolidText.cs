@@ -32,6 +32,20 @@ public static class TopSolidText
         NumberFormat.TryParseInvariant(match.Groups["width"].Value, out width);
     }
 
+    // The number at the very start: "18.0_panel 18mm" gives 18.0.
+    private static readonly Regex LeadingNumberPattern = new(@"^\s*(\d+(\.\d+)?)");
+
+    /// <summary>
+    /// The leading number of SUP_DESIGNATION ("18.0_panel 18mm" gives 18): the real thickness in TopSolid.
+    /// Returns false if the text does not start with a number.
+    /// </summary>
+    public static bool TryGetLeadingNumber(string text, out double number)
+    {
+        number = 0;
+        var match = LeadingNumberPattern.Match(text);
+        return match.Success && NumberFormat.TryParseInvariant(match.Groups[1].Value, out number);
+    }
+
     /// <summary>The trailing number of the description: "... - 19587" gives "19587".</summary>
     public static string GetPartId(string description)
     {

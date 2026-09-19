@@ -26,6 +26,9 @@ public class LabelPositionRow
     public double LabelX { get; set; }
     public double LabelY { get; set; }
     public double LabelAngle { get; set; }
+
+    /// <summary>SUP_DESIGNATION, e.g. "18.0_panel 18mm". Empty if the file has no such column.</summary>
+    public string Designation { get; set; } = "";
 }
 
 /// <summary>Reads the two TopSolid XLSX files into simple row objects.</summary>
@@ -70,6 +73,7 @@ public static class TopSolidReader
             ColumnNames.PositionSheetLength, ColumnNames.PositionSheetWidth,
             ColumnNames.PositionLabelX, ColumnNames.PositionLabelY, ColumnNames.PositionLabelAngle);
 
+        var problems = new List<string>();
         var rows = new List<LabelPositionRow>();
         foreach (var values in table.Rows)
         {
@@ -77,27 +81,38 @@ public static class TopSolidReader
             string description = values[ColumnNames.PositionDescription];
             string part = sheetName + " / " + description;
 
+            values.TryGetValue(ColumnNames.PositionDesignation, out string? designation);
+
             rows.Add(new LabelPositionRow
             {
                 SheetName = sheetName,
                 Description = description,
-                SheetLength = ReadNumber(values, ColumnNames.PositionSheetLength, part),
-                SheetWidth = ReadNumber(values, ColumnNames.PositionSheetWidth, part),
-                LabelX = ReadNumber(values, ColumnNames.PositionLabelX, part),
-                LabelY = ReadNumber(values, ColumnNames.PositionLabelY, part),
-                LabelAngle = ReadNumber(values, ColumnNames.PositionLabelAngle, part),
+                SheetLength = ReadNumber(values, ColumnNames.PositionSheetLength, part, problems),
+                SheetWidth = ReadNumber(values, ColumnNames.PositionSheetWidth, part, problems),
+                LabelX = ReadNumber(values, ColumnNames.PositionLabelX, part, problems),
+                LabelY = ReadNumber(values, ColumnNames.PositionLabelY, part, problems),
+                LabelAngle = ReadNumber(values, ColumnNames.PositionLabelAngle, part, problems),
+                Designation = designation ?? "",
             });
+        }
+
+        // Report every unreadable number at once, not just the first.
+        if (problems.Count > 0)
+        {
+            throw new ConversionException(problems);
         }
 
         return rows;
     }
 
-    private static double ReadNumber(Dictionary<string, string> values, string column, string part)
+    /// <summary>Reads a number. If it is not a number the problem is added to the list and 0 is returned.</summary>
+    private static double ReadNumber(Dictionary<string, string> values, string column, string part, List<string> problems)
     {
         string text = values[column];
         if (!NumberFormat.TryParseInvariant(text, out double number))
         {
-            throw new ConversionException(Messages.NotANumber("LP", column, text, part));
+            problems.Add(Messages.NotANumber("LP", column, text, part));
+            return 0;
         }
 
         return number;

@@ -38,6 +38,13 @@ public static class LabelPositionCalculator
             Rotation = NormaliseAngle(labelAngle, part),
         };
 
+        // The label must be on the sheet, checked AFTER the flip: a wrong flip setting shows up here.
+        // The rounded values are compared, so floating-point noise (-0.0000001) is not an error.
+        if (position.X < 0 || position.X > sheetLength || position.Y < 0 || position.Y > sheetWidth)
+        {
+            throw new ConversionException(Messages.LabelOutsideSheet(x, y, sheetLength, sheetWidth, part));
+        }
+
         // ------------------------------------------------------------------------------------------
         // ROTATION AND FLIPS - decided after the physical test sheet (open point 11).
         // For now a flip does NOT change the rotation. If it must change (for example 90 <-> 270

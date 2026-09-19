@@ -2,7 +2,7 @@ using System.Text;
 
 namespace TsDssConverter.Core;
 
-/// <summary>What the conversion did. Warnings stay empty until stage 2.</summary>
+/// <summary>What the conversion did, including the warnings (things that did not stop the conversion).</summary>
 public class ConversionResult
 {
     public string BatchName { get; set; } = "";
@@ -27,15 +27,25 @@ public class Converter
     {
         string batchName = GetBatchName(infoPath);
 
-        var infoRows = TopSolidReader.ReadLabelInfo(infoPath);
-        var positionRows = TopSolidReader.ReadLabelPositions(positionPath);
-        var materials = MaterialTable.Load(materialsPath);
+        // Read all three input files first and report EVERY problem in them together
+        // (for example a missing column in LI, a missing column in LP and a bad materials.csv).
+        var readProblems = new List<string>();
+        var infoRows = TryRead(() => TopSolidReader.ReadLabelInfo(infoPath), readProblems);
+        var positionRows = TryRead(() => TopSolidReader.ReadLabelPositions(positionPath), readProblems);
+        var materials = TryRead(() => MaterialTable.Load(materialsPath), readProblems);
 
-        Batch batch = BatchBuilder.Build(batchName, infoRows, positionRows, materials, settings, planDate);
+        if (readProblems.Count > 0)
+        {
+            throw new ConversionException(readProblems);
+        }
+
+        Batch batch = BatchBuilder.Build(batchName, infoRows!, positionRows!, materials!, settings, planDate);
 
         // Turn the batch into bytes: label CSVs first, then the XML.
         Encoding csvEncoding = settings.GetCsvEncoding();
         var result = new ConversionResult { BatchName = batchName };
+        result.Warnings.AddRange(batch.Warnings);
+        AddCncWarnings(batch, settings, result.Warnings);
         var labelFiles = new List<PendingFile>();
 
         foreach (var plan in batch.Plans)
@@ -59,6 +69,46 @@ public class Converter
 
         OutputWriter.Write(batchFolder, labelFolder, labelFiles, xmlFile, batchName);
         return result;
+    }
+
+    /// <summary>Runs a read action. A problem is added to the list and null is returned instead of stopping.</summary>
+    private static T? TryRead<T>(Func<T> read, List<string> problems) where T : class
+    {
+        try
+        {
+            return read();
+        }
+        catch (ConversionException error)
+        {
+            problems.AddRange(error.Problems);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// A CNC program that does not exist yet is only a warning: TopSolid may still be writing the CAM files.
+    /// The check is done in the export folder on THIS PC (not in the prefix that is written in the XML).
+    /// </summary>
+    private static void AddCncWarnings(Batch batch, ConverterSettings settings, List<string> warnings)
+    {
+        if (!Directory.Exists(settings.TopSolidExportPath))
+        {
+            // One warning is clearer than one per sheet.
+            warnings.Add(Messages.CncFolderNotReachable(settings.TopSolidExportPath));
+            return;
+        }
+
+        foreach (var plan in batch.Plans)
+        {
+            foreach (var sheet in plan.Sheets)
+            {
+                string path = CncPathBuilder.BuildLocalPath(settings, batch.Name, sheet.Name);
+                if (!File.Exists(path))
+                {
+                    warnings.Add(Messages.CncFileNotFound(path));
+                }
+            }
+        }
     }
 
     /// <summary>"C:\...\Verschuren-P-20-LI.xlsx" gives "Verschuren-P-20".</summary>

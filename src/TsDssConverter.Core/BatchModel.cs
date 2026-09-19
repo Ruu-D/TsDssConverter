@@ -64,4 +64,7 @@ public class Batch
     public string Name { get; set; } = "";
     public DateTime PlanDate { get; set; }
     public List<Plan> Plans { get; } = new();
+
+    /// <summary>Things that are not wrong enough to stop the conversion (plain Dutch text).</summary>
+    public List<string> Warnings { get; } = new();
 }

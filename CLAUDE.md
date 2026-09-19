@@ -34,6 +34,8 @@ The tool only produces files. It does not print labels, talk to the machine or t
   Code, identifiers and comments in English. UI text in Dutch (Flemish customer); keep all UI strings
   together in one place so they are easy to change.
 - Keep the **Status** section at the bottom of this file up to date at the end of each stage.
+  Do the same for `README.md` (status table, "verified so far", decisions and open questions).
+  The README stays in **English** (for Daan's superiors), whatever language Daan writes in.
 
 ## Tech stack
 
@@ -56,12 +58,48 @@ TsDssConverter/
     duivestein/   README (format reference from Duivestein, Dutch)
                   Verschuren-P-20.xml, Verschuren-P-20_001.csv … _011.csv  (expected output, golden files)
     materials.sample.csv   (5 TopSolid materials, DSS name = TopSolid name for now)
+  media/          app.ico, header.png, icon-256.png, … (icon, banner and colour theme, see "Visual identity")
   docs/           AKSIS___TopSolid-Barbaric.pdf  (background: older installation with the same TopSolid exports)
   src/TsDssConverter.Core/
   src/TsDssConverter.Cli/
   src/TsDssConverter.Tray/
   tests/TsDssConverter.Tests/
 ```
+
+## Visual identity (colour theme)
+
+The graphics in `media/` are the base of all visible parts of the project: the icon, the tray, the settings
+window and the README. Do not invent other colours or another icon style.
+
+| File | Use |
+|---|---|
+| `media/app.ico` | The application icon: exe icon, settings window icon and base of the tray icon. Contains 16, 20, 24, 32, 40, 48, 64, 128 and 256 px |
+| `media/app-icon.svg`, `icon-256.png`, `icon-512.png` | Source / large versions of the icon |
+| `media/header.png`, `header@2x.png`, `header.svg` | Banner (540 × 84, and 2× for high-DPI) with name and tagline. README header and top of the settings window |
+| `media/preview.png` | Overview of the icon at 16 – 128 px on light and dark backgrounds (for documentation) |
+
+Palette (taken from the SVG files):
+
+| Colour | Hex | Role |
+|---|---|---|
+| Brand blue | `#2CABE2` | Main colour: banner, primary buttons, accents |
+| Dark blue | `#1480B5` | Hover / pressed state, lines, secondary accents |
+| Light blue | `#7CCAED` | Highlights, progress and "busy" accents |
+| Pale blue | `#A3D7EF` | Selected row, borders on light backgrounds |
+| Very pale blue | `#D7EFFA` | Panel and list backgrounds |
+| Navy | `#0A3A56` | Text and the dark badge in the icon |
+| White | `#FFFFFF` | Window background, text on dark blue |
+
+Rules:
+- **Text is navy** (`#0A3A56`) on white, pale blue and brand blue (contrast 12.0, 10.1 and 4.6).
+  Do **not** put white text on brand blue `#2CABE2` (contrast only 2.6). White text is only for the large
+  title in the banner and on dark blue `#1480B5` (4.4: large or bold text only).
+- The **error state** needs a red that is not in the palette. Use one clearly recognisable red, defined once,
+  and only for errors (tray icon, balloon, error rows in the list).
+- All colours live in **one** small `Theme` class in the Tray project (like the UI texts in one place),
+  never as loose hex values in forms.
+- Tray icon states (OK / busy / error): OK is the base icon; busy and error are variants of the SAME artwork
+  (for example a different badge), made in stage 3. Show them to Daan before committing.
 
 ## Input: TopSolid exports
 
@@ -293,7 +331,8 @@ Advanced settings, only in `settings.json` (no UI for now): `CncExtension` (`.xc
 `CncPathPrefixInXml` (empty), `CsvEncoding` (`utf-8`), `RescanSeconds` (30), `RequireTriggerFile` (true).
 
 Tray behaviour (silent mode):
-- Small tray icon (embedded `.ico`) with three states: OK, busy, error.
+- Small tray icon (embedded, based on `media/app.ico`) with three states: OK, busy, error.
+  The settings window uses the colour theme and the banner from `media/` (see "Visual identity").
 - Tooltip: last result, short (e.g. `Laatste: Verschuren-P-20 OK 14:32`).
 - Double-click: open settings window.
 - Right-click menu: Instellingen… / Nu scannen / Pauzeren–Hervatten / Open logmap / Open materiaaltabel / Afsluiten.
@@ -374,15 +413,21 @@ Physical test sheet:
 
 ## Status
 
-- Stage: 1 (Core + CLI) — first draft done, waiting for confirmation before stage 2.
+- Stage: 2 (Validation) — first draft done, waiting for confirmation before stage 3 (Tray shell).
 - Built: `TsDssConverter.slnx` with `Core`, `Cli` and `Tests`. `Tray` does not exist yet (stage 3).
 - The CLI output of the sample is byte-identical to the golden files in `samples/duivestein/`.
-  96 unit tests pass (`dotnet test`).
-- Already in Core (needed for correct output): missing columns, unmatched/duplicate parts, unknown
-  material, different sheet sizes per material, unreadable `Afmetingen`, angle not a multiple of 90,
-  batch already exists, output folder missing, safe writing (`.tmp` + rename, XML last).
-  These stop at the first problem group and throw a `ConversionException` with a Dutch message.
-- Not yet (stage 2): label position outside the sheet, all warnings (CNC file missing, duplicate part ID,
-  thickness vs `SUP_DESIGNATION`), collecting *all* errors of every kind in one report.
+  142 unit tests pass (`dotnet test`).
+- Stage 1: read, join, map, write XML + CSVs, safe writing (`.tmp` + rename, XML last), never overwrite a batch.
+- Stage 2, errors: everything in the Validation section is implemented, including "label outside the sheet
+  (after flip)". `BatchBuilder` first CHECKS and collects all problems, then throws ONE `ConversionException`
+  whose `Problems` list holds every problem (the message shows the first 25). `Converter` reads LI, LP and
+  materials.csv first and reports problems in all three together. Nothing is written when there is an error.
+  Only one problem per part is reported (the first one found for that part).
+- Stage 2, warnings: `ConversionResult.Warnings` gets CNC program not found (one warning if the export folder
+  itself is unreachable), part ID not unique in the batch, thickness in materials.csv vs `SUP_DESIGNATION`.
+  The CLI prints them as `WAARSCHUWING`; the exit code is 1 for an error, 2 for an unexpected error.
+- The CNC check uses `TopSolidExportPath` on THIS PC, never `CncPathPrefixInXml`. The CLI default
+  `Z:\TopSolid\Export\` gives one "not reachable" warning on a PC without that drive.
+- Not yet: writing errors to `fout.txt` and the log (stage 4), reading `settings.json` (stage 3).
 - NuGet packages: ClosedXML (Core), xunit + `Microsoft.NET.Test.Sdk` + `xunit.runner.visualstudio` (Tests;
   the last two are needed to run xUnit tests). `coverlet.collector` from the template was removed.

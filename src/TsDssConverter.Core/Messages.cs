@@ -33,7 +33,28 @@ public static class Messages
         $"Plaatnaam heeft niet de vorm 'materiaal#nummer' (bv. White_18#01): '{sheetName}'.";
 
     public static string AngleNotMultipleOf90(double angle, string part) =>
-        $"Hoek {NumberFormat.ToInvariantText(angle)} is geen veelvoud van 90 (onderdeel: {part}).";
+        $"Hoek {NumberFormat.ToDss(angle)} is geen veelvoud van 90 (onderdeel: {part}).";
+
+    public static string LabelOutsideSheet(double x, double y, double sheetLength, double sheetWidth, string part) =>
+        $"Label ligt buiten de plaat: X={NumberFormat.ToDss(x)}, Y={NumberFormat.ToDss(y)} " +
+        $"bij een plaat van {NumberFormat.ToDss(sheetLength)} x {NumberFormat.ToDss(sheetWidth)} mm (onderdeel: {part}).";
+
+    /// <summary>Last line of a long list of problems, when the list is cut off.</summary>
+    public static string AndMoreProblems(int count) => $"... en nog {count} andere problemen.";
+
+    // ---- Warnings (the conversion continues) ----
+    public static string CncFolderNotReachable(string folder) =>
+        $"TopSolid-exportmap niet bereikbaar, CNC-programma's niet gecontroleerd: {folder}";
+
+    public static string CncFileNotFound(string path) =>
+        $"CNC-programma niet gevonden (TopSolid schrijft het misschien nog): {path}";
+
+    public static string DuplicatePartId(string id, IEnumerable<string> sheetNames) =>
+        $"Onderdeelnummer {id} komt meer dan één keer voor in de batch (platen: {string.Join(", ", sheetNames)}).";
+
+    public static string ThicknessDiffers(string material, double inMaterialsFile, double inTopSolid) =>
+        $"Materiaal '{material}': dikte in materials.csv ({NumberFormat.ToDss(inMaterialsFile)} mm) " +
+        $"verschilt van SUP_DESIGNATION in TopSolid ({NumberFormat.ToDss(inTopSolid)} mm).";
 
     // ---- Joining LI and LP ----
     public static string DuplicateKey(string fileKind, string sheetName, string description) =>

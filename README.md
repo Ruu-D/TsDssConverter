@@ -1,13 +1,13 @@
-# TsDssConverter
+<h1 align="center"><img src="media/header@2x.png" width="540" alt="TsDssConverter - Automatic hand-over of nesting jobs from CAD to the panel warehouse."></h1>
 
 **Automatic hand-over of nesting jobs from TopSolid to the Duivestein warehouse.**
 
 TsDssConverter is a small Windows tray application that watches a folder for TopSolid nesting exports and
 converts them, without any manual work, into a job that the Duivestein automatic warehouse understands.
 
-> **Status: under development.** The conversion engine and a command line tool are finished and tested
-> (stage 1 of 5). The tray application, the folder watching and the installation at the customer are still to
-> be built. See [Status and roadmap](#status-and-roadmap).
+> **Status: under development.** The conversion engine, its input checks and a command line tool are finished
+> and tested (stages 1 and 2 of 5). The tray application, the folder watching and the installation at the
+> customer are still to be built. See [Status and roadmap](#status-and-roadmap).
 
 ---
 
@@ -89,7 +89,14 @@ A wrong job in an automatic warehouse means a wrong board on the machine, so the
 - **The warehouse never sees half a job.** All label files are written first and the batch XML last; every
   file is written under a temporary name and renamed when complete.
 - **Incomplete or inconsistent input is refused, not repaired.** Missing columns, parts that appear in only one
-  of the two files, unreadable dimensions and angles that are not a multiple of 90 are reported in plain Dutch.
+  of the two files, duplicate parts, unknown materials, sheets of one material with different sizes, unreadable
+  dimensions, angles that are not a multiple of 90 and labels that lie outside their sheet are all errors.
+  Nothing is written when there is an error.
+- **Every problem is reported at once, in plain Dutch,** with the name of the part or column concerned, so
+  the export can be corrected in one go instead of one error at a time.
+- **Warnings do not stop a job, but are reported:** a CNC program that is not (yet) in the export folder, a part
+  number that occurs more than once in the batch, and a material thickness in `materials.csv` that differs from
+  the one in the TopSolid export.
 - **It does not depend on the PC's regional settings.** Belgian PCs use a comma as decimal separator; the tool
   reads and writes numbers in a fixed way so results are identical on every PC.
 
@@ -98,15 +105,17 @@ A wrong job in an automatic warehouse means a wrong board on the machine, so the
 | Stage | Content | Status |
 |---|---|---|
 | 1 | **Core + command line tool**: read, join, map, write XML and CSVs; automated tests | **Done (first draft)** |
-| 2 | **Validation**: all remaining checks and warnings, one clear report | Next |
-| 3 | **Tray application**: icon, settings window, start with Windows | Planned |
+| 2 | **Validation**: all checks and warnings, one clear report, exit code for errors | **Done (first draft)** |
+| 3 | **Tray application**: icon, settings window, start with Windows | Next |
 | 4 | **Folder watching and processing**: trigger file, queue, `_Verwerkt` / `_Fout` folders, log files | Planned |
 | 5 | **Delivery**: single-file installation, install at the customer, physical test sheet | Planned |
 
 **What is verified so far**
 
-- 96 automated tests pass.
+- 142 automated tests pass.
 - Converting the sample TopSolid export gives exactly the expected files (compared byte for byte).
+- Every error and warning listed above is covered by a test, including a wrong pair of files and several
+  problems at once.
 
 **What is *not* verified yet**
 
@@ -182,6 +191,7 @@ src/
   TsDssConverter.Cli/    Command line tool for manual testing
 tests/
   TsDssConverter.Tests/  Automated tests, using the files in samples/
+media/                   Application icon, banner and the colour theme used by the whole project
 docs/                    Background documentation
 CLAUDE.md                Detailed technical specification and working notes
 ```

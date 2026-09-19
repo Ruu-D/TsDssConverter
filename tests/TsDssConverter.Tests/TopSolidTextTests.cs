@@ -43,6 +43,27 @@ public class TopSolidTextTests
     }
 
     [Theory]
+    [InlineData("18.0_panel 18mm", 18.0)]
+    [InlineData("19.0_panel 18mm", 19.0)]   // the "18mm" at the end is wrong in the export; the leading number is right
+    [InlineData("40.0_panel 18mm", 40.0)]
+    [InlineData("9_panel", 9.0)]
+    [InlineData("  12.5_x", 12.5)]
+    public void TryGetLeadingNumber_ReadsTheThickness(string text, double expected)
+    {
+        Assert.True(TopSolidText.TryGetLeadingNumber(text, out double number));
+        Assert.Equal(expected, number);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("panel 18mm")]
+    [InlineData(".5_x")]
+    public void TryGetLeadingNumber_TextWithoutLeadingNumber_ReturnsFalse(string text)
+    {
+        Assert.False(TopSolidText.TryGetLeadingNumber(text, out _));
+    }
+
+    [Theory]
     [InlineData("Verschuren - K2 - Front - 19587", "19587")]
     [InlineData("Verschuren - K2 - Zijkant links - 13099", "13099")]
     [InlineData("Verschuren - K2 - Front - 19587 ", "19587")]

@@ -68,6 +68,32 @@ public class XlsxTableTests
     }
 
     [Fact]
+    public void RequireColumns_ReportsEveryMissingColumn_NotJustTheFirst()
+    {
+        using var folder = new TempFolder();
+        string path = folder.File("test.xlsx");
+
+        using (var workbook = new XLWorkbook())
+        {
+            var sheet = workbook.AddWorksheet("Sheet1");
+            sheet.Cell(1, 1).Value = "Naam_Plaat";
+            sheet.Cell(2, 1).Value = "White_18#01";
+            workbook.SaveAs(path);
+        }
+
+        var table = XlsxTable.Load(path);
+
+        var error = Assert.Throws<ConversionException>(() => table.RequireColumns("LI", "Naam_Plaat", "Afmetingen", "Omschrijving", "CAM_2"));
+
+        Assert.Equal(3, error.Problems.Count);
+        Assert.Contains("Afmetingen", error.Message);
+        Assert.Contains("Omschrijving", error.Message);
+        Assert.Contains("CAM_2", error.Message);
+        Assert.True(table.HasColumn("naam_plaat")); // case-insensitive
+        Assert.False(table.HasColumn("Afmetingen"));
+    }
+
+    [Fact]
     public void Load_MissingFile_IsAnError()
     {
         Assert.Throws<ConversionException>(() => XlsxTable.Load(@"C:\does\not\exist.xlsx"));
