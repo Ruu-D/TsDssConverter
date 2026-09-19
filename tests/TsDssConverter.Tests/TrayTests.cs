@@ -65,7 +65,7 @@ public class TrayTests
         new StartWithWindows(key.Path, @"C:\Program Files\Some Folder\TsDssConverter.exe").SetEnabled(true);
 
         using var registryKey = Registry.CurrentUser.OpenSubKey(key.Path);
-        Assert.Equal("\"C:\\Program Files\\Some Folder\\TsDssConverter.exe\"", registryKey!.GetValue("TsDssConverter"));
+        Assert.Equal("\"C:\\Program Files\\Some Folder\\TsDssConverter.exe\"", registryKey!.GetValue(StartWithWindows.ValueName));
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class TrayTests
 
         using (var registryKey = Registry.CurrentUser.CreateSubKey(key.Path))
         {
-            registryKey.SetValue("TsDssConverter", "\"D:\\somewhere\\else.exe\""); // another path than ours
+            registryKey.SetValue(StartWithWindows.ValueName, "\"D:\\somewhere\\else.exe\""); // another path than ours
         }
 
         Assert.True(startup.IsEnabled()); // the checkbox shows what the registry says

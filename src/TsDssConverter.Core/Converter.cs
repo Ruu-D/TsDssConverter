@@ -59,7 +59,7 @@ public class Converter
             }
         }
 
-        string xmlText = BatchXmlWriter.BuildText(batch);
+        string xmlText = BatchXmlWriter.BuildText(batch, labelFolder);
         var xmlFile = new PendingFile
         {
             Path = Path.Combine(batchFolder, batchName + ".xml"),

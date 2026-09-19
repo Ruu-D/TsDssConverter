@@ -238,6 +238,44 @@ public class LanguageWindowTests
     }
 
     [Fact]
+    public void Footer_HasTheSmallCompanyLogo_AtTheLeftOfTheTwoLines()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new Window();
+            window.Form.Show();
+            window.Form.SizeToContent(new Rectangle(0, 0, 4000, 3000));
+            window.Form.PerformLayout();
+            var form = window.Form;
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+
+            Assert.NotNull(form.LogoPicture.Image);
+            Point logo = Place(form.LogoPicture), credit = Place(form.CreditLink), version = Place(form.VersionLabel);
+
+            Assert.True(logo.X + form.LogoPicture.Width <= credit.X);                     // the logo is left of the texts
+            Assert.True(logo.X < form.ClientSize.Width / 8);                              // and at the far left
+            Assert.True(logo.Y <= credit.Y + form.CreditLink.Height / 2);                 // it starts at about the first line ...
+            Assert.True(logo.Y + form.LogoPicture.Height >= version.Y + form.VersionLabel.Height / 2); // ... and ends at the second
+            Assert.True(form.LogoPicture.Height < form.LogicalToDeviceUnits(60));         // small
+        });
+    }
+
+    [Fact]
+    public void Logo_IsCutToTheVisiblePart_AndMadeSmallOnce()
+    {
+        // The picture file has a transparent margin. If it was left on, the logo would be indented and look too small.
+        using var logo = (Bitmap)AppIcons.CompanyLogo();
+
+        Assert.Equal(128, Math.Max(logo.Width, logo.Height));
+
+        bool VisibleIn(IEnumerable<Point> pixels) => pixels.Any(p => logo.GetPixel(p.X, p.Y).A > 16);
+        Assert.True(VisibleIn(Enumerable.Range(0, logo.Height).Select(y => new Point(0, y))), "left edge is empty");
+        Assert.True(VisibleIn(Enumerable.Range(0, logo.Height).Select(y => new Point(logo.Width - 1, y))), "right edge is empty");
+        Assert.True(VisibleIn(Enumerable.Range(0, logo.Width).Select(x => new Point(x, 0))), "top edge is empty");
+        Assert.True(VisibleIn(Enumerable.Range(0, logo.Width).Select(x => new Point(x, logo.Height - 1))), "bottom edge is empty");
+    }
+
+    [Fact]
     public void Footer_SitsBelowTheListOfConversions_OnTheLeft_InsideTheWindow()
     {
         RunOnStaThread(() =>

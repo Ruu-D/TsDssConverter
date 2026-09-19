@@ -8,12 +8,17 @@ namespace TsDssConverter.Core;
 /// <summary>Builds the text of the Duivestein batch XML: UTF-8, 2-space indentation, CRLF line endings.</summary>
 public static class BatchXmlWriter
 {
-    public static string BuildText(Batch batch)
+    /// <param name="labelFolder">
+    /// The Duivestein label folder (the third path in the settings, e.g. Z:\Duivestein\Label). Every LabelFilename in
+    /// the XML is this folder + the file name, so Duivestein knows where to find the label files (same drive letter
+    /// as the CNC paths).
+    /// </param>
+    public static string BuildText(Batch batch, string labelFolder)
     {
         var plans = new XElement("Plans");
         foreach (var plan in batch.Plans)
         {
-            plans.Add(BuildPlan(plan));
+            plans.Add(BuildPlan(plan, labelFolder));
         }
 
         var root = new XElement("DSSBatch",
@@ -52,7 +57,7 @@ public static class BatchXmlWriter
         return xml + "\r\n";
     }
 
-    private static XElement BuildPlan(Plan plan)
+    private static XElement BuildPlan(Plan plan, string labelFolder)
     {
         var labelFileNames = new XElement("LabelFilenames");
         var cncFileNames = new XElement("CNCFilenames");
@@ -60,7 +65,7 @@ public static class BatchXmlWriter
         // Same order in both lists: the n-th label file belongs to the n-th CNC program.
         foreach (var sheet in plan.Sheets)
         {
-            labelFileNames.Add(new XElement("LabelFilename", sheet.LabelFileName));
+            labelFileNames.Add(new XElement("LabelFilename", Path.Combine(labelFolder, sheet.LabelFileName)));
             cncFileNames.Add(new XElement("CNCFilename", sheet.CncPath));
         }
 

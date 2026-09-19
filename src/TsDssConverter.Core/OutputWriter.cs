@@ -19,12 +19,12 @@ public static class OutputWriter
     {
         if (!Directory.Exists(batchFolder))
         {
-            throw new ConversionException(Messages.FolderNotFound(batchFolder));
+            throw new ConversionException(Messages.FolderNotFound(batchFolder)) { IsTemporary = true };
         }
 
         if (!Directory.Exists(labelFolder))
         {
-            throw new ConversionException(Messages.FolderNotFound(labelFolder));
+            throw new ConversionException(Messages.FolderNotFound(labelFolder)) { IsTemporary = true };
         }
 
         if (File.Exists(xmlFile.Path))

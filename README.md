@@ -5,9 +5,9 @@
 TsDssConverter is a small Windows tray application that watches a folder for TopSolid nesting exports and
 converts them, without any manual work, into a job that the Duivestein automatic warehouse understands.
 
-> **Status: under development.** The conversion engine, its input checks, a command line tool and the shell of
-> the tray application (icon, menu, settings window) are finished and tested (stages 1 to 3 of 5). The automatic
-> folder watching and the installation at the customer are still to be built.
+> **Status: under development.** The conversion engine, its input checks, a command line tool, the tray application
+> and the automatic folder watching are finished and tested (stages 1 to 4 of 5). The installation at the customer
+> and the test with the real machines are still to come.
 > See [Status and roadmap](#status-and-roadmap).
 
 ---
@@ -67,7 +67,7 @@ An extract of the batch XML:
   <YDimSize>1300</YDimSize>
   <Quantity>5</Quantity>
   <LabelFilenames>
-    <LabelFilename>Verschuren-P-20_002.csv</LabelFilename>
+    <LabelFilename>Z:\Duivestein\Label\Verschuren-P-20_002.csv</LabelFilename>
     <!-- ... one per sheet ... -->
   </LabelFilenames>
   <CNCFilenames>
@@ -102,6 +102,24 @@ A wrong job in an automatic warehouse means a wrong board on the machine, so the
 - **It does not depend on the PC's regional settings.** Belgian PCs use a comma as decimal separator; the tool
   reads and writes numbers in a fixed way so results are identical on every PC.
 
+## How the automatic processing works
+
+The program watches the TopSolid export folder. TopSolid writes the two data files (`-LI` and `-LP`) and the CNC
+programs, and the trigger file (`-TR`) as the very last one. When the trigger file appears:
+
+1. The program waits until the three files are complete and no longer in use (it checks every 2 seconds, and gives up
+   with an error after 2 minutes).
+2. It converts the project (one at a time) and writes the label files and the batch XML for the warehouse.
+3. It moves the three files to `_Verwerkt<date-time> <project>` in the export folder. The CNC programs stay where
+   they are, because the batch XML points to them.
+4. If something is wrong with the files, they go to `_Fout<date-time> <project>` together with a `fout.txt` that
+   explains in plain language (in the selected language) what to correct. Putting the files back in the export folder
+   starts a new attempt.
+
+Problems that are not the fault of the files, such as a network drive that is not connected yet, do **not** move
+anything: the files wait and the program tries again by itself, and the user is told once. The program also scans the
+folder every 30 seconds (in case a file event is missed), and the menu item *Nu scannen* scans at once.
+
 ## Status and roadmap
 
 | Stage | Content | Status |
@@ -109,12 +127,12 @@ A wrong job in an automatic warehouse means a wrong board on the machine, so the
 | 1 | **Core + command line tool**: read, join, map, write XML and CSVs; automated tests | **Done (first draft)** |
 | 2 | **Validation**: all checks and warnings, one clear report, exit code for errors | **Done (first draft)** |
 | 3 | **Tray application (shell)**: icon with four looks (normal, busy, error, paused), menu, settings window, `settings.json`, start with Windows, log files. No conversion yet | **Done (first draft)** |
-| 4 | **Folder watching and processing**: trigger file, queue, `_Verwerkt` / `_Fout` folders, notifications | Next |
-| 5 | **Delivery**: single-file installation, install at the customer, physical test sheet | Planned |
+| 4 | **Folder watching and processing**: trigger file, one conversion at a time, `_Verwerkt` / `_Fout` folders with a readable `fout.txt`, notifications, recovery when the network drive is gone | **Done (first draft)** |
+| 5 | **Delivery**: single-file installation, install at the customer, physical test sheet | Next |
 
 **What is verified so far**
 
-- 256 automated tests pass.
+- 299 automated tests pass.
 - Converting the sample TopSolid export gives exactly the expected files (compared byte for byte).
 - Every error and warning listed above is covered by a test, including a wrong pair of files and several
   problems at once.
@@ -122,6 +140,10 @@ A wrong job in an automatic warehouse means a wrong board on the machine, so the
   self-contained `.exe` (about 126 MB, no .NET installation needed on the customer PC).
 - The settings window (saving, cancelling, hiding instead of closing, the history list) and the
   "start with Windows" registry setting are covered by tests.
+- The folder watching and processing is covered by tests with a fake clock (waiting for the trigger file, giving up
+  after 2 minutes, locked files, files that arrive late, a network drive that disappears and comes back, a problem
+  that is reported only once, never converting twice). It was also tried with the real program: the sample was
+  dropped in a folder while the program was running and became the expected batch and label files.
 - Every text of the interface exists in Dutch, French and English: a test checks all of them, so a missing
   translation cannot slip in.
 

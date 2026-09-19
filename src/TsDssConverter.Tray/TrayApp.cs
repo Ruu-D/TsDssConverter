@@ -7,9 +7,9 @@ namespace TsDssConverter.Tray;
 /// The tray application: the icon with its menu, the tooltip, the balloon on errors and the settings window.
 /// It runs for as long as the program runs (there is no main window).
 ///
-/// Stage 3: the shell only. "Nu scannen" is disabled and Pause only switches a flag; the folder watching
-/// and the conversion come in stage 4, which will call <see cref="ReportResult"/> and <see cref="SetState"/>
-/// from its own thread (that is safe).
+/// It owns the <see cref="ExportWatcher"/> (stage 4), which converts the TopSolid exports on its own thread and
+/// reports back with events. The events end in <see cref="ReportResult"/> and <see cref="SetState"/>, which can be
+/// called from any thread (the work is handed over to the tray's own thread).
 /// </summary>
 internal class TrayApp : ApplicationContext
 {
@@ -23,15 +23,18 @@ internal class TrayApp : ApplicationContext
     private readonly Dictionary<TrayState, Icon> _icons = new();
     private readonly bool _demo;
 
-    // Lets other threads (stage 4) change the icon safely: the work is handed over to the tray's own thread.
+    // Lets other threads (the watcher) change the icon safely: the work is handed over to the tray's own thread.
     private readonly Control _uiThread = new();
 
     private ToolStripMenuItem _pauseItem = new();
-    private AppSettings _settings;
+    private readonly ExportWatcher _watcher;
+
+    // Read by the watcher's thread as well: volatile makes sure it always sees the latest value.
+    private volatile AppSettings _settings;
     private SettingsForm? _settingsForm;
     private bool _settingsFormOutdated; // true after a language change: the window is built again the next time
     private TrayState _state = TrayState.Ok;
-    private bool _paused;
+    private volatile bool _paused;
 
     public TrayApp(AppDataFolder dataFolder, StartupOptions options)
     {
@@ -50,6 +53,13 @@ internal class TrayApp : ApplicationContext
         }
 
         _settings = loaded.Settings;
+
+        // The watcher is created here (the menu needs it) and started at the very end of this constructor.
+        _watcher = new ExportWatcher(() => _settings, () => _paused, _log, dataFolder.MaterialsFile);
+        _watcher.ConversionStarted += project => SetState(TrayState.Busy);
+        _watcher.ConversionFinished += OnConversionFinished;
+        _watcher.FolderProblemFound += ReportFolderProblem;
+        _watcher.FolderProblemSolved += () => SetState(TrayState.Ok);
 
         _log.DeleteOldLogs();
         _log.Info(Strings.LogStarted(AppInfo.Version, dataFolder.Root));
@@ -70,12 +80,14 @@ internal class TrayApp : ApplicationContext
         {
             _uiThread.BeginInvoke(new Action(ShowSettings)); // runs as soon as the message loop has started
         }
+
+        _watcher.Start(); // the first scan of the export folder happens right away
     }
 
-    /// <summary>The settings in use. Stage 4 reads them for every conversion.</summary>
+    /// <summary>The settings in use. The watcher reads them for every scan.</summary>
     public AppSettings Settings => _settings;
 
-    /// <summary>True while the user has paused the program. Stage 4 skips scanning while this is true.</summary>
+    /// <summary>True while the user has paused the program. The watcher does not scan while this is true.</summary>
     public bool IsPaused => _paused;
 
     // ------------------------------------------------------------------ what other parts of the program call
@@ -120,6 +132,42 @@ internal class TrayApp : ApplicationContext
         });
     }
 
+    // ------------------------------------------------------------------ what the watcher reports
+
+    /// <summary>A project is finished (comes from the watcher's thread; the calls below hand the work to the tray thread).</summary>
+    private void OnConversionFinished(ProcessOutcome outcome)
+    {
+        if (outcome.IsRepeat)
+        {
+            // The same temporary problem as before (for example the Duivestein folder is still not reachable):
+            // the user knows already, so no second balloon and no second line in the list. Only the icon goes
+            // back to red (it was set to "busy" for this attempt).
+            SetState(TrayState.Error);
+            return;
+        }
+
+        ReportResult(outcome.Project, outcome.Success, outcome.Message);
+    }
+
+    /// <summary>The export folder has not been reachable for a while: red icon, one balloon, one line in the list.</summary>
+    private void ReportFolderProblem(string message)
+    {
+        OnTrayThread(() =>
+        {
+            _history.Add(new HistoryEntry { Time = DateTime.Now, Project = Strings.NoProject, Success = false, Message = message });
+            _log.Error(message);
+            _state = TrayState.Error;
+            ShowBalloon(Strings.BalloonFolderTitle, message);
+            UpdateIconAndTooltip();
+        });
+    }
+
+    private void ScanNow()
+    {
+        _log.Info(Strings.LogScanNow);
+        _watcher.ScanNow();
+    }
+
     // ------------------------------------------------------------------ tray icon and menu
 
     private void CreateTrayIcon()
@@ -142,8 +190,7 @@ internal class TrayApp : ApplicationContext
         var menu = new ContextMenuStrip();
         menu.Items.Add(Strings.MenuSettings, null, (sender, e) => ShowSettings());
 
-        var scanItem = new ToolStripMenuItem(Strings.MenuScanNow) { Enabled = false }; // stage 4
-        menu.Items.Add(scanItem);
+        menu.Items.Add(Strings.MenuScanNow, null, (sender, e) => ScanNow());
 
         _pauseItem = new ToolStripMenuItem(_paused ? Strings.MenuResume : Strings.MenuPause);
         _pauseItem.Click += (sender, e) => TogglePause();
@@ -154,7 +201,7 @@ internal class TrayApp : ApplicationContext
 
         if (_demo)
         {
-            // To try out the looks of the icon and the list before the real conversion exists (stage 4).
+            // To try out the looks of the icon and the list without a real conversion.
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(Strings.MenuDemoOk, null, (sender, e) => ReportResult("Demo", true, Strings.DemoOkMessage));
             menu.Items.Add(Strings.MenuDemoBusy, null, (sender, e) => SetState(TrayState.Busy));
@@ -190,6 +237,11 @@ internal class TrayApp : ApplicationContext
         _pauseItem.Text = _paused ? Strings.MenuResume : Strings.MenuPause;
         _log.Info(_paused ? Strings.LogPaused : Strings.LogResumed);
         UpdateIconAndTooltip();
+
+        if (!_paused)
+        {
+            _watcher.WakeUp(); // scan at once, what arrived during the pause is waiting
+        }
     }
 
     // ------------------------------------------------------------------ language
@@ -280,6 +332,7 @@ internal class TrayApp : ApplicationContext
         bool languageChanged = newSettings.Language != _settings.Language;
         _settings = newSettings;
         _log.Info(Strings.LogSettingsSaved);
+        _watcher.WakeUp(); // a new export folder is watched at once
 
         if (languageChanged)
         {
@@ -350,6 +403,7 @@ internal class TrayApp : ApplicationContext
     private void ExitProgram()
     {
         _log.Info(Strings.LogExiting);
+        _watcher.Dispose(); // stops the background thread (waits a few seconds for a conversion that is busy)
 
         if (_settingsForm != null && !_settingsForm.IsDisposed)
         {
@@ -366,6 +420,7 @@ internal class TrayApp : ApplicationContext
     {
         if (disposing)
         {
+            _watcher.Dispose(); // harmless if the Exit menu already did this
             _notifyIcon.Dispose();
             foreach (Icon icon in _icons.Values)
             {

@@ -14,6 +14,13 @@ public class ConversionException : Exception
     /// <summary>Every problem, one text each.</summary>
     public IReadOnlyList<string> Problems { get; }
 
+    /// <summary>
+    /// True when the problem is not the fault of the input files but of the situation (a network folder that is
+    /// not reachable right now). The files then stay where they are and the conversion is tried again later,
+    /// instead of moving the files to the error folder.
+    /// </summary>
+    public bool IsTemporary { get; init; }
+
     public ConversionException(string message) : base(message)
     {
         Problems = new[] { message };

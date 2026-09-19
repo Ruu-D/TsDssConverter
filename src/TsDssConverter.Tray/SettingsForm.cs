@@ -47,6 +47,7 @@ internal class SettingsForm : Form
     internal readonly ComboBox LanguageBox = new();
     internal readonly LinkLabel CreditLink = new();  // "Dev.: Daan Verhoost  |  ROGIERS NV/SA" (the company is the link)
     internal readonly Label VersionLabel = new();    // "App version: 1.0.0"
+    internal readonly PictureBox LogoPicture = new(); // the small ROGIERS logo at the left of the two footer lines
     internal readonly Panel Scroller = new();        // holds all the settings; scrolls if the window is too small
 
     // The list of conversions is never smaller than this (in pixels at 100% scaling): it must always be visible.
@@ -58,6 +59,9 @@ internal class SettingsForm : Form
     // All buttons (Browse, Save, Cancel) have exactly this size (at 100%), so they line up and look the same.
     // Not AutoSize: that made Save (bold text) and Cancel different in size, and all of them too big.
     private static readonly Size ButtonSize = new(100, 28);
+
+    // The company logo in the footer (at 100%). The logo is a little wider than high; the picture keeps its proportions.
+    private static readonly Size LogoSize = new(46, 42);
 
     // Widths of the columns Time, Project and Result at 100%. The Message column takes the rest.
     // (A ListView does not scale its columns by itself, so they are scaled in ScaleHistoryColumns.)
@@ -267,7 +271,7 @@ internal class SettingsForm : Form
     }
 
     /// <summary>
-    /// The two lines at the bottom left of the window:
+    /// The footer at the bottom left of the window: the small logo of the company and, at its right, two lines:
     ///   Dev.: Daan Verhoost  |  ROGIERS NV/SA      (the company name is a link to its website)
     ///   App version: 1.0.0
     /// </summary>
@@ -290,16 +294,39 @@ internal class SettingsForm : Form
         VersionLabel.Margin = new Padding(0, 2, 0, 0);
         VersionLabel.ForeColor = Theme.Navy;
 
-        var footer = new FlowLayoutPanel
+        // The two text lines under each other ...
+        var lines = new FlowLayoutPanel
         {
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
             AutoSize = true,
+            Anchor = AnchorStyles.Left, // in the middle of the height of the logo
+            Margin = new Padding(0),
+        };
+        lines.Controls.Add(CreditLink);
+        lines.Controls.Add(VersionLabel);
+
+        // ... and the small logo of the company at their left.
+        LogoPicture.Image = AppIcons.CompanyLogo();
+        LogoPicture.SizeMode = PictureBoxSizeMode.Zoom; // keeps the proportions of the logo
+        LogoPicture.Size = LogoSize;
+        LogoPicture.BackColor = Theme.White;
+        LogoPicture.Anchor = AnchorStyles.Left;
+        LogoPicture.Margin = new Padding(0, 6, 12, 0);
+
+        var footer = new TableLayoutPanel
+        {
+            ColumnCount = 2,
+            RowCount = 1,
+            AutoSize = true,
             Anchor = AnchorStyles.Left, // bottom LEFT
             Margin = new Padding(0),
         };
-        footer.Controls.Add(CreditLink);
-        footer.Controls.Add(VersionLabel);
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        footer.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        footer.Controls.Add(LogoPicture, 0, 0);
+        footer.Controls.Add(lines, 1, 0);
         return footer;
     }
 

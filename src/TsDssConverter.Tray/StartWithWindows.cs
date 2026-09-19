@@ -10,7 +10,7 @@ namespace TsDssConverter.Tray;
 internal class StartWithWindows
 {
     public const string DefaultKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string ValueName = "TsDssConverter";
+    internal const string ValueName = "TsDssConverter - ROGIERS"; // internal: the tests read the same value
 
     private readonly string _keyPath;
     private readonly string _exePath;

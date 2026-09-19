@@ -32,6 +32,7 @@
     <EmbeddedResource Include="..\..\media\app-error.ico" LogicalName="app-error.ico" />
     <EmbeddedResource Include="..\..\media\app-paused.ico" LogicalName="app-paused.ico" />
     <EmbeddedResource Include="..\..\media\header@2x.png" LogicalName="header.png" />
+    <EmbeddedResource Include="..\..\media\ROGIERS-transp-small.png" LogicalName="rogiers-logo.png" />
   </ItemGroup>
 
   <!-- Lets the tests reach the internal classes of this project -->

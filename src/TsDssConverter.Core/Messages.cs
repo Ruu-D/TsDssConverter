@@ -209,4 +209,126 @@ public static class Messages
             $"Matériau '{material}' : l'épaisseur dans materials.csv ({csv} mm) diffère de SUP_DESIGNATION dans TopSolid ({topSolid} mm).",
             $"Material '{material}': thickness in materials.csv ({csv} mm) differs from SUP_DESIGNATION in TopSolid ({topSolid} mm).");
     }
+
+    // ---- Watching the export folder and processing (stage 4) ----
+    public static string ConversionDone(int sheets, int parts, int warnings)
+    {
+        string text = T(
+            $"{sheets} platen, {parts} labels",
+            $"{sheets} panneaux, {parts} étiquettes",
+            $"{sheets} sheets, {parts} labels");
+
+        if (warnings == 0)
+        {
+            return text;
+        }
+
+        return text + T(
+            $" - waarschuwingen: {warnings} (zie logboek)",
+            $" - avertissements : {warnings} (voir le journal)",
+            $" - warnings: {warnings} (see log)");
+    }
+
+    /// <summary>Added to a problem that is tried again by itself later.</summary>
+    public static string WillRetry => T(
+        "Er wordt automatisch opnieuw geprobeerd.",
+        "Une nouvelle tentative aura lieu automatiquement.",
+        "It will be tried again automatically.");
+
+    public static string FileMissingKind(string kind) => T(
+        $"{kind}-bestand ontbreekt",
+        $"fichier {kind} manquant",
+        $"{kind} file is missing");
+
+    public static string FileInUse(string fileName) => T(
+        $"{fileName} is in gebruik door een ander programma",
+        $"{fileName} est utilisé par un autre programme",
+        $"{fileName} is in use by another program");
+
+    public static string GaveUpWaiting(int minutes, string reasons) => T(
+        $"Na {minutes} minuten wachten zijn de exportbestanden nog niet compleet: {reasons}.",
+        $"Après {minutes} minutes d'attente, les fichiers d'export ne sont toujours pas complets : {reasons}.",
+        $"After waiting {minutes} minutes the export files are still not complete: {reasons}.");
+
+    public static string UnexpectedError(string message) => T(
+        $"Onverwachte fout bij het lezen of omzetten van de bestanden: {message}",
+        $"Erreur inattendue lors de la lecture ou de la conversion des fichiers : {message}",
+        $"Unexpected error while reading or converting the files: {message}");
+
+    public static string MoveFailed(string folder, string reason) => T(
+        $"De bestanden konden niet naar {folder} worden verplaatst: {reason}",
+        $"Les fichiers n'ont pas pu être déplacés vers {folder} : {reason}",
+        $"The files could not be moved to {folder}: {reason}");
+
+    // ---- fout.txt (written next to the files in the error folder) ----
+    public static string ErrorReportTitle => T(
+        "TsDssConverter - conversie mislukt",
+        "TsDssConverter - conversion échouée",
+        "TsDssConverter - conversion failed");
+
+    public static string ErrorReportProject(string project) => T(
+        $"Projectnaam: {project}",
+        $"Projet : {project}",
+        $"Project name: {project}");
+
+    public static string ErrorReportTime(DateTime time)
+    {
+        // Fixed format: never depend on the regional settings of the PC.
+        string text = time.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture);
+        return T($"Tijdstip: {text}", $"Heure : {text}", $"Time: {text}");
+    }
+
+    public static string ErrorReportProblems => T(
+        "Wat er mis is:", "Ce qui ne va pas :", "What is wrong:");
+
+    public static string ErrorReportHint => T(
+        "Corrigeer het probleem en zet de bestanden terug in de TopSolid-exportmap (of exporteer opnieuw). De conversie start dan vanzelf opnieuw.",
+        "Corrigez le problème puis remettez les fichiers dans le dossier d'export TopSolid (ou exportez à nouveau). La conversion redémarre alors automatiquement.",
+        "Fix the problem and put the files back in the TopSolid export folder (or export again). The conversion then starts again by itself.");
+
+    // ---- Log lines of the watcher ----
+    public static string LogWatching(string folder) => T(
+        $"Exportmap wordt bewaakt: {folder}",
+        $"Surveillance du dossier d'export : {folder}",
+        $"Watching the export folder: {folder}");
+
+    public static string LogWatcherError(string reason) => T(
+        $"De bewaking van de exportmap viel weg ({reason}). Ze wordt opnieuw gestart.",
+        $"La surveillance du dossier d'export s'est arrêtée ({reason}). Elle est relancée.",
+        $"Watching the export folder stopped ({reason}). It is being restarted.");
+
+    public static string LogWatcherCannotStart(string reason) => T(
+        $"De exportmap kan nog niet bewaakt worden: {reason}",
+        $"Le dossier d'export ne peut pas encore être surveillé : {reason}",
+        $"The export folder cannot be watched yet: {reason}");
+
+    public static string ExportFolderNotReachable(string folder) => T(
+        $"TopSolid-exportmap niet bereikbaar: {folder}. Er wordt automatisch opnieuw geprobeerd.",
+        $"Dossier d'export TopSolid inaccessible : {folder}. Une nouvelle tentative aura lieu automatiquement.",
+        $"TopSolid export folder not reachable: {folder}. It will be tried again automatically.");
+
+    public static string LogExportFolderBack(string folder) => T(
+        $"TopSolid-exportmap is weer bereikbaar: {folder}",
+        $"Le dossier d'export TopSolid est de nouveau accessible : {folder}",
+        $"TopSolid export folder is reachable again: {folder}");
+
+    public static string LogConversionStarted(string project) => T(
+        $"Conversie gestart: {project}",
+        $"Conversion démarrée : {project}",
+        $"Conversion started: {project}");
+
+    public static string LogProjectWarning(string project, string warning) => T(
+        $"Waarschuwing bij {project}: {warning}",
+        $"Avertissement pour {project} : {warning}",
+        $"Warning for {project}: {warning}");
+
+    public static string LogFilesMoved(string folder) => T(
+        $"Bestanden verplaatst naar: {folder}",
+        $"Fichiers déplacés vers : {folder}",
+        $"Files moved to: {folder}");
+
+    public static string LogWatcherFailure(string reason) => T(
+        $"Onverwachte fout in de bewaking: {reason}",
+        $"Erreur inattendue dans la surveillance : {reason}",
+        $"Unexpected error in the watcher: {reason}");
 }

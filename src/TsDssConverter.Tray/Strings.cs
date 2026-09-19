@@ -35,7 +35,7 @@ internal static class Strings
     public static string MenuPause => T("Pauzeren", "Suspendre", "Pause");
     public static string MenuResume => T("Hervatten", "Reprendre", "Resume");
     public static string MenuOpenLogFolder => T("Open logmap", "Ouvrir le dossier des journaux", "Open log folder");
-    public static string MenuOpenMaterials => T("Open materiaaltabel", "Ouvrir la table des matériaux", "Open materials table");
+    public static string MenuOpenMaterials => T("Open materiaaltabel", "Ouvrir table des matériaux", "Open materials table");
     public static string MenuExit => T("Afsluiten", "Quitter", "Exit");
 
     // ---- Demo menu (only with the --demo switch) ----
@@ -73,6 +73,14 @@ internal static class Strings
 
     public static string BalloonSettingsTitle => T("Instellingen", "Paramètres", "Settings");
 
+    public static string BalloonFolderTitle => T(
+        "TopSolid-exportmap niet bereikbaar",
+        "Dossier d'export TopSolid inaccessible",
+        "TopSolid export folder not reachable");
+
+    /// <summary>In the list of conversions, for a problem that is not about one project.</summary>
+    public const string NoProject = "-";
+
     // ---- Settings window ----
     public static string WindowTitle => T(
         "TsDssConverter - Instellingen", "TsDssConverter - Paramètres", "TsDssConverter - Settings");
@@ -86,7 +94,7 @@ internal static class Strings
 
     public static string BatchFolder => T(
         "Duivestein-batchmap (XML, opdrachten)",
-        "Dossier des lots Duivestein (XML, commandes)",
+        "Dossier des commandes Duivestein (XML)",
         "Duivestein batch folder (XML, jobs)");
 
     public static string LabelFolder => T(
@@ -175,6 +183,7 @@ internal static class Strings
     public static string LogSettingsSaved => T("Instellingen opgeslagen.", "Paramètres enregistrés.", "Settings saved.");
     public static string LogPaused => T("Gepauzeerd.", "Suspendu.", "Paused.");
     public static string LogResumed => T("Hervat.", "Repris.", "Resumed.");
+    public static string LogScanNow => T("Nu scannen gevraagd.", "Analyse immédiate demandée.", "Scan now requested.");
 
     public static string LogLanguageChanged(string code) => T(
         $"Taal gewijzigd naar: {code}",

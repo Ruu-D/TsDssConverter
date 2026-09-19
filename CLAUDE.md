@@ -82,6 +82,7 @@ window and the README. Do not invent other colours or another icon style.
 | `media/preview.png` | Overview of the icon at 16 – 128 px on light and dark backgrounds (for documentation) |
 | `media/app-busy.ico`, `app-error.ico`, `app-paused.ico` | The tray icon in the "busy", "error" and "paused" state (made in stage 3 from `app.ico`) |
 | `media/tray-states.png` | Overview of the four tray icon looks on light and dark backgrounds |
+| `media/ROGIERS-transp-small.png` | Logo of ROGIERS (transparent background), shown small in the footer of the settings window (added by Daan) |
 
 Palette (taken from the SVG files):
 
@@ -210,8 +211,8 @@ creation (2026-09-19); the test must pass in a fixed date. Not yet confirmed by 
       <Grain>0</Grain>                        <!-- from materials.csv -->
       <Quantity>1</Quantity>                  <!-- number of sheets of this material -->
       <Rotation>0</Rotation>                  <!-- constant 0 for now -->
-      <LabelFilenames>                        <!-- one per sheet, file name only -->
-        <LabelFilename>Verschuren-P-20_001.csv</LabelFilename>
+      <LabelFilenames>                        <!-- one per sheet: label folder (3rd setting) + file name -->
+        <LabelFilename>Z:\Duivestein\Label\Verschuren-P-20_001.csv</LabelFilename>
       </LabelFilenames>
       <CNCFilenames>                          <!-- one per sheet, full path, same order -->
         <CNCFilename>Z:\TopSolid\Export\Verschuren-P-20_Paars_18_01.xcs</CNCFilename>
@@ -230,6 +231,9 @@ creation (2026-09-19); the test must pass in a fixed date. Not yet confirmed by 
 - BatchName = project name from the file name.
 - Plan order = order of first appearance of the material in the LP file.
   Sheets within a plan sorted by sheet number (`#01`, `#02`, …).
+- LabelFilename = the label folder from the settings (the third path, `Z:\Duivestein\Label`) + a backslash + the file
+  name (decided by Daan): Duivestein gets the full path, in the same way as the CNC paths (`BatchXmlWriter.BuildText`
+  takes the label folder). The label CSV is written to that same folder. No `CncPathPrefixInXml` equivalent for labels.
 - Quantity = number of LabelFilename entries = number of CNCFilename entries.
 - UTF-8, 2-space indentation, CRLF line endings.
 
@@ -335,7 +339,9 @@ Settings window (the only window), in the selected language (Dutch, French or En
 - Below the settings: read-only list of the last 20 conversions (time, project, OK/Error, message).
 - Closing the window only hides it. The app keeps running in the tray.
 - **Footer, bottom left, below the list of conversions**, in the normal font size (an earlier version in half
-  size was unreadable): `Dev.: Daan Verhoost  |  ROGIERS NV/SA` (only the company name is a link to
+  size was unreadable), with the small ROGIERS logo (`media/ROGIERS-transp-small.png`, embedded; `AppIcons.CompanyLogo`
+  cuts off its transparent margin and scales it once to 128 px) at the left of the two lines:
+  `Dev.: Daan Verhoost  |  ROGIERS NV/SA` (only the company name is a link to
   https://www.rogiers.be/) and below it `App version: 1.0.0` (translated: `App-versie`, `Version de l'application`).
   The version comes from `<Version>` in `TsDssConverter.Tray.csproj` (`AppInfo.Version`). The credit texts and
   the URL are in `Strings` (not translated).
@@ -392,6 +398,16 @@ Tray behaviour (silent mode):
   containing the reason in plain language, in the language selected in the settings.
 - The `Z:` drive may be unavailable (network, PC just started): never crash. Show the error state, keep
   retrying on the next rescan, recover automatically. Recreate the watcher if it raises an Error event.
+- Decided while building stage 4 (first draft, to be confirmed by Daan):
+  - A problem that is the *situation* and not the files (Duivestein folder or materials.csv not reachable, a read or
+    write error) does NOT move the files to `_Fout`: they wait in the export folder and are tried again at every scan.
+    The user gets one balloon for it, not one per scan.
+  - A problem with the files (unknown material, corrupt xlsx, batch already exists, missing/locked file after 2
+    minutes) moves them to `_Fout` with `fout.txt`. Moving them back into the export folder starts a new attempt.
+  - When the export folder itself is not reachable, the red icon and balloon come only after 60 seconds (the network
+    drive is often not connected yet just after Windows started). It is logged at once, and the icon recovers by itself.
+  - "Nu scannen" also scans while paused. Resume and Save settings scan at once.
+  - The list of conversions is still not saved between runs (the log file has everything).
 
 ## Expected result for the sample (use in tests)
 
@@ -447,10 +463,10 @@ Physical test sheet:
 
 ## Status
 
-- Stage: 3 (Tray shell) — first draft done, waiting for confirmation before stage 4 (Watcher + processing).
+- Stage: 4 (Watcher + processing) — first draft done, waiting for confirmation before stage 5 (Delivery).
 - Built: `TsDssConverter.slnx` with `Core`, `Cli`, `Tray` and `Tests`.
 - The CLI output of the sample is byte-identical to the golden files in `samples/duivestein/`.
-  256 unit tests pass (`dotnet test`). The Tests project targets `net10.0-windows` so it can test `Tray`.
+  299 unit tests pass (`dotnet test`). The Tests project targets `net10.0-windows` so it can test `Tray`.
   Tests run one after the other (the language is one global switch).
 - Stage 1: read, join, map, write XML + CSVs, safe writing (`.tmp` + rename, XML last), never overwrite a batch.
 - Stage 2, errors: everything in the Validation section is implemented, including "label outside the sheet
@@ -491,11 +507,37 @@ Physical test sheet:
   `--show` opens the settings window at start; `--data` keeps the real `C:\TsDssConverter` untouched.
 - A build for a quick look without disturbing a running copy: `dotnet build src/TsDssConverter.Tray -o bin\latest`
   (`bin\` is ignored by git). A running exe locks the files in `bin\Debug`, so exit it first for a normal build.
-- Prepared for stage 4: `TrayApp.ReportResult(project, success, message)` and `SetState(...)` can be called from any
-  thread; `TrayApp.Settings` and `IsPaused` are read by the watcher. "Nu scannen" is disabled until then.
-  The history list is in memory only (empty after a restart).
+- `TrayApp.ReportResult(project, success, message)` and `SetState(...)` can be called from any thread (the watcher
+  does). The history list is in memory only (empty after a restart).
 - The single-file publish works (`-r win-x64 --self-contained -p:PublishSingleFile=true`), 126 MB. Stage 5:
   consider `-p:EnableCompressionInSingleFile=true` to make it smaller.
-- Not yet: writing errors to `fout.txt` (stage 4), the watcher and the conversion thread (stage 4).
+- Stage 4, Core (no Windows dependency, all tested with a fake clock): `ExportScanner` (which projects are ready: finds
+  LI/LP/TR by name, ignores `~$` files and other xlsx files, only the top level so `_Verwerkt` / `_Fout` are never
+  scanned; trigger mode waits until all three files can be opened exclusively, gives up after 2 minutes; without a
+  trigger file LI + LP must be unchanged for 10 s), `ProjectProcessor` (convert one project, move LI/LP/TR to
+  `_VerwerktyyyyMMdd-HHmmss project` or to `_Fout...` with `fout.txt`; the CNC files stay; never throws) and
+  `ExportWatcher` (ONE background thread = the queue; `FileSystemWatcher` + rescan every `RescanSeconds` + rescan at
+  start; scans every 2 s while a project waits; `RunOnce()` is one round and is what the tests call).
+- Stage 4, rules that are easy to forget: (1) a *temporary* problem (Duivestein folder or materials.csv not reachable,
+  read/write error; `ConversionException.IsTemporary`) leaves the files where they are and is retried at every scan,
+  but the user hears about it only ONCE (`ProcessOutcome.IsRepeat`); (2) a problem with the files themselves (bad
+  material, corrupt xlsx, batch exists already, gave up waiting) goes to `_Fout`; (3) if the batch is written but the
+  files cannot be moved, it stays a success and the move is retried (`_pendingMoves`), never a second conversion;
+  (4) an export folder that is not reachable is reported (red icon, one balloon, one list line) only after 60 s
+  (`FolderProblemGrace`: the network drive is often not connected yet when Windows has just started) and
+  `FolderProblemSolved` sets the icon back by itself; (5) a FileSystemWatcher Error rebuilds the watcher;
+  (6) "Nu scannen" scans also while paused; Resume and Save scan at once.
+- Stage 4 in the tray: `TrayApp` starts the watcher and listens to its events (`ConversionStarted` = busy icon,
+  `ConversionFinished` = `ReportResult`, `FolderProblemFound` / `Solved`). All texts of the watcher are in
+  `Messages` (nl/fr/en), `fout.txt` is written in the selected language.
+- Checked with the real exe (`--data <scratch folder>`, files dropped while it runs, TR last): the sample became a
+  batch with 11 label files identical to the golden files, the files went to `_Verwerkt`, a corrupt LI went to
+  `_Fout` with `fout.txt`, and both lines showed in the list of conversions.
+- After Daan's test of stage 4 (2026-09-20): (1) the batch XML now holds the FULL path of every label file
+  (`Z:\Duivestein\Label\Verschuren-P-20_001.csv`), the golden XML `samples/duivestein/Verschuren-P-20.xml` was changed
+  for that, and the golden test swaps its temp folder for `Z:\Duivestein\Label` before comparing; (2) the footer got
+  the ROGIERS logo. Daan tested his own files as `samples/topsolid/Daan-*.xlsx` (not part of the samples, do not commit).
+- Not yet (stage 5 or later): the list of conversions is not saved between runs; the real TopSolid output and the
+  Duivestein import have not been tried; no installer.
 - NuGet packages: ClosedXML (Core), xunit + `Microsoft.NET.Test.Sdk` + `xunit.runner.visualstudio` (Tests;
   the last two are needed to run xUnit tests). `coverlet.collector` from the template was removed.

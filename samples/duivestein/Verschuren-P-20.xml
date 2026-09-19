@@ -14,7 +14,7 @@
       <Quantity>1</Quantity>
       <Rotation>0</Rotation>
       <LabelFilenames>
-        <LabelFilename>Verschuren-P-20_001.csv</LabelFilename>
+        <LabelFilename>Z:\Duivestein\Label\Verschuren-P-20_001.csv</LabelFilename>
       </LabelFilenames>
       <CNCFilenames>
         <CNCFilename>Z:\TopSolid\Export\Verschuren-P-20_Paars_18_01.xcs</CNCFilename>
@@ -29,11 +29,11 @@
       <Quantity>5</Quantity>
       <Rotation>0</Rotation>
       <LabelFilenames>
-        <LabelFilename>Verschuren-P-20_002.csv</LabelFilename>
-        <LabelFilename>Verschuren-P-20_003.csv</LabelFilename>
-        <LabelFilename>Verschuren-P-20_004.csv</LabelFilename>
-        <LabelFilename>Verschuren-P-20_005.csv</LabelFilename>
-        <LabelFilename>Verschuren-P-20_006.csv</LabelFilename>
+        <LabelFilename>Z:\Duivestein\Label\Verschuren-P-20_002.csv</LabelFilename>
+        <LabelFilename>Z:\Duivestein\Label\Verschuren-P-20_003.csv</LabelFilename>
+        <LabelFilename>Z:\Duivestein\Label\Verschuren-P-20_004.csv</LabelFilename>
+        <LabelFilename>Z:\Duivestein\Label\Verschuren-P-20_005.csv</LabelFilename>
+        <LabelFilename>Z:\Duivestein\Label\Verschuren-P-20_006.csv</LabelFilename>
       </LabelFilenames>
       <CNCFilenames>
         <CNCFilename>Z:\TopSolid\Export\Verschuren-P-20_White_18_01.xcs</CNCFilename>
@@ -52,8 +52,8 @@
       <Quantity>2</Quantity>
       <Rotation>0</Rotation>
       <LabelFilenames>
-        <LabelFilename>Verschuren-P-20_007.csv</LabelFilename>
-        <LabelFilename>Verschuren-P-20_008.csv</LabelFilename>
+        <LabelFilename>Z:\Duivestein\Label\Verschuren-P-20_007.csv</LabelFilename>
+        <LabelFilename>Z:\Duivestein\Label\Verschuren-P-20_008.csv</LabelFilename>
       </LabelFilenames>
       <CNCFilenames>
         <CNCFilename>Z:\TopSolid\Export\Verschuren-P-20_H1145_-_ST10_-_Chêne_Bardolino_naturel_Zijdewit_19_01.xcs</CNCFilename>
@@ -69,7 +69,7 @@
       <Quantity>1</Quantity>
       <Rotation>0</Rotation>
       <LabelFilenames>
-        <LabelFilename>Verschuren-P-20_009.csv</LabelFilename>
+        <LabelFilename>Z:\Duivestein\Label\Verschuren-P-20_009.csv</LabelFilename>
       </LabelFilenames>
       <CNCFilenames>
         <CNCFilename>Z:\TopSolid\Export\Verschuren-P-20_H1145_-_ST10_-_Chêne_Bardolino_naturel_Zijdewit_40_01.xcs</CNCFilename>
@@ -84,8 +84,8 @@
       <Quantity>2</Quantity>
       <Rotation>0</Rotation>
       <LabelFilenames>
-        <LabelFilename>Verschuren-P-20_010.csv</LabelFilename>
-        <LabelFilename>Verschuren-P-20_011.csv</LabelFilename>
+        <LabelFilename>Z:\Duivestein\Label\Verschuren-P-20_010.csv</LabelFilename>
+        <LabelFilename>Z:\Duivestein\Label\Verschuren-P-20_011.csv</LabelFilename>
       </LabelFilenames>
       <CNCFilenames>
         <CNCFilename>Z:\TopSolid\Export\Verschuren-P-20_White_9_01.xcs</CNCFilename>

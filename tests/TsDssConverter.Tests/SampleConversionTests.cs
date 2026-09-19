@@ -30,6 +30,49 @@ public class SampleConversionTests
             .ToList();
     }
 
+    // The label folder that is written in the golden XML (the default of the third setting).
+    private const string GoldenLabelFolder = @"Z:\Duivestein\Label";
+
+    [Fact]
+    public void LabelFilenames_InTheXml_AreTheLabelFolderPlusTheFileName()
+    {
+        using var folder = new TempFolder();
+        string labelFolder = System.IO.Path.Combine(folder.Path, "labels");
+        string batchFolder = System.IO.Path.Combine(folder.Path, "batch");
+        Directory.CreateDirectory(labelFolder);
+        Directory.CreateDirectory(batchFolder);
+
+        new Converter().Convert(
+            TestPaths.InfoFile, TestPaths.PositionFile, TestPaths.MaterialsFile,
+            batchFolder, labelFolder, new ConverterSettings(), TestPaths.GoldenPlanDate);
+
+        var xml = XDocument.Load(System.IO.Path.Combine(batchFolder, "Verschuren-P-20.xml"));
+        string[] labelNames = xml.Descendants("LabelFilename").Select(e => e.Value).ToArray();
+
+        Assert.Equal(11, labelNames.Length);
+        Assert.Equal(System.IO.Path.Combine(labelFolder, "Verschuren-P-20_001.csv"), labelNames[0]);
+        Assert.Equal(System.IO.Path.Combine(labelFolder, "Verschuren-P-20_011.csv"), labelNames[10]);
+
+        // The path points at the file that was really written.
+        Assert.All(labelNames, path => Assert.True(File.Exists(path), path));
+    }
+
+    [Theory]
+    [InlineData(@"Z:\Duivestein\Label")]
+    [InlineData(@"Z:\Duivestein\Label\")]   // a backslash at the end of the setting gives no double backslash
+    public void LabelFilename_HasExactlyOneBackslashBetweenTheFolderAndTheName(string folder)
+    {
+        var batch = new Batch { Name = "Daan", PlanDate = TestPaths.GoldenPlanDate };
+        var material = new Material { TopSolidName = "M", DssName = "M", Thickness = 18, Grain = 0 };
+        var plan = new Plan { PlanName = "001", Material = material, SheetLength = 100, SheetWidth = 50 };
+        plan.Sheets.Add(new Sheet { Name = "M#01", LabelFileName = "Daan_001.csv", CncPath = @"Z:\TopSolid\Export\Daan_M_01.xcs" });
+        batch.Plans.Add(plan);
+
+        string xml = BatchXmlWriter.BuildText(batch, folder);
+
+        Assert.Contains(@"<LabelFilename>Z:\Duivestein\Label\Daan_001.csv</LabelFilename>", xml);
+    }
+
     [Fact]
     public void Output_IsIdenticalToTheGoldenFiles()
     {
@@ -46,8 +89,19 @@ public class SampleConversionTests
             string actualFile = folder.File(name);
 
             Assert.True(File.Exists(actualFile), "Missing output file " + name);
+            byte[] actual = File.ReadAllBytes(actualFile);
+
+            if (name.EndsWith(".xml"))
+            {
+                // The XML holds the full path of every label file: the label folder + the file name. The golden file
+                // has the folder of the settings (Z:\Duivestein\Label); this test wrote to a temp folder. Put the
+                // golden folder in the place of the temp folder, and compare everything else byte for byte.
+                string text = new UTF8Encoding(false).GetString(actual);
+                actual = new UTF8Encoding(false).GetBytes(text.Replace(folder.Path + @"\", GoldenLabelFolder + @"\"));
+            }
+
             Assert.True(
-                File.ReadAllBytes(goldenFile).SequenceEqual(File.ReadAllBytes(actualFile)),
+                File.ReadAllBytes(goldenFile).SequenceEqual(actual),
                 "Output differs from the golden file " + name);
         }
 

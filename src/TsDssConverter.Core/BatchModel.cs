@@ -38,7 +38,7 @@ public class Sheet
     public string Name { get; set; } = "";
     public int Number { get; set; }
 
-    /// <summary>File name only, e.g. "Verschuren-P-20_001.csv".</summary>
+    /// <summary>File name only, e.g. "Verschuren-P-20_001.csv". The XML gets the label folder in front of it.</summary>
     public string LabelFileName { get; set; } = "";
 
     /// <summary>Full path as written in the XML.</summary>
