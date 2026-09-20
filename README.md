@@ -28,6 +28,12 @@ the label zero point and the list of the last conversions:
   <img src="media/preview/MainUI-preview.png" width="620" alt="The TsDssConverter settings window: language, start with Windows, the TopSolid export folder, the two Duivestein folders, the Config buttons, the label zero point and the list of the last conversions.">
 </p>
 
+A short demo of the program in use:
+
+<p align="center">
+  <img src="media/preview/TsDssConverter_DEMO.gif" width="620" alt="Animated demo of TsDssConverter.">
+</p>
+
 ## Why this tool exists
 
 At the customer, panels are nested and programmed in **TopSolid** (CAD/CAM) for an **SCM Morbidelli X200**
