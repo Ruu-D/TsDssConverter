@@ -337,11 +337,7 @@ tests/
 media/                   Application icon, banner and the colour theme used by the whole project
 docs/                    Background documentation
 publish.cmd              Builds the delivery file (runs the tests, then makes dist\v<version>\TsDssConverter.exe)
-CLAUDE.md                Detailed technical specification and working notes
 ```
-
-The complete technical specification (input columns, output format, validation rules, tray behaviour) is in
-[`CLAUDE.md`](CLAUDE.md).
 
 ## Technology
 
