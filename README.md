@@ -28,6 +28,10 @@ The settings window (here in English; the whole interface is also available in D
 the label zero point and the list of the last conversions:
 
 <p align="center">
+  <img src="media/preview/v1.0.2_preview.png" width="620" alt="The TsDssConverter 1.0.2 settings window in English: the TopSolid export folder with the Config buttons and the Open materials table button, the two Duivestein folders, the label zero point, and the list of the last conversions with the Retry failed and Open log buttons.">
+</p>
+
+<p align="center">
   <img src="media/preview/TsDssConverter_DEMO.gif" width="620" alt="Animated demo of the TsDssConverter settings window: language, start with Windows, the TopSolid export folder, the two Duivestein folders, the Config buttons, the label zero point and the list of the last conversions.">
 </p>
 
