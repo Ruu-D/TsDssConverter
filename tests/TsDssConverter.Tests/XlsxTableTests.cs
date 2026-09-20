@@ -45,7 +45,7 @@ public class XlsxTableTests
     }
 
     [Fact]
-    public void RequireColumns_MissingColumn_IsAnErrorThatNamesItAndTheFile()
+    public void FindHeader_GivesTheFirstNameThatTheFileHas_CaseInsensitive_OrNull()
     {
         using var folder = new TempFolder();
         string path = folder.File("test.xlsx");
@@ -54,42 +54,18 @@ public class XlsxTableTests
         {
             var sheet = workbook.AddWorksheet("Sheet1");
             sheet.Cell(1, 1).Value = "Naam_Plaat";
-            sheet.Cell(2, 1).Value = "White_18#01";
-            workbook.SaveAs(path);
-        }
-
-        var table = XlsxTable.Load(path);
-        table.RequireColumns("LI", "Naam_Plaat"); // present: fine
-
-        var error = Assert.Throws<ConversionException>(() => table.RequireColumns("LI", "Naam_Plaat", "Afmetingen"));
-
-        Assert.Contains("Afmetingen", error.Message);
-        Assert.Contains("LI", error.Message);
-    }
-
-    [Fact]
-    public void RequireColumns_ReportsEveryMissingColumn_NotJustTheFirst()
-    {
-        using var folder = new TempFolder();
-        string path = folder.File("test.xlsx");
-
-        using (var workbook = new XLWorkbook())
-        {
-            var sheet = workbook.AddWorksheet("Sheet1");
-            sheet.Cell(1, 1).Value = "Naam_Plaat";
+            sheet.Cell(1, 2).Value = "Project";
             sheet.Cell(2, 1).Value = "White_18#01";
             workbook.SaveAs(path);
         }
 
         var table = XlsxTable.Load(path);
 
-        var error = Assert.Throws<ConversionException>(() => table.RequireColumns("LI", "Naam_Plaat", "Afmetingen", "Omschrijving", "CAM_2"));
-
-        Assert.Equal(3, error.Problems.Count);
-        Assert.Contains("Afmetingen", error.Message);
-        Assert.Contains("Omschrijving", error.Message);
-        Assert.Contains("CAM_2", error.Message);
-        Assert.True(table.HasColumn("naam_plaat")); // case-insensitive
+        Assert.Equal("Naam_Plaat", table.FindHeader(new[] { "Naam_Plaat" }));
+        Assert.Equal("Project", table.FindHeader(new[] { "Test", "Project" }));        // the first name is not there: the second is
+        Assert.Equal("naam_plaat", table.FindHeader(new[] { "naam_plaat" }));           // matching ignores capitals
+        Assert.Null(table.FindHeader(new[] { "Afmetingen", "Size" }));
+        Assert.True(table.HasColumn("naam_plaat"));
         Assert.False(table.HasColumn("Afmetingen"));
     }
 

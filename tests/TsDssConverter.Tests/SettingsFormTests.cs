@@ -44,12 +44,17 @@ public class SettingsFormTests
         public ConversionHistory History { get; } = new();
         public string RegistryPath { get; } = @"Software\TsDssConverterTests\Form-" + Guid.NewGuid().ToString("N");
         public StartWithWindows Startup { get; }
+        public AppDataFolder DataFolder { get; } = new(@"C:\TsDssTestData");
+        public List<string> OpenedFiles { get; } = new();    // what the Config buttons asked to open
+        public List<string> OpenedFolders { get; } = new();  // what the Open log button asked to open
         public SettingsForm Form { get; }
 
         public TestWindow()
         {
             Startup = new StartWithWindows(RegistryPath, @"C:\TsDssConverter\TsDssConverter.exe");
-            Form = new SettingsForm(() => Current, saved => { Saved = saved; Current = saved; }, () => TimesOpened++, History, Startup);
+            Form = new SettingsForm(
+                () => Current, saved => { Saved = saved; Current = saved; }, () => TimesOpened++, History, Startup,
+                DataFolder, OpenedFiles.Add, OpenedFolders.Add);
         }
 
         public void Dispose()
@@ -58,6 +63,41 @@ public class SettingsFormTests
             Form.Dispose();
             TrayTests.TestRegistry.Remove(RegistryPath);
         }
+    }
+
+    [Fact]
+    public void ConfigButtons_OpenTheColumnFiles_OpenMaterialsOpensTheMaterialsFile_AndOpenLogOpensTheLogFolder()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            var form = window.Form;
+            form.Show(); // a button that is not visible cannot be clicked
+
+            Assert.Equal("Config", form.ConfigInfoButton.Text);
+            Assert.Equal("Config", form.ConfigPositionButton.Text);
+
+            form.ConfigInfoButton.PerformClick();
+            Assert.Equal(new[] { @"C:\TsDssTestData\columns-li.txt" }, window.OpenedFiles);
+
+            form.ConfigPositionButton.PerformClick();
+            Assert.Equal(new[] { @"C:\TsDssTestData\columns-li.txt", @"C:\TsDssTestData\columns-lp.txt" }, window.OpenedFiles);
+
+            Assert.Equal("Config", form.ConfigLabelButton.Text);
+            form.ConfigLabelButton.PerformClick();   // the button under the Duivestein label folder
+            Assert.Equal(@"C:\TsDssTestData\columns-label.txt", window.OpenedFiles.Last());
+            window.OpenedFiles.RemoveAt(window.OpenedFiles.Count - 1); // the checks below start from the two column files again
+
+            Assert.Equal("Open materiaaltabel", form.OpenMaterialsButton.Text);
+            form.OpenMaterialsButton.PerformClick();
+            Assert.Equal(@"C:\TsDssTestData\materials.csv", window.OpenedFiles.Last());
+            Assert.Equal(3, window.OpenedFiles.Count);
+
+            Assert.Empty(window.OpenedFolders);
+            form.OpenLogButton.PerformClick();
+            Assert.Equal(new[] { @"C:\TsDssTestData\logs" }, window.OpenedFolders);
+            Assert.Equal(3, window.OpenedFiles.Count); // the log button opens a folder, not a file
+        });
     }
 
     [Fact]
@@ -285,7 +325,7 @@ public class SettingsFormTests
     }
 
     [Fact]
-    public void ADividerLine_SitsBelowStartWithWindows_AndAnotherAboveTheLabelZeroPoint()
+    public void DividerLines_SitBelowStartWithWindows_AboveTheDuivesteinFolders_AndAboveTheLabelZeroPoint()
     {
         RunOnStaThread(() =>
         {
@@ -294,23 +334,28 @@ public class SettingsFormTests
             window.Form.PerformLayout();
             var form = window.Form;
 
-            Assert.Equal(2, form.Dividers.Count);
+            Assert.Equal(3, form.Dividers.Count);
             var first = form.Dividers[0];
             var second = form.Dividers[1];
+            var third = form.Dividers[2];
 
             // First line: right below the "Start met Windows" checkbox and above the first folder title.
             Assert.True(first.Top >= form.StartWithWindowsBox.Bottom);
             Assert.True(first.Bottom <= form.ExportCaption.Top);
 
-            // Second line: below the last folder box and above "Nulpunt van het label".
-            Assert.True(second.Top >= form.LabelFolderBox.Bottom);
-            Assert.True(second.Bottom <= form.ZeroPointTitle.Top);
+            // Second line: below the two Config rows (the TopSolid part) and above "Duivestein-batchmap".
+            Assert.True(second.Top >= form.ConfigPositionButton.Bottom);
+            Assert.True(second.Bottom <= form.BatchCaption.Top);
 
-            // Thin, and spanning the width of the window.
-            Assert.InRange(first.Height, 1, 3);
-            Assert.InRange(second.Height, 1, 3);
-            Assert.True(first.Width > form.ClientSize.Width * 0.8);
-            Assert.Equal(Theme.PaleBlue, first.BackColor);
+            // Third line: below the last folder box and above "Nulpunt van het label".
+            Assert.True(third.Top >= form.LabelFolderBox.Parent!.Bottom); // the text box sits in its rounded frame
+            Assert.True(third.Top >= form.ConfigLabelButton.Bottom);       // and so does the Config row under it
+            Assert.True(third.Bottom <= form.ZeroPointTitle.Top);
+
+            // Thin, spanning the width of the window, and all in the same colour.
+            Assert.All(form.Dividers, line => Assert.InRange(line.Height, 1, 3));
+            Assert.All(form.Dividers, line => Assert.True(line.Width > form.ClientSize.Width * 0.8));
+            Assert.All(form.Dividers, line => Assert.Equal(Theme.PaleBlue, line.BackColor));
         });
     }
 

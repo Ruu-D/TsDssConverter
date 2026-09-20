@@ -132,7 +132,7 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 
 **What is verified so far**
 
-- 299 automated tests pass.
+- 352 automated tests pass.
 - Converting the sample TopSolid export gives exactly the expected files (compared byte for byte).
 - Every error and warning listed above is covered by a test, including a wrong pair of files and several
   problems at once.
@@ -146,6 +146,9 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
   dropped in a folder while the program was running and became the expected batch and label files.
 - Every text of the interface exists in Dutch, French and English: a test checks all of them, so a missing
   translation cannot slip in.
+- A renamed column in the TopSolid export can be followed by editing a text file (see *Column names* below): this
+  is covered by tests, including the whole processing of a project whose header was renamed, and a column file with
+  a typing mistake.
 
 **What is *not* verified yet**
 
@@ -157,10 +160,16 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 ## Decisions taken so far
 
 - **One folder for everything:** the program is installed in `C:\TsDssConverter\`. The exe, `settings.json`,
-  `materials.csv` and the log files all live there. Removing the program means deleting that folder.
+  `materials.csv`, the three column files (`columns-li.txt`, `columns-lp.txt`, `columns-label.txt`) and the log files all live there.
+  Removing the program means deleting that folder.
+- **TopSolid may rename a column without breaking the converter:** the header names that the program looks for are
+  in two small text files that the customer can edit (buttons *Config* in the settings window). The order of the
+  columns in the Excel files never matters, because columns are found by name.
 - **Three languages:** the whole interface (window, tray menu, notifications and error messages) is available
   in Dutch, French and English. Dutch is the default. The language is chosen with a drop-down at the top of the
   settings window and takes effect when the settings are saved. The files for the warehouse are not translated.
+- **A Windows 11 look:** the settings window uses rounded buttons, check boxes and text boxes and the Windows 11 font,
+  in the colours of the application icon. Only the look changed; the behaviour is the same as with the standard controls.
 - **Quiet operation:** the program lives in the Windows tray. There are no pop-ups on success; on an error there
   is one notification and the icon turns red until the next success or until the settings window is opened.
   While the program is paused, a pause symbol appears in the bottom right of the tray icon (like OneDrive).
@@ -236,6 +245,51 @@ White_9;White_9;9;0
 ```
 
 Grain: `0` = none, `1` = along the length, `2` = across. See [`samples/materials.sample.csv`](samples/materials.sample.csv).
+
+### Column names
+
+The program finds every column of the TopSolid files by its **header name**, never by position, so the order of the
+columns does not matter. If TopSolid ever names a header differently, the converter would stop with a message such as
+*Column 'Test' is missing in the LI file*. To follow such a change without a new version of the program, the names are
+in text files in `C:\TsDssConverter\`, which open in Notepad from the buttons **Config** in the settings window
+(the first two are under the TopSolid export folder: the first for the LI file, the second for the LP file; the third,
+for the label CSV, is described below):
+
+```
+# columns-li.txt (the explanation at the top of the file is left out here)
+SheetName    = Naam_Plaat
+Description  = Omschrijving
+Project      = Test | Project
+```
+
+- Left of the `=` is what the program needs (do not change it), right of it is the header in the Excel file.
+- Several names can be given, separated by `|`: the first one that is in the file is used. This keeps old and new
+  exports working at the same time.
+- A field that is left out keeps its built-in name, a deleted file is made again with the default names, and the
+  files are read again for every project, so no restart is needed after a change.
+- A mistake in the column file (an unknown field, a line without `=`) does not move the TopSolid files to the error
+  folder: they wait and the conversion is tried again as soon as the file is correct. The message names the file and
+  the line.
+- If a column is really missing, the error names all missing columns at once and adds a tip about this file.
+
+**Ten extra description fields for the label.** The LI and the LP file may contain the optional columns `DESC1` to
+`DESC10` (their header names are in `columns-li.txt` and `columns-lp.txt` like all others). They become the **last ten
+columns of every label CSV**, after the 23 fixed columns, for use in the label template in Duivestein. If both files
+have a value, the one from the LI file is used; if that is empty, the one from the LP file. The columns are always
+in the CSV, empty when the export has no such column. Their names in the CSV (`DESC1` to `DESC10` by default) are in a
+third file, `columns-label.txt`, that opens from the **Config** button under the Duivestein label folder:
+
+```
+# columns-label.txt (the explanation at the top of the file is left out here)
+Desc1 = DESC1
+Desc2 = KLANT
+```
+
+A name may only contain letters (no accents), digits, underscore and dash, and must not be the name of another column
+of the label CSV. The names of the 23 fixed columns cannot be changed, because Duivestein reads them by name.
+
+Above the list of conversions there are two more buttons: **Open materiaaltabel** (opens `materials.csv`) and
+**Open logmap** (opens the folder with the log files). The app version is shown at the top right of the window.
 
 ## Project layout
 

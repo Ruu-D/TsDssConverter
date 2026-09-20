@@ -18,35 +18,41 @@ internal static class Theme
     public static readonly Color Error = ColorTranslator.FromHtml("#D6322C");
 
     /// <summary>
+    /// The font of the windows: "Segoe UI Variable Text", the font of Windows 11, if it is installed;
+    /// otherwise the normal Windows font. Same size as before (9 pt).
+    /// </summary>
+    public static Font CreateBodyFont()
+    {
+        using var installed = new System.Drawing.Text.InstalledFontCollection();
+        bool hasVariable = installed.Families.Any(family => family.Name == "Segoe UI Variable Text");
+        return hasVariable ? new Font("Segoe UI Variable Text", 9F) : Control.DefaultFont;
+    }
+
+    /// <summary>
     /// Main button: brand blue with navy text (white text on brand blue is too pale to read).
     /// On hover it turns dark blue, and then the text turns white.
     /// </summary>
-    public static void StylePrimaryButton(Button button)
+    public static void StylePrimaryButton(RoundedButton button)
     {
-        button.UseVisualStyleBackColor = false;
-        button.FlatStyle = FlatStyle.Flat;
-        button.FlatAppearance.BorderSize = 0;
-        button.BackColor = Brand;
-        button.ForeColor = Navy;
+        button.NormalFill = Brand;
+        button.HoverFill = DarkBlue;
+        button.PressedFill = Navy;
+        button.BorderColor = Color.Empty;
+        button.NormalText = Navy;
+        button.HoverText = White;
         button.Font = new Font(button.Font, FontStyle.Bold);
-        button.FlatAppearance.MouseOverBackColor = DarkBlue;
-        button.FlatAppearance.MouseDownBackColor = Navy;
-        button.MouseEnter += (sender, e) => button.ForeColor = White;
-        button.MouseLeave += (sender, e) => button.ForeColor = Navy;
         button.Cursor = Cursors.Hand;
     }
 
     /// <summary>Second button: white with a blue border and navy text.</summary>
-    public static void StyleSecondaryButton(Button button)
+    public static void StyleSecondaryButton(RoundedButton button)
     {
-        button.UseVisualStyleBackColor = false;
-        button.FlatStyle = FlatStyle.Flat;
-        button.FlatAppearance.BorderSize = 1;
-        button.FlatAppearance.BorderColor = DarkBlue;
-        button.BackColor = White;
-        button.ForeColor = Navy;
-        button.FlatAppearance.MouseOverBackColor = VeryPaleBlue;
-        button.FlatAppearance.MouseDownBackColor = PaleBlue;
+        button.NormalFill = White;
+        button.HoverFill = VeryPaleBlue;
+        button.PressedFill = PaleBlue;
+        button.BorderColor = DarkBlue;
+        button.NormalText = Navy;
+        button.HoverText = Navy;
         button.Cursor = Cursors.Hand;
     }
 }

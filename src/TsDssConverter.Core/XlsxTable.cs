@@ -70,19 +70,13 @@ public class XlsxTable
         return table;
     }
 
-    /// <summary>Throws an error that names ALL missing columns.</summary>
-    /// <param name="fileKind">"LI" or "LP", only used in the message.</param>
-    public void RequireColumns(string fileKind, params string[] columns)
+    /// <summary>
+    /// The first of these header names that the file has, or null if it has none of them.
+    /// (A field can have several accepted names, see <see cref="ColumnMap"/>.)
+    /// </summary>
+    public string? FindHeader(IEnumerable<string> names)
     {
-        var problems = columns
-            .Where(column => !_headers.Contains(column))
-            .Select(column => Messages.MissingColumn(fileKind, column))
-            .ToList();
-
-        if (problems.Count > 0)
-        {
-            throw new ConversionException(problems);
-        }
+        return names.FirstOrDefault(name => _headers.Contains(name));
     }
 
     /// <summary>True if the file has a column with this header name.</summary>

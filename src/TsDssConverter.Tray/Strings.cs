@@ -104,6 +104,28 @@ internal static class Strings
 
     public static string Browse => T("Bladeren…", "Parcourir…", "Browse…");
 
+    // The button under a folder that opens the file with the column names (columns-li.txt / columns-lp.txt).
+    // "Config" is the same in every language, like the names above.
+    public const string ConfigButton = "Config";
+
+    public static string ColumnsInfoHint => T(
+        "Kolomnamen in -LI.xlsx (label-info) aanpassen als TopSolid ze anders noemt",
+        "Modifier les noms de colonnes de -LI.xlsx (infos étiquettes) si TopSolid les nomme autrement",
+        "Edit the column names in -LI.xlsx (label info) if TopSolid names them differently");
+
+    public static string ColumnsPositionHint => T(
+        "Kolomnamen in -LP.xlsx (labelpositie) aanpassen als TopSolid ze anders noemt",
+        "Modifier les noms de colonnes de -LP.xlsx (position des étiquettes) si TopSolid les nomme autrement",
+        "Edit the column names in -LP.xlsx (label position) if TopSolid names them differently");
+
+    public static string ColumnsLabelHint => T(
+        "Namen van de 10 extra beschrijvingskolommen (DESC1 – DESC10) in het label-CSV aanpassen",
+        "Modifier les noms des 10 colonnes de description supplémentaires (DESC1 – DESC10) du CSV des étiquettes",
+        "Edit the names of the 10 extra description columns (DESC1 – DESC10) in the label CSV");
+
+    /// <summary>The button next to the title of the list of conversions: opens the folder with the log files.</summary>
+    public static string OpenLogButton => T("Open logmap", "Ouvrir logs", "Open log");
+
     public static string FolderNotReachable => T(
         "Map niet bereikbaar. De instelling wordt toch bewaard.",
         "Dossier inaccessible. Le paramètre est quand même enregistré.",

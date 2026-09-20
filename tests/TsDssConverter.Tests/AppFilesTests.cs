@@ -15,7 +15,41 @@ public class AppFilesTests
         Assert.Equal(@"C:\TsDssConverter", folder.Root);
         Assert.Equal(@"C:\TsDssConverter\settings.json", folder.SettingsFile);
         Assert.Equal(@"C:\TsDssConverter\materials.csv", folder.MaterialsFile);
+        Assert.Equal(@"C:\TsDssConverter\columns-li.txt", folder.InfoColumnsFile);
+        Assert.Equal(@"C:\TsDssConverter\columns-lp.txt", folder.PositionColumnsFile);
         Assert.Equal(@"C:\TsDssConverter\logs", folder.LogFolder);
+    }
+
+    [Fact]
+    public void EnsureCreated_MakesTheTwoColumnFiles_WithTheDefaultNames_ThatTheProgramCanRead()
+    {
+        using var temp = new TempFolder();
+        var folder = new AppDataFolder(temp.File("TsDssConverter"));
+
+        folder.EnsureCreated();
+
+        var info = ColumnMap.LoadLabelInfo(folder.InfoColumnsFile);
+        var position = ColumnMap.LoadLabelPosition(folder.PositionColumnsFile);
+        Assert.Equal(new[] { "Test" }, info.HeadersFor(ColumnKeys.Info.Project));
+        Assert.Equal(new[] { "LABEL_X" }, position.HeadersFor(ColumnKeys.Position.LabelX));
+        Assert.Contains("SheetName", File.ReadAllText(folder.InfoColumnsFile));
+        Assert.Contains("SUP_DESIGNATION", File.ReadAllText(folder.PositionColumnsFile));
+    }
+
+    [Fact]
+    public void EnsureCreated_NeverTouchesAColumnFileThatWasChanged_ButMakesADeletedOneAgain()
+    {
+        using var temp = new TempFolder();
+        var folder = new AppDataFolder(temp.Path);
+        folder.EnsureCreated();
+
+        File.WriteAllText(folder.InfoColumnsFile, "Project = Nummer\r\n");   // the customer changed this one
+        File.Delete(folder.PositionColumnsFile);                            // and deleted this one
+
+        folder.EnsureCreated();
+
+        Assert.Equal("Project = Nummer\r\n", File.ReadAllText(folder.InfoColumnsFile));
+        Assert.True(File.Exists(folder.PositionColumnsFile));
     }
 
     [Fact]

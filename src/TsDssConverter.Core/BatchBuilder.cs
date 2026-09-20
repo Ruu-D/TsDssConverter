@@ -241,8 +241,25 @@ public static class BatchBuilder
             Cam2 = info.Cam2,
             Opleg2 = info.Opleg2,
             Project = info.Project,
+            Descriptions = MergeDescriptions(info, position),
             SheetName = position.SheetName,
         };
+    }
+
+    /// <summary>
+    /// Both files can have the description fields. The LI value is used; if it is empty (or the LI file has no such
+    /// column) the LP value fills the gap.
+    /// </summary>
+    private static string[] MergeDescriptions(LabelInfoRow info, LabelPositionRow position)
+    {
+        var merged = new string[ColumnKeys.DescriptionCount];
+
+        for (int i = 0; i < merged.Length; i++)
+        {
+            merged[i] = info.Descriptions[i] != "" ? info.Descriptions[i] : position.Descriptions[i];
+        }
+
+        return merged;
     }
 
     /// <summary>

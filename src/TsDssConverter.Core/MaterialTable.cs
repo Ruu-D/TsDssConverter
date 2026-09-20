@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace TsDssConverter.Core;
 
 /// <summary>One line of materials.csv: how a TopSolid material is known in the Duivestein warehouse.</summary>
@@ -44,11 +42,7 @@ public class MaterialTable
             throw new ConversionException(Messages.FileNotFound(path));
         }
 
-        // FileShare.ReadWrite: Excel may have the file open.
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var memory = new MemoryStream();
-        stream.CopyTo(memory);
-        return FromText(DecodeText(memory.ToArray()));
+        return FromText(TextFile.ReadAllText(path));
     }
 
     /// <summary>Builds the table from the text of the file (used by Load and by the tests).</summary>
@@ -162,31 +156,5 @@ public class MaterialTable
         }
 
         throw new ConversionException(Messages.MaterialsMissingColumn(name));
-    }
-
-    /// <summary>
-    /// UTF-8 (with or without BOM) first. If the bytes are not valid UTF-8 the file was probably saved
-    /// by Excel as "CSV" (ANSI), so fall back to Windows-1252. "Chêne" survives both ways.
-    /// </summary>
-    private static string DecodeText(byte[] bytes)
-    {
-        // Skip the UTF-8 byte order mark (EF BB BF) if there is one.
-        int start = 0;
-        if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
-        {
-            start = 3;
-        }
-
-        try
-        {
-            // throwOnInvalidBytes: true -> invalid UTF-8 throws instead of silently giving '?' characters.
-            var strictUtf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
-            return strictUtf8.GetString(bytes, start, bytes.Length - start);
-        }
-        catch (DecoderFallbackException)
-        {
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            return Encoding.GetEncoding(1252).GetString(bytes, start, bytes.Length - start);
-        }
     }
 }

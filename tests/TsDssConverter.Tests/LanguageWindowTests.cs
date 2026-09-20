@@ -36,7 +36,9 @@ public class LanguageWindowTests
         public Window()
         {
             var startup = new StartWithWindows(RegistryPath, @"C:\TsDssConverter\TsDssConverter.exe");
-            Form = new SettingsForm(() => Current, saved => { Saved = saved; Current = saved; }, () => { }, new ConversionHistory(), startup);
+            Form = new SettingsForm(
+                () => Current, saved => { Saved = saved; Current = saved; }, () => { }, new ConversionHistory(), startup,
+                new AppDataFolder(@"C:\TsDssTestData"), path => { }, path => { });
         }
 
         public void Dispose()
@@ -73,10 +75,12 @@ public class LanguageWindowTests
             window.Form.Show();
             window.Form.PerformLayout();
             var form = window.Form;
+            int CaptionBottom() => form.PointToClient(form.LanguageCaption.PointToScreen(new Point(0, form.LanguageCaption.Height))).Y;
+            int BoxTop() => form.PointToClient(form.LanguageBox.PointToScreen(Point.Empty)).Y;
 
             Assert.Equal("Taal / Langue / Language", form.LanguageCaption.Text);
             Assert.True(form.LanguageCaption.Font.Bold);
-            Assert.True(form.LanguageCaption.Bottom <= form.LanguageBox.Top);
+            Assert.True(CaptionBottom() <= BoxTop());
             Assert.True(form.LanguageBox.Bottom <= form.StartWithWindowsBox.Top);          // right above the checkbox
             Assert.True(form.StartWithWindowsBox.Top - form.LanguageBox.Bottom < 30);       // and close to it
         });
@@ -172,17 +176,47 @@ public class LanguageWindowTests
         }
     }
 
-    // ---------------------------------------------------------------- the footer: credit and version
+    // ---------------------------------------------------------------- the footer (credit) and the version (top right)
 
     [Fact]
-    public void Footer_ShowsTheDeveloperTheCompanyAndTheVersion()
+    public void Footer_ShowsTheDeveloperOnLineOne_TheCompanyOnLineTwo_AndTheVersionIsNotInIt()
     {
         RunOnStaThread(() =>
         {
             using var window = new Window();
+            var form = window.Form;
 
-            Assert.Equal("Dev.: Daan Verhoost  |  ROGIERS NV/SA", window.Form.CreditLink.Text);
-            Assert.Equal("App-versie: 1.0.0", window.Form.VersionLabel.Text); // Dutch is the default language
+            Assert.Equal("Dev.: Daan Verhoost", form.CreditLabel.Text);
+            Assert.Equal("ROGIERS NV/SA", form.CompanyLink.Text);
+            Assert.Equal("App-versie: 1.0.0", form.VersionLabel.Text); // Dutch is the default language
+
+            // The version is not one of the footer lines any more (the footer is the parent of the logo and the lines).
+            Assert.Same(form.CreditLabel.Parent, form.CompanyLink.Parent);
+            Assert.NotSame(form.CreditLabel.Parent, form.VersionLabel.Parent);
+        });
+    }
+
+    [Fact]
+    public void Version_SitsAtTheTopRight_JustBelowTheBanner_OnTheLineOfTheLanguageTitle()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new Window();
+            window.Form.Show();
+            window.Form.SizeToContent(new Rectangle(0, 0, 4000, 3000));
+            window.Form.PerformLayout();
+            var form = window.Form;
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+
+            Point version = Place(form.VersionLabel), caption = Place(form.LanguageCaption);
+            int bannerBottom = form.BannerPicture.Parent!.Bottom;
+            int buttonsRight = Place(form.OpenLogButton).X + form.OpenLogButton.Width;
+
+            Assert.True(version.Y >= bannerBottom);                                   // below the banner ...
+            Assert.True(version.Y - bannerBottom < form.LogicalToDeviceUnits(30));    // ... and close to it
+            Assert.Equal(caption.Y, version.Y);                                        // on the line of "Taal / Langue / Language"
+            Assert.True(version.X > form.ClientSize.Width / 2);                        // on the right side
+            Assert.InRange(buttonsRight - (version.X + form.VersionLabel.Width), 0, form.LogicalToDeviceUnits(2)); // ends at the right edge of the buttons
         });
     }
 
@@ -213,14 +247,14 @@ public class LanguageWindowTests
         RunOnStaThread(() =>
         {
             using var window = new Window();
-            var link = window.Form.CreditLink;
+            var link = window.Form.CompanyLink;
             string company = "ROGIERS NV/SA";
 
             Assert.Single(link.Links);
             Assert.Equal("https://www.rogiers.be/", link.Links[0].LinkData);
-            Assert.Equal(link.Text.IndexOf(company), link.Links[0].Start);
-            Assert.Equal(company.Length, link.Links[0].Length);   // the whole name is clickable, and nothing else
-            Assert.True(link.Links[0].Start > 0);                  // the developer's name in front is not a link
+            Assert.Equal(0, link.Links[0].Start);
+            Assert.Equal(company.Length, link.Links[0].Length);   // the whole name is clickable
+            Assert.False(window.Form.CreditLabel is LinkLabel);    // the developer's name is plain text, not a link
         });
     }
 
@@ -232,7 +266,8 @@ public class LanguageWindowTests
             using var window = new Window();
             float normal = window.Form.StartWithWindowsBox.Font.Size;
 
-            Assert.True(window.Form.CreditLink.Font.Size >= normal);
+            Assert.True(window.Form.CreditLabel.Font.Size >= normal);
+            Assert.True(window.Form.CompanyLink.Font.Size >= normal);
             Assert.True(window.Form.VersionLabel.Font.Size >= normal);
         });
     }
@@ -250,12 +285,12 @@ public class LanguageWindowTests
             Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
 
             Assert.NotNull(form.LogoPicture.Image);
-            Point logo = Place(form.LogoPicture), credit = Place(form.CreditLink), version = Place(form.VersionLabel);
+            Point logo = Place(form.LogoPicture), credit = Place(form.CreditLabel), company = Place(form.CompanyLink);
 
             Assert.True(logo.X + form.LogoPicture.Width <= credit.X);                     // the logo is left of the texts
             Assert.True(logo.X < form.ClientSize.Width / 8);                              // and at the far left
-            Assert.True(logo.Y <= credit.Y + form.CreditLink.Height / 2);                 // it starts at about the first line ...
-            Assert.True(logo.Y + form.LogoPicture.Height >= version.Y + form.VersionLabel.Height / 2); // ... and ends at the second
+            Assert.True(logo.Y <= credit.Y + form.CreditLabel.Height / 2);                // it starts at about the first line ...
+            Assert.True(logo.Y + form.LogoPicture.Height >= company.Y + form.CompanyLink.Height / 2); // ... and ends at the second
             Assert.True(form.LogoPicture.Height < form.LogicalToDeviceUnits(60));         // small
         });
     }
@@ -288,17 +323,17 @@ public class LanguageWindowTests
 
             // The controls sit in different panels, so compare their places in the window itself.
             Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
-            Point credit = Place(form.CreditLink), version = Place(form.VersionLabel);
+            Point credit = Place(form.CreditLabel), company = Place(form.CompanyLink);
             int listBottom = Place(form.HistoryList).Y + form.HistoryList.Height;
 
             Assert.True(credit.Y >= listBottom);                               // below the table
-            Assert.True(version.Y > credit.Y);                                 // credit first, version under it
+            Assert.True(company.Y > credit.Y);                                 // developer first, company under it
             Assert.True(credit.X < form.ClientSize.Width / 4);                 // on the left side
-            Assert.True(version.X < form.ClientSize.Width / 4);
-            Assert.InRange(Math.Abs(credit.X - version.X), 0, form.LogicalToDeviceUnits(4)); // both lines start at the same edge
+            Assert.True(company.X < form.ClientSize.Width / 4);
+            Assert.InRange(Math.Abs(credit.X - company.X), 0, form.LogicalToDeviceUnits(4)); // both lines start at the same edge
 
             // Not hidden below the edge (at the default size the footer is visible without scrolling).
-            var footer = form.CreditLink.Parent!;
+            var footer = form.CreditLabel.Parent!;
             Assert.True(form.Scroller.PointToClient(footer.PointToScreen(new Point(0, footer.Height))).Y <= form.Scroller.ClientSize.Height);
         });
     }

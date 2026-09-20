@@ -74,14 +74,20 @@ public class ExportWatcher : IDisposable
     /// <param name="isPaused">True while the user has paused the program: then nothing is scanned.</param>
     /// <param name="materialsFile">The materials.csv in the data folder.</param>
     /// <param name="now">Only for tests: gives the "current" time.</param>
-    public ExportWatcher(Func<AppSettings> getSettings, Func<bool> isPaused, LogWriter log, string materialsFile, Func<DateTime>? now = null)
+    /// <param name="infoColumnsFile">columns-li.txt in the data folder. Null = the built-in header names.</param>
+    /// <param name="positionColumnsFile">columns-lp.txt in the data folder. Null = the built-in header names.</param>
+    /// <param name="labelColumnsFile">columns-label.txt in the data folder. Null = DESC1 .. DESC10.</param>
+    public ExportWatcher(
+        Func<AppSettings> getSettings, Func<bool> isPaused, LogWriter log, string materialsFile,
+        Func<DateTime>? now = null, string? infoColumnsFile = null, string? positionColumnsFile = null,
+        string? labelColumnsFile = null)
     {
         _getSettings = getSettings;
         _isPaused = isPaused;
         _log = log;
         _now = now ?? (() => DateTime.Now);
         _scanner = new ExportScanner(_now);
-        _processor = new ProjectProcessor(materialsFile);
+        _processor = new ProjectProcessor(materialsFile, infoColumnsFile, positionColumnsFile, labelColumnsFile);
     }
 
     // ------------------------------------------------------------------ start, stop, wake up

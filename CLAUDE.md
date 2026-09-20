@@ -126,6 +126,23 @@ The new customer's TopSolid will produce the same format.
 **Always find columns by header name, never by position.** Ignore unknown and unnamed columns.
 Read the first worksheet. Stop at the first fully empty row.
 
+**The header names in the tables below are only the built-in defaults.** The names that are really used are in two
+text files in the data folder, `columns-li.txt` and `columns-lp.txt` (class `ColumnMap`, keys in `ColumnKeys`), that
+the customer can open from the settings window (button *Config*) and edit when TopSolid renames a header:
+- One line per field: `Key = HeaderName` or `Key = Name1 | Name2` (the first name that exists in the XLSX is used, so
+  old and new exports both work). Keys are case-insensitive; `#` starts a comment; blank lines are ignored.
+  A field that is not in the file keeps its default name. `SUP_DESIGNATION` (`Designation`) is the only optional field.
+- The ORDER of the columns in the XLSX never matters (columns are found by name), so there is nothing to configure for it.
+- No file = the built-in names (a deleted file never stops the program). `AppDataFolder.EnsureCreated` writes both files
+  with the default names when they are missing (with a short explanation in the language of that moment) and never
+  touches an existing one. Read again for EVERY project (`ProjectProcessor`), so no restart is needed after an edit.
+- A file with mistakes (unknown key, line without `=`, empty name, key twice) is a TEMPORARY problem
+  (`ConversionException.IsTemporary`): the TopSolid files stay in the export folder and it is retried at every scan.
+  The message names the file and the line and lists ALL mistakes.
+- A required column that is missing in the XLSX: all missing columns are named at once (with all accepted names,
+  `'Test' / 'Project'`), followed by ONE tip about the column file (`Messages.MissingColumnTip`).
+- The Converter/reader take the maps as optional parameters (`null` = built-in names), so the CLI and most tests are unchanged.
+
 ### LI columns (label info)
 
 | Header | Example | Use |
@@ -286,6 +303,23 @@ in Duivestein's label template (send them this list):
 | `OPLEG2` | Opleg_2_? |
 | `PROJECT` | Test (project number) |
 | `SHEET` | Sheet name (`White_18#01`) |
+| `DESC1` … `DESC10` | Ten extra description fields, the LAST ten columns (columns 24 – 33). See below |
+
+**The ten description columns** (asked by Daan, after his own LI test file with columns `DESC1` … `DESC10` after `Test`;
+the naming follows Duivestein's own example in `samples/duivestein/README`, where the free columns are `DESC1`, `DESC2`, …):
+- Source: optional columns `DESC1` … `DESC10` in the LI file AND in the LP file (fields `Desc1` … `Desc10` in
+  `columns-li.txt` / `columns-lp.txt`, header names editable like all others; never required, so old exports still work).
+  Merge per part and field: the **LI value is used; if it is empty (or the LI file has no such column) the LP value**
+  (`BatchBuilder.MergeDescriptions`). Same text cleaning as every value (trim, tab/line break → space).
+- They are ALWAYS in the label CSV (also when the export has none: empty values), so the label template in Duivestein
+  can rely on them. The golden CSVs got the ten columns (empty) on Daan's request; the XML is unchanged.
+- The names of these ten CSV columns are in a third file, **`columns-label.txt`** (class `LabelColumnNames`), default
+  `DESC1` … `DESC10`, one line `Desc1 = DESC1` each. Rules: only letters (no accents), digits, `_`, `-`; a name must not be
+  one of the 23 fixed columns nor another description column (Duivestein would not know which is meant), case-insensitive;
+  a field not in the file keeps its name; swapping two names is fine. A file with mistakes is a TEMPORARY problem like the
+  other column files (files wait, all mistakes are listed with file and line). Read again for every project.
+  The 23 fixed column names/order cannot be changed: Duivestein reads the mandatory ones by name.
+- Label file names stay `{BatchName}_{nnn}.csv` (unique per batch in the Duivestein folder).
 
 ### Zero-point flips (settings FlipX / FlipY)
 
@@ -336,15 +370,39 @@ Settings window (the only window), in the selected language (Dutch, French or En
 | 6 | Checkbox: label zero point — flip in Y | off |
 
 - Folder fields with a Browse button. Save / Cancel at the bottom right. Warn (don't block) when a folder is not reachable.
+- **Config buttons** (added after stage 4, asked by Daan): three rows with a hint text on the left and a button `Config`
+  on the right in the Browse column. Two directly below the export folder, one under the other: the first opens
+  `columns-li.txt` in the default program (Notepad), the second `columns-lp.txt` (both are TopSolid files). The third is
+  directly below the Duivestein label folder and opens `columns-label.txt` (the names of the ten DESC columns of the label
+  CSV). A divider line separates the TopSolid part from the two Duivestein folders (three divider lines in total: below
+  "Start met Windows", above "Duivestein-batchmap", above "Nulpunt van het label"). A deleted column file is made again
+  first (`TrayApp.OpenDataFile`). `Config` is the same word in all languages (`Strings.ConfigButton`, a const).
+- **Two buttons on the title row of the list of conversions** ("Laatste conversies"), at the right: `Open materiaaltabel`
+  (opens `materials.csv`, text = `Strings.MenuOpenMaterials`) and, at its right, `Open logmap` (opens the log folder in
+  Explorer), which sits in the Browse column. The materials button is the one exception to the 100 x 28 rule: it is as wide
+  as its text needs (measured once, not AutoSize) but has the same height.
+- **App version, top right**, just below the banner on the line of the language title (`VersionLabel`, in its own small
+  table so the Browse column does not get wider).
+- The settings window gets `AppDataFolder` + two open delegates in its constructor (the tests pass fakes).
 - Below the settings: read-only list of the last 20 conversions (time, project, OK/Error, message).
 - Closing the window only hides it. The app keeps running in the tray.
 - **Footer, bottom left, below the list of conversions**, in the normal font size (an earlier version in half
   size was unreadable), with the small ROGIERS logo (`media/ROGIERS-transp-small.png`, embedded; `AppIcons.CompanyLogo`
   cuts off its transparent margin and scales it once to 128 px) at the left of the two lines:
-  `Dev.: Daan Verhoost  |  ROGIERS NV/SA` (only the company name is a link to
-  https://www.rogiers.be/) and below it `App version: 1.0.0` (translated: `App-versie`, `Version de l'application`).
+  line 1 `Dev.: Daan Verhoost` (plain text, `CreditLabel`) and line 2 `ROGIERS NV/SA` (a link to
+  https://www.rogiers.be/, `CompanyLink`). The app version is NOT in the footer any more: it is at the top right of the
+  window, `App version: 1.0.0` (translated: `App-versie`, `Version de l'application`).
   The version comes from `<Version>` in `TsDssConverter.Tray.csproj` (`AppInfo.Version`). The credit texts and
   the URL are in `Strings` (not translated).
+- **Windows 11 ("Fluent") look** (asked by Daan, approved after a screenshot; the UI is considered finished): three
+  custom-drawn controls in `Tray\FluentControls.cs`: `RoundedButton` (rounded corners, hover / pressed fill, navy focus
+  ring), `FluentCheckBox` (rounded box, brand blue with a tick when checked) and `TextBoxFrame` (rounded frame around
+  the normal TextBox, as high as the buttons, dark blue line at the bottom while it has focus). They are still a normal
+  Button / CheckBox / TextBox for the rest of the code. Colours come from `Theme` only (same palette, navy text on brand
+  blue). The font is `Segoe UI Variable Text` when installed (`Theme.CreateBodyFont`), else the default font. The
+  language drop-down, the conversions list and the scroll bars keep the standard look on purpose. The three blue divider
+  lines have 20 px of room above and below (12 px margin + 8 px of the neighbouring control), same at every scaling.
+  Changing a look: colours in `Theme.cs` (`StylePrimaryButton`, `StyleSecondaryButton`), shapes in `FluentControls.cs`.
 - **Scaling and size of the window** (must keep working at 100%, 125%, 150%, ...): sizes are written for 96 dpi with
   `AutoScaleMode.Dpi`, and the window MUST be built between `SuspendLayout()` and `ResumeLayout()` (without that
   WinForms does not scale the pixel sizes: on a 150% screen the text grew but the window stayed small and the
@@ -378,8 +436,8 @@ Tray behaviour (silent mode):
 - Start with Windows: registry value under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
   (no admin rights needed). The checkbox reads the real registry state when the window opens.
 - **Install folder = data folder = `C:\TsDssConverter\`** (decided by Daan: the tool is very light, so
-  everything lives together): `TsDssConverter.exe`, `settings.json`, `materials.csv`, `logs\yyyy-MM-dd.log`
-  (keep 30 days). Uninstall = delete the folder. The path is one constant (`AppDataFolder.DefaultRoot`).
+  everything lives together): `TsDssConverter.exe`, `settings.json`, `materials.csv`, `columns-li.txt`,
+  `columns-lp.txt`, `logs\yyyy-MM-dd.log` (keep 30 days). Uninstall = delete the folder. The path is one constant (`AppDataFolder.DefaultRoot`).
   A development run can use another folder with `--data <folder>`, so it never touches the real install.
   If the folder cannot be created (C:\ locked down), show a clear Dutch message and exit.
   Simple own log writer, no logging framework.
@@ -467,7 +525,7 @@ Physical test sheet:
   Paused on 2026-09-20: Daan first collects more sample files from TopSolid and tests with them; stage 5 starts after that.
 - Built: `TsDssConverter.slnx` with `Core`, `Cli`, `Tray` and `Tests`.
 - The CLI output of the sample is byte-identical to the golden files in `samples/duivestein/`.
-  299 unit tests pass (`dotnet test`). The Tests project targets `net10.0-windows` so it can test `Tray`.
+  352 unit tests pass (`dotnet test`). The Tests project targets `net10.0-windows` so it can test `Tray`.
   Tests run one after the other (the language is one global switch).
 - Stage 1: read, join, map, write XML + CSVs, safe writing (`.tmp` + rename, XML last), never overwrite a batch.
 - Stage 2, errors: everything in the Validation section is implemented, including "label outside the sheet
@@ -538,6 +596,22 @@ Physical test sheet:
   (`Z:\Duivestein\Label\Verschuren-P-20_001.csv`), the golden XML `samples/duivestein/Verschuren-P-20.xml` was changed
   for that, and the golden test swaps its temp folder for `Z:\Duivestein\Label` before comparing; (2) the footer got
   the ROGIERS logo. Daan tested his own files as `samples/topsolid/Daan-*.xlsx` (not part of the samples, do not commit).
+- Revision after stage 4 (2026-09-20, Daan): (1) configurable header names of the LI and LP files in `columns-li.txt` /
+  `columns-lp.txt` with a `Config` button for each in the settings window (see "Input: TopSolid exports"); new Core classes
+  `ColumnMap`, `ColumnKeys`, `TextFile` (the UTF-8 / Windows-1252 reading moved out of `MaterialTable`); `ColumnNames.cs`
+  is gone (its default names are now in `ColumnMap`); `XlsxTable.RequireColumns` was replaced by `ColumnMap.Resolve`.
+  (2) `Open logmap` button next to "Laatste conversies". Checked with the real exe at this PC's scaling (`--show`).
+  Second round the same day: the LP `Config` row moved under the LI one, a third divider above the Duivestein folders,
+  footer = logo + `Dev.: Daan Verhoost` / `ROGIERS NV/SA`, version at the top right, `Open materiaaltabel` button.
+  The CLI has no option for the column files yet (it uses the built-in names).
+  Third round the same day (Daan): ten description columns `DESC1` … `DESC10` (LI + LP, merged LI-first) as the last ten
+  columns of the label CSV, their names in the new `columns-label.txt` with a third `Config` button under the Duivestein
+  label folder (see "Label CSV"). Tried with the real AKSIS LI file (which has DESC1 … DESC10): the values arrive in the CSV.
+  Not decided by Daan (I chose): LI wins over LP; names of the 23 fixed columns are not configurable; file names of the
+  label CSVs unchanged (`label01.csv` was mentioned once but is not used).
+- Fluent restyle of the settings window (2026-09-20, after a screenshot round with Daan): see "Windows 11 (Fluent) look"
+  in the Tray section. 331 tests pass. Tip for testing the real window while another copy runs: build to another folder
+  (`dotnet build src/TsDssConverter.Tray -o bin\preview`), a running exe locks `bin\latest`.
 - Not yet (stage 5 or later): the list of conversions is not saved between runs; the real TopSolid output and the
   Duivestein import have not been tried; no installer.
 - NuGet packages: ClosedXML (Core), xunit + `Microsoft.NET.Test.Sdk` + `xunit.runner.visualstudio` (Tests;

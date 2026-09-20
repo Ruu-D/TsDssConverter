@@ -20,18 +20,22 @@ public class Converter
 {
     /// <param name="infoPath">The "...-LI.xlsx" file. The batch name is the file name without "-LI.xlsx".</param>
     /// <param name="planDate">Written in the XML. The CLI passes today; the tests pass a fixed date.</param>
+    /// <param name="infoColumns">The header names in the LI file (columns-li.txt). Null = the built-in names.</param>
+    /// <param name="positionColumns">The header names in the LP file (columns-lp.txt). Null = the built-in names.</param>
+    /// <param name="labelColumns">The names of the ten DESC columns in the label CSV (columns-label.txt). Null = DESC1 .. DESC10.</param>
     public ConversionResult Convert(
         string infoPath, string positionPath, string materialsPath,
         string batchFolder, string labelFolder,
-        ConverterSettings settings, DateTime planDate)
+        ConverterSettings settings, DateTime planDate,
+        ColumnMap? infoColumns = null, ColumnMap? positionColumns = null, LabelColumnNames? labelColumns = null)
     {
         string batchName = GetBatchName(infoPath);
 
         // Read all three input files first and report EVERY problem in them together
         // (for example a missing column in LI, a missing column in LP and a bad materials.csv).
         var readProblems = new List<string>();
-        var infoRows = TryRead(() => TopSolidReader.ReadLabelInfo(infoPath), readProblems);
-        var positionRows = TryRead(() => TopSolidReader.ReadLabelPositions(positionPath), readProblems);
+        var infoRows = TryRead(() => TopSolidReader.ReadLabelInfo(infoPath, infoColumns), readProblems);
+        var positionRows = TryRead(() => TopSolidReader.ReadLabelPositions(positionPath, positionColumns), readProblems);
         var materials = TryRead(() => MaterialTable.Load(materialsPath), readProblems);
 
         if (readProblems.Count > 0)
@@ -53,7 +57,7 @@ public class Converter
             foreach (var sheet in plan.Sheets)
             {
                 string path = Path.Combine(labelFolder, sheet.LabelFileName);
-                labelFiles.Add(new PendingFile { Path = path, Content = csvEncoding.GetBytes(LabelCsvWriter.BuildText(plan, sheet)) });
+                labelFiles.Add(new PendingFile { Path = path, Content = csvEncoding.GetBytes(LabelCsvWriter.BuildText(plan, sheet, labelColumns)) });
                 result.LabelPaths.Add(path);
                 result.PartCount += sheet.Labels.Count;
             }

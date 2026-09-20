@@ -12,6 +12,7 @@ public static class LabelCsvWriter
     // Each column = a header name and a way to get its value. The header and the values can never get out of sync.
     // The first 13 columns are mandatory for Duivestein; the rest are ours (usable in their label template).
     // Column names: only letters, digits, underscore and dash.
+    // After these come the ten description columns (DESC1 .. DESC10); their names are in columns-label.txt.
     private static readonly List<(string Name, Func<Plan, Sheet, Label, string> GetValue)> Columns = new()
     {
         ("MATERIAL", (plan, sheet, label) => plan.Material.DssName),
@@ -39,17 +40,22 @@ public static class LabelCsvWriter
         ("SHEET", (plan, sheet, label) => label.SheetName),
     };
 
-    public static string BuildText(Plan plan, Sheet sheet)
+    /// <summary>The names of the fixed columns, in order. The description columns come after them.</summary>
+    public static IReadOnlyList<string> FixedColumnNames { get; } = Columns.Select(c => c.Name).ToList();
+
+    /// <param name="descriptionNames">The names of the ten DESC columns at the end. Null = DESC1 .. DESC10.</param>
+    public static string BuildText(Plan plan, Sheet sheet, LabelColumnNames? descriptionNames = null)
     {
         const string lineEnd = "\r\n";
         var text = new StringBuilder();
+        IReadOnlyList<string> extraNames = (descriptionNames ?? new LabelColumnNames()).Names;
 
-        text.Append(string.Join("\t", Columns.Select(c => c.Name)));
+        text.Append(string.Join("\t", FixedColumnNames.Concat(extraNames)));
         text.Append(lineEnd);
 
         foreach (var label in sheet.Labels)
         {
-            var values = Columns.Select(c => CleanText(c.GetValue(plan, sheet, label)));
+            var values = Columns.Select(c => c.GetValue(plan, sheet, label)).Concat(label.Descriptions).Select(CleanText);
             text.Append(string.Join("\t", values));
             text.Append(lineEnd);
         }

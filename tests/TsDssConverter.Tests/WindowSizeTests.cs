@@ -39,7 +39,9 @@ public class WindowSizeTests
         public Window()
         {
             var startup = new StartWithWindows(RegistryPath, @"C:\TsDssConverter\TsDssConverter.exe");
-            Form = new SettingsForm(() => new AppSettings(), saved => { }, () => { }, new ConversionHistory(), startup);
+            Form = new SettingsForm(
+                () => new AppSettings(), saved => { }, () => { }, new ConversionHistory(), startup,
+                new AppDataFolder(@"C:\TsDssTestData"), path => { }, path => { });
         }
 
         public void Dispose()
@@ -95,7 +97,7 @@ public class WindowSizeTests
 
             // The list of conversions is fully visible, and so is the footer below it.
             Assert.True(form.HistoryList.Height >= form.LogicalToDeviceUnits(120));
-            Control footer = form.CreditLink.Parent!;
+            Control footer = form.CreditLabel.Parent!;
             Assert.True(form.Scroller.PointToClient(footer.PointToScreen(new Point(0, footer.Height))).Y <= form.Scroller.ClientSize.Height);
 
             // Nothing to scroll: all content fits in the window.
@@ -115,7 +117,7 @@ public class WindowSizeTests
             var form = window.Form;
 
             // The footer is the last thing in the window: the room below it is only the margin.
-            Control footer = form.CreditLink.Parent!;
+            Control footer = form.CreditLabel.Parent!;
             int spaceBelowFooter = form.Scroller.ClientSize.Height - form.Scroller.PointToClient(footer.PointToScreen(new Point(0, footer.Height))).Y;
             Assert.InRange(spaceBelowFooter, 0, form.LogicalToDeviceUnits(60));
         });
@@ -140,7 +142,7 @@ public class WindowSizeTests
 
             form.PerformLayout();
 
-            Control footer = form.CreditLink.Parent!;
+            Control footer = form.CreditLabel.Parent!;
             Assert.True(form.Scroller.PointToClient(footer.PointToScreen(new Point(0, footer.Height))).Y <= form.Scroller.ClientSize.Height);
             Assert.False(form.Scroller.VerticalScroll.Visible);
         });
@@ -170,7 +172,7 @@ public class WindowSizeTests
             // At the bottom of the window: below the list of conversions, on the same line as the footer.
             Assert.True(Place(save).Y >= Place(form.HistoryList).Y + form.HistoryList.Height);
             Assert.True(cancel.Bottom == cancel.Parent!.Height); // the buttons end where the footer ends
-            Assert.True(Place(cancel).Y + cancel.Height >= Place(form.VersionLabel).Y);
+            Assert.True(Place(cancel).Y + cancel.Height >= Place(form.CompanyLink).Y);
 
             // The right edge of the buttons is the right edge of the list and of the divider lines.
             int buttonsRight = Place(cancel).X + cancel.Width;
@@ -193,8 +195,99 @@ public class WindowSizeTests
             Size expected = new(form.LogicalToDeviceUnits(100), form.LogicalToDeviceUnits(28));
             var buttons = AllControls(form).OfType<Button>().ToList();
 
-            Assert.Equal(5, buttons.Count); // 3 x Browse, Save, Cancel
-            Assert.All(buttons, button => Assert.Equal(expected, button.Size));
+            Assert.Equal(10, buttons.Count); // 3 x Browse, 3 x Config, Open materials table, Open log, Save, Cancel
+            Assert.All(buttons.Where(button => button != form.OpenMaterialsButton), button => Assert.Equal(expected, button.Size));
+
+            // "Open materiaaltabel" is too long for 100 pixels: that one button may be wider, never smaller.
+            Assert.Equal(expected.Height, form.OpenMaterialsButton.Height);
+            Assert.True(form.OpenMaterialsButton.Width >= expected.Width);
+        });
+    }
+
+    [Fact]
+    public void BothConfigButtons_SitUnderTheExportFolder_OneUnderTheOther_AndOpenLogSitsAboveTheList_InLineWithTheBrowseButtons()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new Window();
+            window.Form.Show();
+            window.Form.SizeToContent(BigScreen);
+            window.Form.PerformLayout();
+            var form = window.Form;
+
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+            int Bottom(Control control) => Place(control).Y + control.Height;
+
+            // First Config button (LI): just below the export folder. The second one (LP) comes right under it,
+            // and both are above the title of the batch folder.
+            Assert.True(Place(form.ConfigInfoButton).Y >= Bottom(form.ExportFolderBox));
+            Assert.True(Place(form.ConfigPositionButton).Y >= Bottom(form.ConfigInfoButton));
+            Assert.True(Place(form.ConfigPositionButton).Y - Bottom(form.ConfigInfoButton) < form.LogicalToDeviceUnits(12)); // close under it
+            Assert.True(Place(form.ConfigPositionHint).Y >= Bottom(form.ConfigInfoHint));
+            Assert.True(Bottom(form.ConfigPositionButton) <= Place(form.BatchCaption).Y);
+
+            // Third Config button (label CSV): just below the Duivestein label folder, above the line and the zero-point title.
+            Assert.True(Place(form.ConfigLabelButton).Y >= Bottom(form.LabelFolderBox));
+            Assert.True(Bottom(form.ConfigLabelButton) <= Place(form.ZeroPointTitle).Y);
+            Assert.True(Place(form.ConfigLabelButton).Y >= Bottom(form.BatchFolderBox));
+
+            // "Open log": above the list of conversions (on the line of its title).
+            Assert.True(Bottom(form.OpenLogButton) <= Place(form.HistoryList).Y);
+            Assert.True(Place(form.OpenLogButton).Y >= Bottom(form.FlipYBox));
+
+            // The three buttons at the right sit exactly in the column of the Browse buttons.
+            var browse = AllControls(form).OfType<Button>().Where(b => b.Text == Strings.Browse).ToList();
+            Assert.Equal(3, browse.Count);
+            Assert.All(new[] { form.ConfigInfoButton, form.ConfigPositionButton, form.ConfigLabelButton, form.OpenLogButton },
+                button => Assert.Equal(Place(browse[0]).X, Place(button).X));
+        });
+    }
+
+    [Fact]
+    public void OpenMaterialsTable_SitsLeftOfOpenLog_OnTheSameLine_WithARoomBetween()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new Window();
+            window.Form.Show();
+            window.Form.SizeToContent(BigScreen);
+            window.Form.PerformLayout();
+            var form = window.Form;
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+
+            Point materials = Place(form.OpenMaterialsButton), log = Place(form.OpenLogButton);
+            int gap = log.X - (materials.X + form.OpenMaterialsButton.Width);
+
+            Assert.Equal(log.Y, materials.Y);                                        // one line
+            Assert.InRange(gap, 1, form.LogicalToDeviceUnits(20));                    // left of it, not touching, not far away
+            Assert.True(Place(form.OpenMaterialsButton).Y + form.OpenMaterialsButton.Height <= Place(form.HistoryList).Y);
+        });
+    }
+
+    [Theory]
+    [InlineData(AppLanguage.Dutch)]
+    [InlineData(AppLanguage.French)]
+    [InlineData(AppLanguage.English)]
+    public void TheNewButtonTexts_FitInTheButtons_AndTheHintsDoNotRunIntoTheirButton(AppLanguage language)
+    {
+        RunOnStaThread(() =>
+        {
+            using var scope = new LanguageScope(language);
+            using var window = new Window();
+            window.Form.Show();
+            window.Form.SizeToContent(BigScreen);
+            window.Form.PerformLayout();
+            var form = window.Form;
+
+            foreach (Button button in new[] { form.ConfigInfoButton, form.ConfigPositionButton, form.ConfigLabelButton, form.OpenMaterialsButton, form.OpenLogButton })
+            {
+                int textWidth = TextRenderer.MeasureText(button.Text, button.Font).Width;
+                Assert.True(textWidth + form.LogicalToDeviceUnits(16) <= button.Width, $"'{button.Text}' does not fit in its button in {language}");
+            }
+
+            Assert.True(form.ConfigInfoHint.Right <= form.ConfigInfoButton.Left, $"The LI hint runs into its button in {language}");
+            Assert.True(form.ConfigPositionHint.Right <= form.ConfigPositionButton.Left, $"The LP hint runs into its button in {language}");
+            Assert.True(form.ConfigLabelHint.Right <= form.ConfigLabelButton.Left, $"The label hint runs into its button in {language}");
         });
     }
 

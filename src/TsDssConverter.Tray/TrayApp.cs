@@ -55,7 +55,10 @@ internal class TrayApp : ApplicationContext
         _settings = loaded.Settings;
 
         // The watcher is created here (the menu needs it) and started at the very end of this constructor.
-        _watcher = new ExportWatcher(() => _settings, () => _paused, _log, dataFolder.MaterialsFile);
+        _watcher = new ExportWatcher(
+            () => _settings, () => _paused, _log, dataFolder.MaterialsFile,
+            infoColumnsFile: dataFolder.InfoColumnsFile, positionColumnsFile: dataFolder.PositionColumnsFile,
+            labelColumnsFile: dataFolder.LabelColumnsFile);
         _watcher.ConversionStarted += project => SetState(TrayState.Busy);
         _watcher.ConversionFinished += OnConversionFinished;
         _watcher.FolderProblemFound += ReportFolderProblem;
@@ -298,7 +301,9 @@ internal class TrayApp : ApplicationContext
 
         if (_settingsForm == null || _settingsForm.IsDisposed)
         {
-            _settingsForm = new SettingsForm(() => _settings, SaveSettings, AcknowledgeError, _history, _startWithWindows);
+            _settingsForm = new SettingsForm(
+                () => _settings, SaveSettings, AcknowledgeError, _history, _startWithWindows,
+                _dataFolder, OpenDataFile, OpenFolder);
         }
 
         if (!_settingsForm.Visible)
@@ -364,6 +369,24 @@ internal class TrayApp : ApplicationContext
     private void OpenFile(string path)
     {
         OpenWithWindows(path, Strings.CannotOpenFile);
+    }
+
+    /// <summary>
+    /// Opens a file from the data folder (the column files). If someone deleted it, it is made again first with the
+    /// default names, so the button never opens nothing.
+    /// </summary>
+    private void OpenDataFile(string path)
+    {
+        try
+        {
+            _dataFolder.EnsureCreated();
+        }
+        catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
+        {
+            // Not fatal here: opening the file below reports the problem to the user.
+        }
+
+        OpenFile(path);
     }
 
     /// <summary>Opens a folder in Explorer, or a file in the program Windows uses for it (Excel for .csv).</summary>

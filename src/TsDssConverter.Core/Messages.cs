@@ -36,6 +36,119 @@ public static class Messages
         $"La colonne '{column}' est absente du fichier {fileKind}.",
         $"Column '{column}' is missing in the {fileKind} file.");
 
+    /// <summary>Added once after the missing columns of a file: TopSolid may simply have renamed a column.</summary>
+    public static string MissingColumnTip(string fileKind, string configFile) => T(
+        $"Tip voor het {fileKind}-bestand: heeft TopSolid een kolom anders genoemd? Pas de naam aan in {configFile} (knop Config in het instellingenvenster).",
+        $"Conseil pour le fichier {fileKind} : TopSolid a-t-il nommé une colonne autrement ? Modifiez le nom dans {configFile} (bouton Config dans la fenêtre des paramètres).",
+        $"Tip for the {fileKind} file: did TopSolid name a column differently? Change the name in {configFile} (Config button in the settings window).");
+
+    // ---- The column files (columns-li.txt and columns-lp.txt) ----
+    public static string ColumnsBadLine(string fileName, int lineNumber, string reason) => T(
+        $"{fileName}, regel {lineNumber}: {reason}",
+        $"{fileName}, ligne {lineNumber} : {reason}",
+        $"{fileName}, line {lineNumber}: {reason}");
+
+    // The reasons that go behind "columns-li.txt, line N:"
+    public static string ColumnsNotALine(string text) => T(
+        $"'{text}' is geen geldige regel. Verwacht: Veld = Kolomnaam.",
+        $"'{text}' n'est pas une ligne valide. Attendu : Champ = Nom de colonne.",
+        $"'{text}' is not a valid line. Expected: Field = Column name.");
+
+    public static string ColumnsUnknownField(string field, string knownFields) => T(
+        $"onbekend veld '{field}'. Mogelijke velden: {knownFields}.",
+        $"champ inconnu '{field}'. Champs possibles : {knownFields}.",
+        $"unknown field '{field}'. Possible fields: {knownFields}.");
+
+    public static string ColumnsDuplicateField(string field) => T(
+        $"'{field}' staat er twee keer in.",
+        $"'{field}' apparaît deux fois.",
+        $"'{field}' appears twice.");
+
+    public static string ColumnsNoName(string field) => T(
+        $"'{field}' heeft geen kolomnaam achter het =-teken.",
+        $"'{field}' n'a pas de nom de colonne après le signe =.",
+        $"'{field}' has no column name after the = sign.");
+
+    /// <summary>The explanation at the top of a new column file. One text per line; each line starts with "# " in the file.</summary>
+    public static string ColumnsFileIntro(string fileKind, string example) => T(
+        $"TsDssConverter - kolomnamen in het {fileKind}-bestand van TopSolid (-{fileKind}.xlsx)\n" +
+        "Links van het = staat wat het programma nodig heeft (niet wijzigen).\n" +
+        "Rechts staat de kolomnaam in het Excel-bestand. Pas die aan als TopSolid een kolom anders noemt.\n" +
+        "Meerdere namen mogen, gescheiden door |. De eerste naam die in het bestand voorkomt, wordt gebruikt.\n" +
+        $"Bijvoorbeeld:  {example}\n" +
+        "De volgorde van de kolommen in Excel maakt niet uit, en hoofdletters ook niet.\n" +
+        "Regels die met # beginnen worden genegeerd. Na het opslaan is herstarten niet nodig.",
+        $"TsDssConverter - noms des colonnes du fichier {fileKind} de TopSolid (-{fileKind}.xlsx)\n" +
+        "À gauche du signe = : ce dont le programme a besoin (à ne pas modifier).\n" +
+        "À droite : le nom de la colonne dans le fichier Excel. Modifiez-le si TopSolid nomme une colonne autrement.\n" +
+        "Plusieurs noms sont possibles, séparés par |. Le premier nom présent dans le fichier est utilisé.\n" +
+        $"Exemple :  {example}\n" +
+        "L'ordre des colonnes dans Excel n'a pas d'importance, ni les majuscules.\n" +
+        "Les lignes qui commencent par # sont ignorées. Après l'enregistrement, aucun redémarrage n'est nécessaire.",
+        $"TsDssConverter - column names in the TopSolid {fileKind} file (-{fileKind}.xlsx)\n" +
+        "Left of the = is what the program needs (do not change it).\n" +
+        "Right of the = is the column name in the Excel file. Change it if TopSolid names a column differently.\n" +
+        "Several names are allowed, separated by |. The first name that is in the file is used.\n" +
+        $"Example:  {example}\n" +
+        "The order of the columns in Excel does not matter, and neither do capital letters.\n" +
+        "Lines that start with # are ignored. After saving, no restart is needed.");
+
+    /// <summary>The line above a field that the Excel file may do without.</summary>
+    public static string ColumnsFileOptional => T(
+        "optioneel: mag ontbreken in het Excel-bestand",
+        "facultatif : peut être absent du fichier Excel",
+        "optional: may be missing in the Excel file");
+
+    /// <summary>The note above the ten description fields in columns-li.txt and columns-lp.txt (one text per line).</summary>
+    public static string ColumnsFileDescriptionNote(string labelFile) => T(
+        $"De 10 extra beschrijvingsvelden voor het label: kolom DESC1 t/m DESC10 in het Excel-bestand (mogen ontbreken).\n" +
+        $"Ze komen achteraan in het label-CSV; de namen daar staan in {labelFile}.\n" +
+        "Staan ze in beide bestanden (LI en LP), dan gaat de waarde uit LI voor; is die leeg, dan wordt die uit LP gebruikt.",
+        $"Les 10 champs de description supplémentaires pour l'étiquette : colonnes DESC1 à DESC10 du fichier Excel (facultatives).\n" +
+        $"Ils se retrouvent à la fin du CSV des étiquettes ; leurs noms y sont dans {labelFile}.\n" +
+        "S'ils figurent dans les deux fichiers (LI et LP), la valeur de LI est utilisée ; si elle est vide, celle de LP.",
+        $"The 10 extra description fields for the label: columns DESC1 to DESC10 in the Excel file (they may be missing).\n" +
+        $"They end up at the end of the label CSV; their names there are in {labelFile}.\n" +
+        "If they are in both files (LI and LP), the LI value is used; if that is empty, the LP value.");
+
+    /// <summary>The explanation at the top of columns-label.txt. One text per line; each line starts with "# " in the file.</summary>
+    public static string LabelColumnsFileIntro => T(
+        "TsDssConverter - de 10 extra beschrijvingskolommen achteraan in het label-CSV voor Duivestein\n" +
+        "Links van het = staat het veld (niet wijzigen): Desc1 t/m Desc10.\n" +
+        "Rechts staat de naam van de kolom in het label-CSV. Naar die naam verwijst de labeltemplate in Duivestein.\n" +
+        "De waarde komt uit de kolom DESC1 t/m DESC10 van het LI-bestand (of, als die leeg is, van het LP-bestand);\n" +
+        "de kolomnamen in die Excel-bestanden staan in columns-li.txt en columns-lp.txt.\n" +
+        "Toegestaan: enkel letters (zonder accenten), cijfers, underscore en streepje. De naam mag niet gelijk zijn aan een\n" +
+        "andere kolom van het label-CSV (bv. MATERIAL, ID, X, DESCRIPTION).\n" +
+        "Regels die met # beginnen worden genegeerd. Na het opslaan is herstarten niet nodig.",
+        "TsDssConverter - les 10 colonnes de description supplémentaires à la fin du CSV des étiquettes pour Duivestein\n" +
+        "À gauche du signe = : le champ (à ne pas modifier) : Desc1 à Desc10.\n" +
+        "À droite : le nom de la colonne dans le CSV des étiquettes. Le modèle d'étiquette de Duivestein renvoie à ce nom.\n" +
+        "La valeur vient de la colonne DESC1 à DESC10 du fichier LI (ou, si elle est vide, du fichier LP) ;\n" +
+        "les noms de colonnes de ces fichiers Excel sont dans columns-li.txt et columns-lp.txt.\n" +
+        "Autorisé : uniquement des lettres (sans accents), chiffres, tiret bas et tiret. Le nom ne peut pas être identique à\n" +
+        "une autre colonne du CSV des étiquettes (p. ex. MATERIAL, ID, X, DESCRIPTION).\n" +
+        "Les lignes qui commencent par # sont ignorées. Après l'enregistrement, aucun redémarrage n'est nécessaire.",
+        "TsDssConverter - the 10 extra description columns at the end of the label CSV for Duivestein\n" +
+        "Left of the = is the field (do not change it): Desc1 to Desc10.\n" +
+        "Right of the = is the name of the column in the label CSV. The label template in Duivestein refers to that name.\n" +
+        "The value comes from the column DESC1 to DESC10 of the LI file (or, if that is empty, of the LP file);\n" +
+        "the column names in those Excel files are in columns-li.txt and columns-lp.txt.\n" +
+        "Allowed: only letters (no accents), digits, underscore and dash. The name must not be the same as another\n" +
+        "column of the label CSV (e.g. MATERIAL, ID, X, DESCRIPTION).\n" +
+        "Lines that start with # are ignored. After saving, no restart is needed.");
+
+    // The reasons that go behind "columns-label.txt, line N:"
+    public static string LabelColumnBadName(string name) => T(
+        $"kolomnaam '{name}' mag enkel letters (zonder accenten), cijfers, underscore en streepje bevatten.",
+        $"le nom de colonne '{name}' ne peut contenir que des lettres (sans accents), chiffres, tirets bas et tirets.",
+        $"column name '{name}' may only contain letters (no accents), digits, underscore and dash.");
+
+    public static string LabelColumnClash(string name) => T(
+        $"'{name}' is al de naam van een andere kolom van het label-CSV.",
+        $"'{name}' est déjà le nom d'une autre colonne du CSV des étiquettes.",
+        $"'{name}' is already the name of another column of the label CSV.");
+
     public static string NotANumber(string fileKind, string column, string value, string part) => T(
         $"{fileKind}: waarde '{value}' in kolom '{column}' is geen getal (onderdeel: {part}).",
         $"{fileKind} : la valeur '{value}' dans la colonne '{column}' n'est pas un nombre (pièce : {part}).",

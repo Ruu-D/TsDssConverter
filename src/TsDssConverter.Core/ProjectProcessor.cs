@@ -45,10 +45,20 @@ public class ProjectProcessor
     public const string ErrorFileName = "fout.txt";
 
     private readonly string _materialsFile;
+    private readonly string? _infoColumnsFile;
+    private readonly string? _positionColumnsFile;
+    private readonly string? _labelColumnsFile;
 
-    public ProjectProcessor(string materialsFile)
+    /// <param name="infoColumnsFile">columns-li.txt: the header names in the LI file. Null = the built-in names.</param>
+    /// <param name="positionColumnsFile">columns-lp.txt: the header names in the LP file. Null = the built-in names.</param>
+    /// <param name="labelColumnsFile">columns-label.txt: the names of the DESC columns in the label CSV. Null = DESC1 .. DESC10.</param>
+    public ProjectProcessor(
+        string materialsFile, string? infoColumnsFile = null, string? positionColumnsFile = null, string? labelColumnsFile = null)
     {
         _materialsFile = materialsFile;
+        _infoColumnsFile = infoColumnsFile;
+        _positionColumnsFile = positionColumnsFile;
+        _labelColumnsFile = labelColumnsFile;
     }
 
     public ProcessOutcome Process(ProjectFiles files, AppSettings settings, DateTime now)
@@ -68,9 +78,16 @@ public class ProjectProcessor
                 throw new ConversionException(Messages.FileNotFound(_materialsFile)) { IsTemporary = true };
             }
 
+            // The column files are read again for every project, so a change is used at once, without a restart.
+            // A file with a mistake throws a temporary error (handled below): the TopSolid files are fine.
+            ColumnMap infoColumns = ColumnMap.LoadLabelInfo(_infoColumnsFile);
+            ColumnMap positionColumns = ColumnMap.LoadLabelPosition(_positionColumnsFile);
+            LabelColumnNames labelColumns = LabelColumnNames.Load(_labelColumnsFile);
+
             ConversionResult result = new Converter().Convert(
                 files.InfoPath, files.PositionPath, _materialsFile,
-                settings.BatchFolder, settings.LabelFolder, settings.ToConverterSettings(), now.Date);
+                settings.BatchFolder, settings.LabelFolder, settings.ToConverterSettings(), now.Date,
+                infoColumns, positionColumns, labelColumns);
 
             outcome.Success = true;
             outcome.Message = Messages.ConversionDone(result.LabelPaths.Count, result.PartCount, result.Warnings.Count);

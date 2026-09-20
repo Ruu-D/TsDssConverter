@@ -28,6 +28,9 @@ public class Label
     public string Opleg2 { get; set; } = "";
     public string Project { get; set; } = "";
 
+    /// <summary>The ten extra description fields (DESC1..DESC10), index 0 = Desc1: the last columns of the label CSV.</summary>
+    public string[] Descriptions { get; set; } = TopSolidReader.EmptyDescriptions();
+
     /// <summary>TopSolid sheet name, e.g. "White_18#01".</summary>
     public string SheetName { get; set; } = "";
 }

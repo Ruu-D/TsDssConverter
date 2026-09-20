@@ -18,25 +18,36 @@ internal class SettingsForm : Form
     private readonly Action _windowOpened;
     private readonly ConversionHistory _history;
     private readonly StartWithWindows _startup;
+    private readonly AppDataFolder _dataFolder;
+    private readonly Action<string> _openFile;
+    private readonly Action<string> _openFolder;
 
     // The controls we need to read or fill (internal: the tests check them)
-    internal readonly CheckBox StartWithWindowsBox = new();
+    internal readonly CheckBox StartWithWindowsBox = new FluentCheckBox();
     internal readonly TextBox ExportFolderBox = new();
     internal readonly TextBox BatchFolderBox = new();
     internal readonly TextBox LabelFolderBox = new();
-    internal readonly CheckBox FlipXBox = new();
-    internal readonly CheckBox FlipYBox = new();
+    internal readonly CheckBox FlipXBox = new FluentCheckBox();
+    internal readonly CheckBox FlipYBox = new FluentCheckBox();
     internal readonly ListView HistoryList = new();
     private readonly Label _exportWarning = new();
     private readonly Label _batchWarning = new();
     private readonly Label _labelWarning = new();
     private readonly Label _historyEmpty = new();
+    internal readonly Label ConfigInfoHint = new();
+    internal readonly Label ConfigPositionHint = new();
+    internal readonly Label ConfigLabelHint = new();
 
     // The banner picture is 540 x 84 pixels. It is shown 1.5 times as big.
     private const int BannerWidth = 810;
     private const int BannerHeight = 126;
 
     // Parts of the layout that the tests look at
+    internal readonly RoundedButton ConfigInfoButton = new();      // opens columns-li.txt (below the export folder)
+    internal readonly RoundedButton ConfigPositionButton = new();  // opens columns-lp.txt (below the LI one)
+    internal readonly RoundedButton ConfigLabelButton = new();     // opens columns-label.txt (below the label folder)
+    internal readonly RoundedButton OpenMaterialsButton = new();   // opens materials.csv (left of the Open log button)
+    internal readonly RoundedButton OpenLogButton = new();         // opens the log folder (next to "Last conversions")
     internal readonly PictureBox BannerPicture = new();
     internal readonly Label ExportCaption = new();
     internal readonly Label BatchCaption = new();
@@ -45,8 +56,9 @@ internal class SettingsForm : Form
     internal readonly List<Panel> Dividers = new();
     internal readonly Label LanguageCaption = new();
     internal readonly ComboBox LanguageBox = new();
-    internal readonly LinkLabel CreditLink = new();  // "Dev.: Daan Verhoost  |  ROGIERS NV/SA" (the company is the link)
-    internal readonly Label VersionLabel = new();    // "App version: 1.0.0"
+    internal readonly Label CreditLabel = new();     // footer line 1: "Dev.: Daan Verhoost"
+    internal readonly LinkLabel CompanyLink = new(); // footer line 2: "ROGIERS NV/SA" (a link to the website)
+    internal readonly Label VersionLabel = new();    // "App version: 1.0.0", at the top right below the banner
     internal readonly PictureBox LogoPicture = new(); // the small ROGIERS logo at the left of the two footer lines
     internal readonly Panel Scroller = new();        // holds all the settings; scrolls if the window is too small
 
@@ -61,7 +73,7 @@ internal class SettingsForm : Form
     private static readonly Size ButtonSize = new(100, 28);
 
     // The company logo in the footer (at 100%). The logo is a little wider than high; the picture keeps its proportions.
-    private static readonly Size LogoSize = new(46, 42);
+    private static readonly Size LogoSize = new(35, 32);
 
     // Widths of the columns Time, Project and Result at 100%. The Message column takes the rest.
     // (A ListView does not scale its columns by itself, so they are scaled in ScaleHistoryColumns.)
@@ -90,15 +102,22 @@ internal class SettingsForm : Form
     /// <param name="getSettings">Gives the settings that are in use now (asked every time the window is shown).</param>
     /// <param name="save">Saves new settings. May throw IOException / UnauthorizedAccessException.</param>
     /// <param name="windowOpened">Called every time the window is shown (the tray clears its error state).</param>
+    /// <param name="dataFolder">Where the column files (columns-li.txt, columns-lp.txt) and the logs are.</param>
+    /// <param name="openFile">Opens a file in the program Windows uses for it (Notepad for a .txt file).</param>
+    /// <param name="openFolder">Opens a folder in Explorer.</param>
     public SettingsForm(
         Func<AppSettings> getSettings, Action<AppSettings> save, Action windowOpened,
-        ConversionHistory history, StartWithWindows startup)
+        ConversionHistory history, StartWithWindows startup,
+        AppDataFolder dataFolder, Action<string> openFile, Action<string> openFolder)
     {
         _getSettings = getSettings;
         _save = save;
         _windowOpened = windowOpened;
         _history = history;
         _startup = startup;
+        _dataFolder = dataFolder;
+        _openFile = openFile;
+        _openFolder = openFolder;
 
         // Like a form made with the Visual Studio designer: build everything between SuspendLayout and
         // ResumeLayout. WinForms applies the automatic scaling (for 125%, 150%, ...) when the layout resumes.
@@ -120,6 +139,7 @@ internal class SettingsForm : Form
         // 150% screen but the window and the banner stayed small, and the list was pushed out of view.
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
+        Font = Theme.CreateBodyFont(); // the Windows 11 font; all controls below inherit it
         Text = Strings.WindowTitle;
         Icon = AppIcons.ForWindow();
         BackColor = Theme.White;
@@ -152,11 +172,27 @@ internal class SettingsForm : Form
         int row = 0;
 
         // 0. Language: right above "Start with Windows". The title has all three languages.
+        // The app version is on the same line, at the top right, just below the banner.
         LanguageCaption.Text = Strings.LanguageTitle;
         LanguageCaption.AutoSize = true;
         LanguageCaption.Font = new Font(Font, FontStyle.Bold);
         LanguageCaption.Margin = new Padding(0, 6, 0, 2);
-        AddFullRow(body, ref row, LanguageCaption);
+
+        VersionLabel.Text = Strings.AppVersion(AppInfo.Version);
+        VersionLabel.AutoSize = true;
+        VersionLabel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        VersionLabel.Margin = new Padding(0, 6, 0, 2); // the same as the title, so the two texts sit on one line
+        VersionLabel.ForeColor = Theme.Navy;
+
+        // A small table of its own: the title takes the free width, the version only what it needs. (The version
+        // is not put in the main table, because that would make the column of the Browse buttons wider.)
+        var languageRow = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
+        languageRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        languageRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        languageRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        languageRow.Controls.Add(LanguageCaption, 0, 0);
+        languageRow.Controls.Add(VersionLabel, 1, 0);
+        AddFullRow(body, ref row, languageRow);
 
         LanguageBox.DropDownStyle = ComboBoxStyle.DropDownList; // choose from the list, no typing
         LanguageBox.Items.Add(new LanguageItem(AppLanguage.Dutch, Strings.LanguageDutch));
@@ -173,15 +209,25 @@ internal class SettingsForm : Form
         StartWithWindowsBox.AutoSize = true;
         StartWithWindowsBox.Margin = new Padding(0, 4, 0, 8);
         AddFullRow(body, ref row, StartWithWindowsBox);
-        AddDivider(body, ref row, new Padding(0, 0, 0, 0)); // a line below "Start met Windows"
+        // The divider lines have room above and below them. The neighbouring controls already have 8 pixels of
+        // margin on this side, so the first line gets 12 + 8 = 20 above and below; the other two lines follow a row
+        // without a bottom margin and are followed by a title with 8, so they get 20 above and 12 + 8 = 20 below.
+        AddDivider(body, ref row, new Padding(0, 12, 0, 12)); // a line below "Start met Windows"
 
         // 2, 3, 4. The three folders (the titles are bold)
+        // Below the export folder: the column names of the LI file and, right under it, those of the LP file
+        // (both are TopSolid files). A line separates this from the two Duivestein folders.
         AddFolderRow(body, ref row, ExportCaption, Strings.ExportFolder, ExportFolderBox, _exportWarning);
+        AddConfigRow(body, ref row, ConfigInfoHint, Strings.ColumnsInfoHint, ConfigInfoButton, () => _openFile(_dataFolder.InfoColumnsFile));
+        AddConfigRow(body, ref row, ConfigPositionHint, Strings.ColumnsPositionHint, ConfigPositionButton, () => _openFile(_dataFolder.PositionColumnsFile));
+        AddDivider(body, ref row, new Padding(0, 20, 0, 12));
         AddFolderRow(body, ref row, BatchCaption, Strings.BatchFolder, BatchFolderBox, _batchWarning);
+        // Below the label folder: the names of the ten extra description columns (DESC1 .. DESC10) in the label CSV.
         AddFolderRow(body, ref row, LabelCaption, Strings.LabelFolder, LabelFolderBox, _labelWarning);
+        AddConfigRow(body, ref row, ConfigLabelHint, Strings.ColumnsLabelHint, ConfigLabelButton, () => _openFile(_dataFolder.LabelColumnsFile));
 
         // 5, 6. Label zero point, with a line above it
-        AddDivider(body, ref row, new Padding(0, 10, 0, 0));
+        AddDivider(body, ref row, new Padding(0, 20, 0, 12));
         ZeroPointTitle.Text = Strings.LabelZeroPoint;
         ZeroPointTitle.AutoSize = true;
         ZeroPointTitle.Margin = new Padding(0, 8, 0, 2);
@@ -198,10 +244,38 @@ internal class SettingsForm : Form
         // Save / Cancel
         // Save / Cancel are not here: they sit at the bottom right of the window, see BuildBottomRow.
 
-        // History: this row takes all the remaining height.
+        // History: the title on the left and, on the right, the buttons that open the materials table and the
+        // log folder (the last one in line with the Browse buttons). The list itself takes all the remaining height.
         var historyTitle = new Label { Text = Strings.HistoryTitle, AutoSize = true, Margin = new Padding(0, 10, 0, 4) };
         historyTitle.Font = new Font(Font, FontStyle.Bold);
-        AddFullRow(body, ref row, historyTitle);
+        historyTitle.Anchor = AnchorStyles.Left; // in the middle of the buttons' height
+
+        // "Open materiaaltabel" is too long for a button of 100 pixels, so this one is wider: as wide as its text needs
+        // (measured here at 100%; the window scaling makes it bigger later, like every other size). The height stays
+        // the same as all buttons. (AutoSize was not used: it made the height different.)
+        OpenMaterialsButton.Text = Strings.MenuOpenMaterials;
+        int materialsWidth = TextRenderer.MeasureText(OpenMaterialsButton.Text, Font).Width + 24;
+        OpenMaterialsButton.Size = new Size(Math.Max(ButtonSize.Width, materialsWidth), ButtonSize.Height);
+        OpenMaterialsButton.Margin = new Padding(0, 10, 8, 4);
+        Theme.StyleSecondaryButton(OpenMaterialsButton);
+        OpenMaterialsButton.Click += (sender, e) => _openFile(_dataFolder.MaterialsFile);
+
+        OpenLogButton.Text = Strings.OpenLogButton;
+        OpenLogButton.Size = ButtonSize;
+        OpenLogButton.Margin = new Padding(0, 10, 0, 4);
+        Theme.StyleSecondaryButton(OpenLogButton);
+        OpenLogButton.Click += (sender, e) => _openFolder(_dataFolder.LogFolder);
+
+        // A small table of its own over the full width, so the log button ends exactly at the right edge.
+        var historyRow = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
+        historyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        historyRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        historyRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        historyRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        historyRow.Controls.Add(historyTitle, 0, 0);
+        historyRow.Controls.Add(OpenMaterialsButton, 1, 0);
+        historyRow.Controls.Add(OpenLogButton, 2, 0);
+        AddFullRow(body, ref row, historyRow);
 
         BuildHistoryList();
         body.Controls.Add(HistoryList, 0, row);
@@ -233,8 +307,8 @@ internal class SettingsForm : Form
     private Control BuildBottomRow()
     {
         // Same size and same margins for both, so they sit in one line.
-        var save = new Button { Text = Strings.Save, Size = ButtonSize, Margin = new Padding(8, 0, 0, 0) };
-        var cancel = new Button { Text = Strings.Cancel, Size = ButtonSize, Margin = new Padding(8, 0, 0, 0) };
+        var save = new RoundedButton { Text = Strings.Save, Size = ButtonSize, Margin = new Padding(8, 0, 0, 0) };
+        var cancel = new RoundedButton { Text = Strings.Cancel, Size = ButtonSize, Margin = new Padding(8, 0, 0, 0) };
         Theme.StylePrimaryButton(save);
         Theme.StyleSecondaryButton(cancel);
         save.Click += (sender, e) => SaveAndHide();
@@ -272,27 +346,26 @@ internal class SettingsForm : Form
 
     /// <summary>
     /// The footer at the bottom left of the window: the small logo of the company and, at its right, two lines:
-    ///   Dev.: Daan Verhoost  |  ROGIERS NV/SA      (the company name is a link to its website)
-    ///   App version: 1.0.0
+    ///   Dev.: Daan Verhoost
+    ///   ROGIERS NV/SA      (a link to the website of the company)
+    /// The app version is not here: it is at the top right of the window (see BuildWindow).
     /// </summary>
     private Control BuildFooter()
     {
-        string company = Strings.CompanyName;
+        CreditLabel.Text = Strings.DeveloperCredit;
+        CreditLabel.AutoSize = true;
+        CreditLabel.Margin = new Padding(0, 8, 0, 0);
+        CreditLabel.ForeColor = Theme.Navy;
 
-        CreditLink.Text = Strings.DeveloperCredit + "  |  " + company;
-        CreditLink.AutoSize = true;
-        CreditLink.Margin = new Padding(0, 8, 0, 0);
-        CreditLink.ForeColor = Theme.Navy;                 // the normal text
-        CreditLink.LinkColor = Theme.DarkBlue;             // the link
-        CreditLink.ActiveLinkColor = Theme.Navy;
-        CreditLink.VisitedLinkColor = Theme.DarkBlue;
-        CreditLink.Links.Add(CreditLink.Text.Length - company.Length, company.Length, Strings.CompanyUrl);
-        CreditLink.LinkClicked += (sender, e) => OpenWebsite(Strings.CompanyUrl);
-
-        VersionLabel.Text = Strings.AppVersion(AppInfo.Version);
-        VersionLabel.AutoSize = true;
-        VersionLabel.Margin = new Padding(0, 2, 0, 0);
-        VersionLabel.ForeColor = Theme.Navy;
+        CompanyLink.Text = Strings.CompanyName;
+        CompanyLink.AutoSize = true;
+        CompanyLink.Margin = new Padding(0, 2, 0, 0);
+        CompanyLink.ForeColor = Theme.Navy;
+        CompanyLink.LinkColor = Theme.DarkBlue;
+        CompanyLink.ActiveLinkColor = Theme.Navy;
+        CompanyLink.VisitedLinkColor = Theme.DarkBlue;
+        CompanyLink.Links.Add(0, CompanyLink.Text.Length, Strings.CompanyUrl); // the whole text is the link
+        CompanyLink.LinkClicked += (sender, e) => OpenWebsite(Strings.CompanyUrl);
 
         // The two text lines under each other ...
         var lines = new FlowLayoutPanel
@@ -303,8 +376,8 @@ internal class SettingsForm : Form
             Anchor = AnchorStyles.Left, // in the middle of the height of the logo
             Margin = new Padding(0),
         };
-        lines.Controls.Add(CreditLink);
-        lines.Controls.Add(VersionLabel);
+        lines.Controls.Add(CreditLabel);
+        lines.Controls.Add(CompanyLink);
 
         // ... and the small logo of the company at their left.
         LogoPicture.Image = AppIcons.CompanyLogo();
@@ -351,15 +424,20 @@ internal class SettingsForm : Form
         captionLabel.Font = new Font(Font, FontStyle.Bold);
         AddFullRow(table, ref row, captionLabel);
 
-        box.Anchor = AnchorStyles.Left | AnchorStyles.Right; // wide, and in the middle of the row's height
+        // The text box sits in a rounded frame that is as high as the buttons, so both line up in one row.
         box.ForeColor = Theme.Navy;
-        box.Margin = new Padding(0, 0, 8, 0);
+        var frame = new TextBoxFrame(box)
+        {
+            Height = ButtonSize.Height,
+            Anchor = AnchorStyles.Left | AnchorStyles.Right, // wide, and in the middle of the row's height
+            Margin = new Padding(0, 0, 8, 0),
+        };
 
-        var browse = new Button { Text = Strings.Browse, Size = ButtonSize, Margin = new Padding(0) };
+        var browse = new RoundedButton { Text = Strings.Browse, Size = ButtonSize, Margin = new Padding(0) };
         Theme.StyleSecondaryButton(browse);
 
         table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        table.Controls.Add(box, 0, row);
+        table.Controls.Add(frame, 0, row);
         table.Controls.Add(browse, 1, row);
         row++;
 
@@ -372,6 +450,29 @@ internal class SettingsForm : Form
 
         browse.Click += (sender, e) => BrowseForFolder(box, warning);
         box.Leave += (sender, e) => CheckFolder(box, warning);
+    }
+
+    /// <summary>
+    /// A line under a folder: a short explanation on the left and a "Config" button on the right (in line with the
+    /// Browse buttons) that opens the file with the column names.
+    /// </summary>
+    private void AddConfigRow(TableLayoutPanel table, ref int row, Label hint, string hintText, RoundedButton button, Action open)
+    {
+        hint.Text = hintText;
+        hint.AutoSize = true;
+        hint.Anchor = AnchorStyles.Left; // in the middle of the button's height
+        hint.Margin = new Padding(0, 4, 8, 0);
+
+        button.Text = Strings.ConfigButton;
+        button.Size = ButtonSize;
+        button.Margin = new Padding(0, 4, 0, 0);
+        Theme.StyleSecondaryButton(button);
+        button.Click += (sender, e) => open();
+
+        table.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        table.Controls.Add(hint, 0, row);
+        table.Controls.Add(button, 1, row);
+        row++;
     }
 
     /// <summary>A thin horizontal line over the full width, in the pale blue of the theme.</summary>
