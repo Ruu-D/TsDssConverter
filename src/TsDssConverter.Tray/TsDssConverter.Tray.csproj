@@ -12,7 +12,7 @@
     <RootNamespace>TsDssConverter.Tray</RootNamespace>
 
     <!-- The version shown at the bottom of the settings window and written in the log. Change it here. -->
-    <Version>1.0.0</Version>
+    <Version>1.0.2</Version>
 
     <!-- Sharp on high-DPI screens and on a second monitor with another scaling -->
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>

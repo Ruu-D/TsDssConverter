@@ -123,8 +123,51 @@ internal static class Strings
         "Modifier les noms des 10 colonnes de description supplémentaires (DESC1 – DESC10) du CSV des étiquettes",
         "Edit the names of the 10 extra description columns (DESC1 – DESC10) in the label CSV");
 
+    // The line under the two column files: opens materials.csv (the button text is the same as in the tray menu).
+    public static string MaterialsHint => T(
+        "TopSolid-materialen koppelen aan Duivestein-materialen (materials.csv)",
+        "Associer les matériaux TopSolid à ceux de Duivestein (materials.csv)",
+        "Link TopSolid materials to Duivestein materials (materials.csv)");
+
     /// <summary>The button next to the title of the list of conversions: opens the folder with the log files.</summary>
     public static string OpenLogButton => T("Open logmap", "Ouvrir logs", "Open log");
+
+    /// <summary>The button left of "Open log": puts the failed projects back in the export folder to convert them again.</summary>
+    public static string RetryFailedButton => T("Herstart mislukte", "Réessayez échoué", "Retry failed");
+
+    // ---- Retry failed: what the user is told (only when there is something to say; a success is silent) ----
+    public static string RetryNothingFound => T(
+        "Er zijn geen mislukte projecten om opnieuw te proberen.",
+        "Il n'y a aucun projet échoué à réessayer.",
+        "There are no failed projects to retry.");
+
+    public static string RetryBlocked(IEnumerable<string> projects) => T(
+        "Niet opnieuw gestart: in de TopSolid-exportmap staan al bestanden met dezelfde naam voor: " + string.Join(", ", projects) +
+        ". Verwijder of verplaats die eerst.",
+        "Non relancé : le dossier d'export TopSolid contient déjà des fichiers portant le même nom pour : " + string.Join(", ", projects) +
+        ". Supprimez-les ou déplacez-les d'abord.",
+        "Not restarted: the TopSolid export folder already has files with the same name for: " + string.Join(", ", projects) +
+        ". Remove or move those first.");
+
+    public static string RetryProblem(string reason) => T(
+        $"Mislukte projecten konden niet opnieuw worden gestart: {reason}",
+        $"Les projets échoués n'ont pas pu être relancés : {reason}",
+        $"The failed projects could not be restarted: {reason}");
+
+    public static string LogRetryMovedBack(string project) => T(
+        $"Herstart mislukt project: {project} (bestanden teruggezet in de exportmap).",
+        $"Projet échoué relancé : {project} (fichiers remis dans le dossier d'export).",
+        $"Retrying failed project: {project} (files put back in the export folder).");
+
+    public static string LogRetryBlocked(string project) => T(
+        $"Niet opnieuw gestart: {project} (er staan al bestanden met dezelfde naam in de exportmap).",
+        $"Non relancé : {project} (des fichiers du même nom sont déjà dans le dossier d'export).",
+        $"Not restarted: {project} (files with the same name are already in the export folder).");
+
+    public static string LogRetryNothing => T(
+        "Herstart mislukte: geen mislukte projecten gevonden.",
+        "Réessayez échoué : aucun projet échoué trouvé.",
+        "Retry failed: no failed projects found.");
 
     public static string FolderNotReachable => T(
         "Map niet bereikbaar. De instelling wordt toch bewaard.",

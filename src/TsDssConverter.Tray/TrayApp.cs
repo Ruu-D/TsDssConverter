@@ -171,6 +171,69 @@ internal class TrayApp : ApplicationContext
         _watcher.ScanNow();
     }
 
+    // ------------------------------------------------------------------ retry failed
+
+    /// <summary>
+    /// The "Retry failed" button: puts the files of all failed projects back in the export folder and scans at once.
+    /// The moving happens on another thread (a dead network drive must not freeze the window). A success is silent,
+    /// like every other success: the projects show up in the list of conversions. The user only gets a message when
+    /// there was nothing to retry, when a project was left alone, or when something went wrong.
+    /// </summary>
+    private void RetryFailed()
+    {
+        string exportFolder = _settings.TopSolidExportPath;
+
+        Task.Run(() => FailedProjects.RetryAll(exportFolder)).ContinueWith(task =>
+        {
+            RetryResult result = task.IsCompletedSuccessfully
+                ? task.Result
+                : new RetryResult { Problem = task.Exception?.GetBaseException().Message ?? "?" };
+
+            OnTrayThread(() => ReportRetry(result));
+        });
+    }
+
+    private void ReportRetry(RetryResult result)
+    {
+        foreach (string project in result.MovedBack)
+        {
+            _log.Info(Strings.LogRetryMovedBack(project));
+        }
+
+        foreach (string project in result.Blocked)
+        {
+            _log.Warning(Strings.LogRetryBlocked(project));
+        }
+
+        if (result.Problem != null)
+        {
+            _log.Error(Strings.RetryProblem(result.Problem));
+        }
+
+        if (result.MovedBack.Count > 0)
+        {
+            _watcher.ScanNow(); // also while paused: the user asked for it just now
+        }
+        else if (result.Blocked.Count == 0 && result.Problem == null)
+        {
+            _log.Info(Strings.LogRetryNothing);
+        }
+
+        // Only tell the user what needs telling.
+        string? message = result.Problem != null ? Strings.RetryProblem(result.Problem)
+            : result.Blocked.Count > 0 ? Strings.RetryBlocked(result.Blocked)
+            : result.MovedBack.Count == 0 ? Strings.RetryNothingFound
+            : null;
+
+        if (message != null)
+        {
+            bool nothingToRetry = result.MovedBack.Count == 0 && result.Blocked.Count == 0 && result.Problem == null;
+            MessageBox.Show(
+                _settingsForm, message, Strings.AppName, MessageBoxButtons.OK,
+                nothingToRetry ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
+        }
+    }
+
     // ------------------------------------------------------------------ tray icon and menu
 
     private void CreateTrayIcon()
@@ -303,7 +366,7 @@ internal class TrayApp : ApplicationContext
         {
             _settingsForm = new SettingsForm(
                 () => _settings, SaveSettings, AcknowledgeError, _history, _startWithWindows,
-                _dataFolder, OpenDataFile, OpenFolder);
+                _dataFolder, OpenDataFile, OpenFolder, RetryFailed);
         }
 
         if (!_settingsForm.Visible)

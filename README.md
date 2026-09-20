@@ -7,8 +7,11 @@ converts them, without any manual work, into a job that the Duivestein automatic
 
 > **Status: under development.** The conversion engine, its input checks, a command line tool, the tray application
 > and the automatic folder watching are finished and tested (stages 1 to 4 of 5), and the delivery file for version
-> 1.0.0 exists (stage 5). The test at the customer and with the real machines is still to come.
+> 1.0.2 exists (stage 5). The test at the customer and with the real machines is still to come.
 > See [Status and roadmap](#status-and-roadmap).
+>
+> **Important fix still to do:** TopSolid must put the project name in front of the file name of every CNC program, so that
+> two jobs can never overwrite each other's programs. See [Important fix still to do](#important-fix-still-to-do).
 
 ---
 
@@ -107,6 +110,7 @@ A wrong job in an automatic warehouse means a wrong board on the machine, so the
   after the sheet only (`Melamine_18#01.xcs`), so a second job would overwrite the first. After the conversion the program
   files of a job are moved to their own folder, `CNC\<project>\`, and the batch XML points there. A program that is newer
   than the job's trigger file (a later export overwrote it) is refused with a clear message: export that job again.
+  This is a safety net; the real cure is still to be done in TopSolid (see [Important fix still to do](#important-fix-still-to-do)).
 - **The warehouse never sees half a job.** All label files are written first and the batch XML last; every
   file is written under a temporary name and renamed when complete.
 - **Incomplete or inconsistent input is refused, not repaired.** Missing columns, parts that appear in only one
@@ -134,8 +138,11 @@ programs, and the trigger file (`-TR`) as the very last one. When the trigger fi
    English, the folder names follow the selected language), and the CNC programs of the job
    to `CNC\<project>\` (the batch XML points there). The export folder itself then only holds what is not converted yet.
 4. If something is wrong with the files, they go to `_Fout\<date-time> <project>` (`_Erreur` / `_Error`) together with a `fout.txt` that
-   explains in plain language (in the selected language) what to correct. Putting the files back in the export folder
-   starts a new attempt.
+   explains in plain language (in the selected language) what to correct. After the cause is fixed (for example a
+   material was added to `materials.csv`), the button **Herstart mislukte** / **Réessayez échoué** / **Retry failed** in the
+   settings window puts the files of all failed projects back in the export folder, which starts a new attempt at once.
+   It never overwrites a file that is already in the export folder (for example a newer export of the same project): such
+   a project is left alone and the user is told. Putting the files back by hand works as well.
 
 Problems that are not the fault of the files, such as a network drive that is not connected yet, do **not** move
 anything: the files wait and the program tries again by itself, and the user is told once. The program also scans the
@@ -149,11 +156,11 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 | 2 | **Validation**: all checks and warnings, one clear report, exit code for errors | **Done (first draft)** |
 | 3 | **Tray application (shell)**: icon with four looks (normal, busy, error, paused), menu, settings window, `settings.json`, start with Windows, log files. No conversion yet | **Done (first draft)** |
 | 4 | **Folder watching and processing**: trigger file, one conversion at a time, `_Verwerkt` / `_Fout` folders with a readable `fout.txt`, notifications, recovery when the network drive is gone | **Done (first draft)** |
-| 5 | **Delivery**: one file `TsDssConverter.exe` (version 1.0.0, 52 MB, no .NET needed), install at the customer, physical test sheet | **File built, customer test next** |
+| 5 | **Delivery**: one file `TsDssConverter.exe` (version 1.0.2, 52 MB, no .NET needed), install at the customer, physical test sheet | **File built, customer test next** |
 
 **What is verified so far**
 
-- 363 automated tests pass.
+- 403 automated tests pass.
 - Converting the sample TopSolid export gives exactly the expected files (compared byte for byte).
 - Every error and warning listed above is covered by a test, including a wrong pair of files and several
   problems at once.
@@ -201,14 +208,35 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 - The CNC paths in the batch XML use the drive letter of the shared folder (for example `Z:`).
 - After the conversion the CNC programs of a job are moved to `Z:\TopSolid\Export\CNC\<project>\` (decided by Daan, so that
   jobs with the same material and sheet number never overwrite each other's programs).
+- **Retry failed** (decided by Daan): a button in the settings window puts all failed projects back in the export folder
+  once the cause is fixed; it never overwrites, and it is silent when it works (the projects appear in the list).
+- **The conversion history is not saved between runs, and the app runs only while a user is logged in** (by design).
 - The TopSolid material name is the master name; the same names are used in the warehouse.
 - Duivestein checks that the sheet sizes in the batch match their stock.
+
+## Important fix still to do
+
+**Every CNC program file must get the project name as a prefix, to be set up in TopSolid** (for example
+`DAAN_ROGIERS-P2026.09_Melamine_18#01.xcs` instead of `Melamine_18#01.xcs`; the exact format is to be agreed with TopSolid).
+
+Why this matters: TopSolid writes the programs of **all** jobs in one shared folder and names them after the sheet only. A
+second job with the same material and sheet number overwrites the program of the first job before the first job has been
+converted, and a wrong program on the machine is the most expensive mistake this tool could allow.
+
+What the converter does today (a workaround, not a cure): after a conversion it moves the programs of the job to their own
+folder, `CNC\<project>\`, and it refuses a program that is more than 5 seconds newer than the job's trigger file. That
+check compares file times on a network drive, so it is a good safety net but it cannot be proven complete (for example two
+exports within a few seconds of each other, or clocks that differ between the PCs).
+
+With the project name in the file name the collision **cannot happen at all**. When TopSolid delivers it, the change in this
+program is small and in one place (`CncPathBuilder`: the name it looks for and writes in the batch XML), and the "newer than
+the trigger file" check can then be dropped.
 
 ## Still to be confirmed by others
 
 | From | Question |
 |---|---|
-| TopSolid | Confirm the naming and folder of the CNC program per sheet. The program assumes `{sheet name}.xcs` in the export folder (for example `Melamine_18#01.xcs`), which is how all the exports we have look. Also: could the project name be part of that file name? Then two jobs could never collide, even before conversion |
+| TopSolid | **Important:** put the project name in front of the CNC file name (see [Important fix still to do](#important-fix-still-to-do)). Also confirm the naming and folder of the CNC program per sheet. Until then the program assumes `{sheet name}.xcs` in the export folder (for example `Melamine_18#01.xcs`), which is how all the exports we have look |
 | TopSolid | The sheet thickness column in the export is always 18; fix in the export (the tool takes the thickness from `materials.csv`) |
 | Duivestein | Restrictions on batch name (length, characters) and what happens when a batch is sent twice |
 | Duivestein | Character encoding for accented characters in the label files (UTF-8 is used for now) |
@@ -252,8 +280,9 @@ settings window. The window adapts to the screen scaling (100%, 125%, 150%, ...)
 content, so the list of conversions is visible at once.
 
 To build the delivery file for the customer PC, double-click or run `publish.cmd` in the project folder. It runs all
-the tests first, and only if they pass it makes `dist\v1.0.0\TsDssConverter.exe` (the number is the `<Version>` in
-`src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`) and shows its size, version and SHA-256 checksum.
+the tests first, and only if they pass it makes `dist\v1.0.2\TsDssConverter.exe` (the number is the `<Version>` in
+`src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`, the one place to change it) and shows its size, version and
+SHA-256 checksum. The version is also shown at the top right of the settings window and written in the log.
 Use `publish.cmd -SkipTests` to skip the tests.
 
 ### Installing at the customer
@@ -280,7 +309,7 @@ uninstalling is deleting that folder.
 5. If TopSolid names a header differently than the sample export, adjust it with the **Config** buttons.
 6. Test with a real export. The list in the settings window shows the result of every conversion, and the button
    **Open logmap** opens the log files. Files that could not be converted are in `_Fout` (`_Erreur` / `_Error` in French /
-   English) in the export folder, together with a `fout.txt`.
+   English) in the export folder, together with a `fout.txt`; after fixing the cause, press **Herstart mislukte**.
 
 **Updating** to a new version: exit the program (tray menu, *Afsluiten*), replace `TsDssConverter.exe` by the new one
 and start it again. `settings.json`, `materials.csv`, the three column files and the logs are not touched (so a new version never
@@ -350,8 +379,10 @@ Desc2 = KLANT
 A name may only contain letters (no accents), digits, underscore and dash, and must not be the name of another column
 of the label CSV. The names of the 23 fixed columns cannot be changed, because Duivestein reads them by name.
 
-Above the list of conversions there are two more buttons: **Open materiaaltabel** (opens `materials.csv`) and
-**Open logmap** (opens the folder with the log files). The app version is shown at the top right of the window.
+In the TopSolid export section, under the two **Config** buttons, the button **Open materiaaltabel** opens `materials.csv`.
+Above the list of conversions there are two more buttons: **Herstart mislukte** (*Retry failed*: puts the failed projects
+back in the export folder to convert them again) and **Open logmap** (opens the folder with the log files). The app
+version is shown at the top right of the window.
 
 ## Project layout
 

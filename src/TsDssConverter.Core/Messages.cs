@@ -337,6 +337,12 @@ public static class Messages
 
     public static string ErrorFolderName => T("_Fout", "_Erreur", "_Error");
 
+    /// <summary>
+    /// The error folder in EVERY language, so "Retry failed" also finds the jobs that failed before the user switched the
+    /// language. Keep in sync with <see cref="ErrorFolderName"/> (a test checks that).
+    /// </summary>
+    public static readonly string[] ErrorFolderNamesInAllLanguages = { "_Fout", "_Erreur", "_Error" };
+
     public static string ConversionDone(int sheets, int parts, int warnings)
     {
         string text = T(

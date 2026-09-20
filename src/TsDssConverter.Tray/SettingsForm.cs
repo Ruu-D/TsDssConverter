@@ -21,6 +21,7 @@ internal class SettingsForm : Form
     private readonly AppDataFolder _dataFolder;
     private readonly Action<string> _openFile;
     private readonly Action<string> _openFolder;
+    private readonly Action _retryFailed;
 
     // The controls we need to read or fill (internal: the tests check them)
     internal readonly CheckBox StartWithWindowsBox = new FluentCheckBox();
@@ -37,16 +38,18 @@ internal class SettingsForm : Form
     internal readonly Label ConfigInfoHint = new();
     internal readonly Label ConfigPositionHint = new();
     internal readonly Label ConfigLabelHint = new();
+    internal readonly Label MaterialsHint = new();
 
-    // The banner picture is 540 x 84 pixels. It is shown 1.5 times as big.
-    private const int BannerWidth = 810;
-    private const int BannerHeight = 126;
+    // The banner picture is 540 x 84 pixels. It is shown 1.2 times as big.
+    private const int BannerWidth = 648;
+    private const int BannerHeight = 101;
 
     // Parts of the layout that the tests look at
     internal readonly RoundedButton ConfigInfoButton = new();      // opens columns-li.txt (below the export folder)
     internal readonly RoundedButton ConfigPositionButton = new();  // opens columns-lp.txt (below the LI one)
     internal readonly RoundedButton ConfigLabelButton = new();     // opens columns-label.txt (below the label folder)
-    internal readonly RoundedButton OpenMaterialsButton = new();   // opens materials.csv (left of the Open log button)
+    internal readonly RoundedButton OpenMaterialsButton = new();   // opens materials.csv (below the two Config buttons of the export folder)
+    internal readonly RoundedButton RetryFailedButton = new();     // puts the failed projects back in the export folder (left of the Open log button)
     internal readonly RoundedButton OpenLogButton = new();         // opens the log folder (next to "Last conversions")
     internal readonly PictureBox BannerPicture = new();
     internal readonly Label ExportCaption = new();
@@ -58,7 +61,7 @@ internal class SettingsForm : Form
     internal readonly ComboBox LanguageBox = new();
     internal readonly Label CreditLabel = new();     // footer line 1: "Dev.: Daan Verhoost"
     internal readonly LinkLabel CompanyLink = new(); // footer line 2: "ROGIERS NV/SA" (a link to the website)
-    internal readonly Label VersionLabel = new();    // "App version: 1.0.0", at the top right below the banner
+    internal readonly Label VersionLabel = new();    // "App version: 1.0.1", at the top right below the banner
     internal readonly PictureBox LogoPicture = new(); // the small ROGIERS logo at the left of the two footer lines
     internal readonly Panel Scroller = new();        // holds all the settings; scrolls if the window is too small
 
@@ -105,10 +108,11 @@ internal class SettingsForm : Form
     /// <param name="dataFolder">Where the column files (columns-li.txt, columns-lp.txt) and the logs are.</param>
     /// <param name="openFile">Opens a file in the program Windows uses for it (Notepad for a .txt file).</param>
     /// <param name="openFolder">Opens a folder in Explorer.</param>
+    /// <param name="retryFailed">The "Retry failed" button: puts the failed projects back in the export folder (the tray does the work).</param>
     public SettingsForm(
         Func<AppSettings> getSettings, Action<AppSettings> save, Action windowOpened,
         ConversionHistory history, StartWithWindows startup,
-        AppDataFolder dataFolder, Action<string> openFile, Action<string> openFolder)
+        AppDataFolder dataFolder, Action<string> openFile, Action<string> openFolder, Action retryFailed)
     {
         _getSettings = getSettings;
         _save = save;
@@ -118,6 +122,7 @@ internal class SettingsForm : Form
         _dataFolder = dataFolder;
         _openFile = openFile;
         _openFolder = openFolder;
+        _retryFailed = retryFailed;
 
         // Like a form made with the Visual Studio designer: build everything between SuspendLayout and
         // ResumeLayout. WinForms applies the automatic scaling (for 125%, 150%, ...) when the layout resumes.
@@ -162,7 +167,7 @@ internal class SettingsForm : Form
         var body = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            Padding = new Padding(20, 4, 20, 8),
+            Padding = new Padding(20, 4, 20, 20), // left, top, right, bottom: the room below Save / Cancel is as wide as at the sides
             ColumnCount = 2,
             BackColor = Theme.White,
         };
@@ -216,10 +221,11 @@ internal class SettingsForm : Form
 
         // 2, 3, 4. The three folders (the titles are bold)
         // Below the export folder: the column names of the LI file and, right under it, those of the LP file
-        // (both are TopSolid files). A line separates this from the two Duivestein folders.
+        // and then the materials table (all three are about TopSolid). A line separates this from the two Duivestein folders.
         AddFolderRow(body, ref row, ExportCaption, Strings.ExportFolder, ExportFolderBox, _exportWarning);
         AddConfigRow(body, ref row, ConfigInfoHint, Strings.ColumnsInfoHint, ConfigInfoButton, () => _openFile(_dataFolder.InfoColumnsFile));
         AddConfigRow(body, ref row, ConfigPositionHint, Strings.ColumnsPositionHint, ConfigPositionButton, () => _openFile(_dataFolder.PositionColumnsFile));
+        AddMaterialsRow(body, ref row);
         AddDivider(body, ref row, new Padding(0, 20, 0, 12));
         AddFolderRow(body, ref row, BatchCaption, Strings.BatchFolder, BatchFolderBox, _batchWarning);
         // Below the label folder: the names of the ten extra description columns (DESC1 .. DESC10) in the label CSV.
@@ -244,21 +250,17 @@ internal class SettingsForm : Form
         // Save / Cancel
         // Save / Cancel are not here: they sit at the bottom right of the window, see BuildBottomRow.
 
-        // History: the title on the left and, on the right, the buttons that open the materials table and the
+        // History: the title on the left and, on the right, the buttons that retry the failed projects and open the
         // log folder (the last one in line with the Browse buttons). The list itself takes all the remaining height.
         var historyTitle = new Label { Text = Strings.HistoryTitle, AutoSize = true, Margin = new Padding(0, 10, 0, 4) };
         historyTitle.Font = new Font(Font, FontStyle.Bold);
         historyTitle.Anchor = AnchorStyles.Left; // in the middle of the buttons' height
 
-        // "Open materiaaltabel" is too long for a button of 100 pixels, so this one is wider: as wide as its text needs
-        // (measured here at 100%; the window scaling makes it bigger later, like every other size). The height stays
-        // the same as all buttons. (AutoSize was not used: it made the height different.)
-        OpenMaterialsButton.Text = Strings.MenuOpenMaterials;
-        int materialsWidth = TextRenderer.MeasureText(OpenMaterialsButton.Text, Font).Width + 24;
-        OpenMaterialsButton.Size = new Size(Math.Max(ButtonSize.Width, materialsWidth), ButtonSize.Height);
-        OpenMaterialsButton.Margin = new Padding(0, 10, 8, 4);
-        Theme.StyleSecondaryButton(OpenMaterialsButton);
-        OpenMaterialsButton.Click += (sender, e) => _openFile(_dataFolder.MaterialsFile);
+        RetryFailedButton.Text = Strings.RetryFailedButton;
+        RetryFailedButton.Size = new Size(WideButtonWidth(RetryFailedButton.Text), ButtonSize.Height);
+        RetryFailedButton.Margin = new Padding(0, 10, 8, 4);
+        Theme.StyleSecondaryButton(RetryFailedButton);
+        RetryFailedButton.Click += (sender, e) => _retryFailed();
 
         OpenLogButton.Text = Strings.OpenLogButton;
         OpenLogButton.Size = ButtonSize;
@@ -273,7 +275,7 @@ internal class SettingsForm : Form
         historyRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         historyRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         historyRow.Controls.Add(historyTitle, 0, 0);
-        historyRow.Controls.Add(OpenMaterialsButton, 1, 0);
+        historyRow.Controls.Add(RetryFailedButton, 1, 0);
         historyRow.Controls.Add(OpenLogButton, 2, 0);
         AddFullRow(body, ref row, historyRow);
 
@@ -473,6 +475,45 @@ internal class SettingsForm : Form
         table.Controls.Add(hint, 0, row);
         table.Controls.Add(button, 1, row);
         row++;
+    }
+
+    /// <summary>
+    /// The line under the two column files: a short explanation on the left and the button "Open materiaaltabel" on the
+    /// right. That text is too long for a button of 100 pixels, so the button is wider, and the row is a small table of
+    /// its own over the full width (like the history row): the wide button ends exactly at the right edge of the Browse
+    /// buttons and does not make their column wider.
+    /// </summary>
+    private void AddMaterialsRow(TableLayoutPanel table, ref int row)
+    {
+        MaterialsHint.Text = Strings.MaterialsHint;
+        MaterialsHint.AutoSize = true;
+        MaterialsHint.Anchor = AnchorStyles.Left; // in the middle of the button's height
+        MaterialsHint.Margin = new Padding(0, 4, 8, 0);
+
+        OpenMaterialsButton.Text = Strings.MenuOpenMaterials;
+        OpenMaterialsButton.Size = new Size(WideButtonWidth(OpenMaterialsButton.Text), ButtonSize.Height);
+        OpenMaterialsButton.Margin = new Padding(0, 4, 0, 0);
+        Theme.StyleSecondaryButton(OpenMaterialsButton);
+        OpenMaterialsButton.Click += (sender, e) => _openFile(_dataFolder.MaterialsFile);
+
+        var materialsRow = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
+        materialsRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        materialsRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        materialsRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        materialsRow.Controls.Add(MaterialsHint, 0, 0);
+        materialsRow.Controls.Add(OpenMaterialsButton, 1, 0);
+        AddFullRow(table, ref row, materialsRow);
+    }
+
+    /// <summary>
+    /// The width of a button whose text is too long for the normal 100 pixels ("Open materiaaltabel", "Réessayez échoué"):
+    /// as wide as the text needs, never narrower than a normal button. Measured here at 100%; the window scaling makes it
+    /// bigger later, like every other size. The height stays the same as all buttons. (AutoSize was not used: it made the
+    /// height different.)
+    /// </summary>
+    private int WideButtonWidth(string text)
+    {
+        return Math.Max(ButtonSize.Width, TextRenderer.MeasureText(text, Font).Width + 24);
     }
 
     /// <summary>A thin horizontal line over the full width, in the pale blue of the theme.</summary>

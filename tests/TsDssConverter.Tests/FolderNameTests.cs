@@ -17,6 +17,7 @@ public class FolderNameTests
         Assert.Equal(error, Messages.ErrorFolderName);
         Assert.Equal(done, ProjectProcessor.DoneFolderName);
         Assert.Equal(error, ProjectProcessor.ErrorFolderName);
+        Assert.Contains(error, Messages.ErrorFolderNamesInAllLanguages); // "Retry failed" searches all three
     }
 
     [Theory]

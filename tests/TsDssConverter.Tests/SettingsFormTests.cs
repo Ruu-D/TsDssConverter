@@ -47,6 +47,7 @@ public class SettingsFormTests
         public AppDataFolder DataFolder { get; } = new(@"C:\TsDssTestData");
         public List<string> OpenedFiles { get; } = new();    // what the Config buttons asked to open
         public List<string> OpenedFolders { get; } = new();  // what the Open log button asked to open
+        public int RetryClicks { get; private set; }         // how often the Retry failed button was pressed
         public SettingsForm Form { get; }
 
         public TestWindow()
@@ -54,7 +55,7 @@ public class SettingsFormTests
             Startup = new StartWithWindows(RegistryPath, @"C:\TsDssConverter\TsDssConverter.exe");
             Form = new SettingsForm(
                 () => Current, saved => { Saved = saved; Current = saved; }, () => TimesOpened++, History, Startup,
-                DataFolder, OpenedFiles.Add, OpenedFolders.Add);
+                DataFolder, OpenedFiles.Add, OpenedFolders.Add, () => RetryClicks++);
         }
 
         public void Dispose()
@@ -97,6 +98,26 @@ public class SettingsFormTests
             form.OpenLogButton.PerformClick();
             Assert.Equal(new[] { @"C:\TsDssTestData\logs" }, window.OpenedFolders);
             Assert.Equal(3, window.OpenedFiles.Count); // the log button opens a folder, not a file
+        });
+    }
+
+    [Fact]
+    public void RetryFailedButton_AsksTheTrayToRetry_AndOpensNothing()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            var form = window.Form;
+            form.Show();
+
+            Assert.Equal("Herstart mislukte", form.RetryFailedButton.Text);   // Dutch is the default language
+            Assert.Equal(0, window.RetryClicks);
+
+            form.RetryFailedButton.PerformClick();
+
+            Assert.Equal(1, window.RetryClicks);
+            Assert.Empty(window.OpenedFiles);     // it does the work itself: no file and no folder is opened
+            Assert.Empty(window.OpenedFolders);
         });
     }
 
@@ -289,20 +310,21 @@ public class SettingsFormTests
     // ---------------------------------------------------------------- layout
 
     [Fact]
-    public void Banner_IsOnePointFiveTimesTheOriginalSize()
+    public void Banner_KeepsTheProportionsOfThePicture_AndFitsInTheWindow()
     {
         RunOnStaThread(() =>
         {
             using var window = new TestWindow();
             window.Form.Show();
 
-            double scale = window.Form.DeviceDpi / 96.0; // sizes are scaled on a high-DPI screen
-            double width = window.Form.BannerPicture.Width / scale;
-            double height = window.Form.BannerPicture.Parent!.Height / scale;
+            // The size itself is a choice (BannerWidth / BannerHeight in SettingsForm.cs) and is not repeated here.
+            // What must stay true: the panel and the picture have the proportions of the 540 x 84 banner (otherwise the
+            // picture is zoomed smaller and blue bars appear), and the whole banner fits in the window.
+            double pictureRatio = (double)window.Form.BannerPicture.Image!.Width / window.Form.BannerPicture.Image.Height;
+            double bannerRatio = (double)window.Form.BannerPicture.Width / window.Form.BannerPicture.Parent!.Height;
 
-            Assert.InRange(width, 809, 811);   // 540 x 1.5 = 810
-            Assert.InRange(height, 125, 127);  // 84 x 1.5 = 126
-            Assert.True(window.Form.ClientSize.Width >= window.Form.BannerPicture.Width); // the whole banner fits
+            Assert.InRange(bannerRatio, pictureRatio - 0.05, pictureRatio + 0.05);
+            Assert.True(window.Form.ClientSize.Width >= window.Form.BannerPicture.Width);
         });
     }
 

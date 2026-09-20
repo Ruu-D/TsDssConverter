@@ -41,7 +41,7 @@ public class WindowSizeTests
             var startup = new StartWithWindows(RegistryPath, @"C:\TsDssConverter\TsDssConverter.exe");
             Form = new SettingsForm(
                 () => new AppSettings(), saved => { }, () => { }, new ConversionHistory(), startup,
-                new AppDataFolder(@"C:\TsDssTestData"), path => { }, path => { });
+                new AppDataFolder(@"C:\TsDssTestData"), path => { }, path => { }, () => { });
         }
 
         public void Dispose()
@@ -124,6 +124,29 @@ public class WindowSizeTests
     }
 
     [Fact]
+    public void TheWhiteRoomBelowSaveAndCancel_IsAsWideAsTheRoomAtTheLeftAndRight()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new Window();
+            window.Form.Show();
+            window.Form.SizeToContent(BigScreen);
+            window.Form.PerformLayout();
+            var form = window.Form;
+            var cancel = (Button)form.CancelButton!;
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+
+            int left = Place(form.Dividers[0]).X;                                        // the content starts here (a line over the full width)
+            int right = form.ClientSize.Width - (Place(cancel).X + cancel.Width);        // Cancel ends at the right edge of the content
+            int below = form.ClientSize.Height - (Place(cancel).Y + cancel.Height);      // Save / Cancel are the last thing in the window
+
+            Assert.True(left > 0);
+            Assert.InRange(right, left - 1, left + 1);
+            Assert.InRange(below, left - 1, left + 1);
+        });
+    }
+
+    [Fact]
     public void WhenTheFolderWarningsAppearLater_TheyDoNotPushTheFooterOutOfView()
     {
         RunOnStaThread(() =>
@@ -195,12 +218,14 @@ public class WindowSizeTests
             Size expected = new(form.LogicalToDeviceUnits(100), form.LogicalToDeviceUnits(28));
             var buttons = AllControls(form).OfType<Button>().ToList();
 
-            Assert.Equal(10, buttons.Count); // 3 x Browse, 3 x Config, Open materials table, Open log, Save, Cancel
-            Assert.All(buttons.Where(button => button != form.OpenMaterialsButton), button => Assert.Equal(expected, button.Size));
+            Assert.Equal(11, buttons.Count); // 3 x Browse, 3 x Config, Open materials table, Retry failed, Open log, Save, Cancel
 
-            // "Open materiaaltabel" is too long for 100 pixels: that one button may be wider, never smaller.
-            Assert.Equal(expected.Height, form.OpenMaterialsButton.Height);
-            Assert.True(form.OpenMaterialsButton.Width >= expected.Width);
+            var wideButtons = new Button[] { form.OpenMaterialsButton, form.RetryFailedButton };
+            Assert.All(buttons.Where(button => !wideButtons.Contains(button)), button => Assert.Equal(expected, button.Size));
+
+            // "Open materiaaltabel" and "Herstart mislukte" are too long for 100 pixels: those buttons may be wider, never smaller.
+            Assert.All(wideButtons, button => Assert.Equal(expected.Height, button.Height));
+            Assert.All(wideButtons, button => Assert.True(button.Width >= expected.Width));
         });
     }
 
@@ -244,7 +269,7 @@ public class WindowSizeTests
     }
 
     [Fact]
-    public void OpenMaterialsTable_SitsLeftOfOpenLog_OnTheSameLine_WithARoomBetween()
+    public void RetryFailed_SitsLeftOfOpenLog_OnTheSameLine_WithARoomBetween()
     {
         RunOnStaThread(() =>
         {
@@ -255,12 +280,41 @@ public class WindowSizeTests
             var form = window.Form;
             Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
 
-            Point materials = Place(form.OpenMaterialsButton), log = Place(form.OpenLogButton);
-            int gap = log.X - (materials.X + form.OpenMaterialsButton.Width);
+            Point retry = Place(form.RetryFailedButton), log = Place(form.OpenLogButton);
+            int gap = log.X - (retry.X + form.RetryFailedButton.Width);
 
-            Assert.Equal(log.Y, materials.Y);                                        // one line
+            Assert.Equal(log.Y, retry.Y);                                            // one line
             Assert.InRange(gap, 1, form.LogicalToDeviceUnits(20));                    // left of it, not touching, not far away
-            Assert.True(Place(form.OpenMaterialsButton).Y + form.OpenMaterialsButton.Height <= Place(form.HistoryList).Y);
+            Assert.True(retry.Y + form.RetryFailedButton.Height <= Place(form.HistoryList).Y);
+            Assert.True(retry.Y >= Place(form.FlipYBox).Y + form.FlipYBox.Height);    // on the line of the title of the list
+        });
+    }
+
+    [Fact]
+    public void OpenMaterialsTable_SitsUnderTheTwoConfigButtons_InTheExportSection_AndEndsAtTheRightEdgeOfTheBrowseButtons()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new Window();
+            window.Form.Show();
+            window.Form.SizeToContent(BigScreen);
+            window.Form.PerformLayout();
+            var form = window.Form;
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+            int Bottom(Control control) => Place(control).Y + control.Height;
+
+            // Right under the LP Config button, and still above the Duivestein batch folder (so in the TopSolid section).
+            Assert.True(Place(form.OpenMaterialsButton).Y >= Bottom(form.ConfigPositionButton));
+            Assert.True(Place(form.OpenMaterialsButton).Y - Bottom(form.ConfigPositionButton) < form.LogicalToDeviceUnits(12));
+            Assert.True(Place(form.MaterialsHint).Y >= Bottom(form.ConfigPositionHint));
+            Assert.True(Bottom(form.OpenMaterialsButton) <= Place(form.BatchCaption).Y);
+
+            // It is wider than a Browse button, but ends at the same right edge (and does not make the Browse column wider).
+            var browse = AllControls(form).OfType<Button>().First(b => b.Text == Strings.Browse);
+            int materialsRight = Place(form.OpenMaterialsButton).X + form.OpenMaterialsButton.Width;
+            int browseRight = Place(browse).X + browse.Width;
+            Assert.InRange(materialsRight - browseRight, -1, 1);
+            Assert.Equal(form.LogicalToDeviceUnits(100), browse.Width);
         });
     }
 
@@ -279,7 +333,7 @@ public class WindowSizeTests
             window.Form.PerformLayout();
             var form = window.Form;
 
-            foreach (Button button in new[] { form.ConfigInfoButton, form.ConfigPositionButton, form.ConfigLabelButton, form.OpenMaterialsButton, form.OpenLogButton })
+            foreach (Button button in new[] { form.ConfigInfoButton, form.ConfigPositionButton, form.ConfigLabelButton, form.OpenMaterialsButton, form.RetryFailedButton, form.OpenLogButton })
             {
                 int textWidth = TextRenderer.MeasureText(button.Text, button.Font).Width;
                 Assert.True(textWidth + form.LogicalToDeviceUnits(16) <= button.Width, $"'{button.Text}' does not fit in its button in {language}");
@@ -288,6 +342,7 @@ public class WindowSizeTests
             Assert.True(form.ConfigInfoHint.Right <= form.ConfigInfoButton.Left, $"The LI hint runs into its button in {language}");
             Assert.True(form.ConfigPositionHint.Right <= form.ConfigPositionButton.Left, $"The LP hint runs into its button in {language}");
             Assert.True(form.ConfigLabelHint.Right <= form.ConfigLabelButton.Left, $"The label hint runs into its button in {language}");
+            Assert.True(form.MaterialsHint.Right <= form.OpenMaterialsButton.Left, $"The materials hint runs into its button in {language}");
         });
     }
 

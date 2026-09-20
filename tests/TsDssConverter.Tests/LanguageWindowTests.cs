@@ -38,7 +38,7 @@ public class LanguageWindowTests
             var startup = new StartWithWindows(RegistryPath, @"C:\TsDssConverter\TsDssConverter.exe");
             Form = new SettingsForm(
                 () => Current, saved => { Saved = saved; Current = saved; }, () => { }, new ConversionHistory(), startup,
-                new AppDataFolder(@"C:\TsDssTestData"), path => { }, path => { });
+                new AppDataFolder(@"C:\TsDssTestData"), path => { }, path => { }, () => { });
         }
 
         public void Dispose()
@@ -188,7 +188,7 @@ public class LanguageWindowTests
 
             Assert.Equal("Dev.: Daan Verhoost", form.CreditLabel.Text);
             Assert.Equal("ROGIERS NV/SA", form.CompanyLink.Text);
-            Assert.Equal("App-versie: 1.0.0", form.VersionLabel.Text); // Dutch is the default language
+            Assert.Equal("App-versie: " + AppInfo.Version, form.VersionLabel.Text); // Dutch is the default language
 
             // The version is not one of the footer lines any more (the footer is the parent of the logo and the lines).
             Assert.Same(form.CreditLabel.Parent, form.CompanyLink.Parent);
@@ -228,16 +228,17 @@ public class LanguageWindowTests
             using (new LanguageScope(AppLanguage.English))
             using (var window = new Window())
             {
-                Assert.Equal("App version: 1.0.0", window.Form.VersionLabel.Text);
+                Assert.Equal("App version: " + AppInfo.Version, window.Form.VersionLabel.Text);
             }
 
             using (new LanguageScope(AppLanguage.French))
             using (var window = new Window())
             {
-                Assert.Equal("Version de l'application : 1.0.0", window.Form.VersionLabel.Text);
+                Assert.Equal("Version de l'application : " + AppInfo.Version, window.Form.VersionLabel.Text);
             }
 
-            Assert.Equal("1.0.0", AppInfo.Version); // the <Version> line in TsDssConverter.Tray.csproj
+            // The number itself is the <Version> line in TsDssConverter.Tray.csproj (the only place to change it): not repeated here.
+            Assert.Matches(@"^\d+\.\d+\.\d+$", AppInfo.Version);
         });
     }
 
