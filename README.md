@@ -25,13 +25,7 @@ The settings window (here in English; the whole interface is also available in D
 the label zero point and the list of the last conversions:
 
 <p align="center">
-  <img src="media/preview/MainUI-preview.png" width="620" alt="The TsDssConverter settings window: language, start with Windows, the TopSolid export folder, the two Duivestein folders, the Config buttons, the label zero point and the list of the last conversions.">
-</p>
-
-A short demo of the program in use:
-
-<p align="center">
-  <img src="media/preview/TsDssConverter_DEMO.gif" width="620" alt="Animated demo of TsDssConverter.">
+  <img src="media/preview/TsDssConverter_DEMO.gif" width="620" alt="Animated demo of the TsDssConverter settings window: language, start with Windows, the TopSolid export folder, the two Duivestein folders, the Config buttons, the label zero point and the list of the last conversions.">
 </p>
 
 ## Why this tool exists
