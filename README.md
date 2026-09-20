@@ -12,6 +12,22 @@ converts them, without any manual work, into a job that the Duivestein automatic
 
 ---
 
+## What it looks like
+
+The program lives in the Windows tray, next to the clock (possibly under the `^` arrow), and works silently in the
+background. Double-click the icon to open the settings window.
+
+<p align="center">
+  <img src="media/preview/TrayIcon.png" width="420" alt="The TsDssConverter icon in the Windows tray, next to the clock.">
+</p>
+
+The settings window (here in English; the whole interface is also available in Dutch and French) holds the folders,
+the label zero point and the list of the last conversions:
+
+<p align="center">
+  <img src="media/preview/MainUI-preview.png" width="620" alt="The TsDssConverter settings window: language, start with Windows, the TopSolid export folder, the two Duivestein folders, the Config buttons, the label zero point and the list of the last conversions.">
+</p>
+
 ## Why this tool exists
 
 At the customer, panels are nested and programmed in **TopSolid** (CAD/CAM) for an **SCM Morbidelli X200**
