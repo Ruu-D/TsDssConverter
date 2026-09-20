@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<DSSBatch>
+  <BatchName>DAAN_ROGIERS-P2026.09</BatchName>
+  <BatchDescription>DAAN_ROGIERS-P2026.09</BatchDescription>
+  <PlanDate>2026-09-20</PlanDate>
+  <AutoExpand>False</AutoExpand>
+  <Plans>
+    <Plan>
+      <PlanName>001</PlanName>
+      <Material>Melamine_18</Material>
+      <XDimSize>2850</XDimSize>
+      <YDimSize>2100</YDimSize>
+      <Grain>0</Grain>
+      <Quantity>2</Quantity>
+      <Rotation>0</Rotation>
+      <LabelFilenames>
+        <LabelFilename>Z:\Duivestein\Label\DAAN_ROGIERS-P2026.09_001.csv</LabelFilename>
+        <LabelFilename>Z:\Duivestein\Label\DAAN_ROGIERS-P2026.09_002.csv</LabelFilename>
+      </LabelFilenames>
+      <CNCFilenames>
+        <CNCFilename>Z:\TopSolid\Export\CNC\DAAN_ROGIERS-P2026.09\Melamine_18#01.xcs</CNCFilename>
+        <CNCFilename>Z:\TopSolid\Export\CNC\DAAN_ROGIERS-P2026.09\Melamine_18#02.xcs</CNCFilename>
+      </CNCFilenames>
+    </Plan>
+    <Plan>
+      <PlanName>002</PlanName>
+      <Material>Melamine_08</Material>
+      <XDimSize>2850</XDimSize>
+      <YDimSize>2100</YDimSize>
+      <Grain>0</Grain>
+      <Quantity>1</Quantity>
+      <Rotation>0</Rotation>
+      <LabelFilenames>
+        <LabelFilename>Z:\Duivestein\Label\DAAN_ROGIERS-P2026.09_003.csv</LabelFilename>
+      </LabelFilenames>
+      <CNCFilenames>
+        <CNCFilename>Z:\TopSolid\Export\CNC\DAAN_ROGIERS-P2026.09\Melamine_08#01.xcs</CNCFilename>
+      </CNCFilenames>
+    </Plan>
+  </Plans>
+  <Routes>
+    <Route>
+      <ToStackPosition>LBL</ToStackPosition>
+      <Parameters/>
+    </Route>
+  </Routes>
+</DSSBatch>

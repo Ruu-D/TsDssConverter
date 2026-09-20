@@ -1,0 +1,13 @@
+{
+  "TopSolidExportPath": "Z:\\TopSolid\\Export\\",
+  "BatchFolder": "Z:\\Duivestein\\Batch",
+  "LabelFolder": "Z:\\Duivestein\\Label",
+  "FlipX": false,
+  "FlipY": false,
+  "Language": "nl",
+  "CncExtension": ".xcs",
+  "CncPathPrefixInXml": "",
+  "CsvEncoding": "utf-8",
+  "RescanSeconds": 30,
+  "RequireTriggerFile": true
+}

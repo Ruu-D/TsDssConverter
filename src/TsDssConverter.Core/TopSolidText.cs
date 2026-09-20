@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace TsDssConverter.Core;
 
 /// <summary>
-/// Reads the values that TopSolid packs into text: "L: 660.0mm X B: 590.0mm", "Verschuren - K2 - Front - 19587",
+/// Reads the values that TopSolid packs into text: "L: 660.0mm X B: 590.0mm", "K1 - Front - 3575",
 /// "White_18#01".
 /// </summary>
 public static class TopSolidText

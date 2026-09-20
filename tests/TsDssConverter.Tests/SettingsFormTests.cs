@@ -367,7 +367,7 @@ public class SettingsFormTests
         {
             using var window = new TestWindow();
             window.Current = new AppSettings { TopSolidExportPath = @"C:\Windows\", BatchFolder = @"C:\Windows\", LabelFolder = @"C:\Windows\" };
-            window.History.Add(new HistoryEntry { Time = DateTime.Now.AddMinutes(-9), Project = "Verschuren-P-20", Success = true, Message = "11 platen, 63 labels" });
+            window.History.Add(new HistoryEntry { Time = DateTime.Now.AddMinutes(-9), Project = "DAAN_ROGIERS-P2026.09", Success = true, Message = "3 platen, 22 labels" });
             window.History.Add(new HistoryEntry { Time = DateTime.Now.AddMinutes(-2), Project = "Huppy-002", Success = false, Message = "Materiaal 'Oak_18' staat niet in materials.csv." });
             window.Form.Show();
             window.Form.LoadFromSettings();

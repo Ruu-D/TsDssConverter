@@ -10,4 +10,10 @@
     <PackageReference Include="ClosedXML" Version="0.105.1" />
   </ItemGroup>
 
+  <!-- The default settings.json, materials.csv and column files from the defaults folder are built into the program
+       (so the delivery stays ONE exe). The first start writes them to C:\TsDssConverter (PackedDefaults). -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\defaults\*.*" LogicalName="defaults/%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

@@ -9,16 +9,19 @@ namespace TsDssConverter.Core;
 /// The ORDER of the columns in the XLSX never matters: columns are always found by name.
 ///
 /// A file looks like this (one field per line, several names for one field are separated by |):
-///   SheetName = Naam_Plaat
-///   Project   = Test | Project
+///   SheetName = Nom_panneau | Naam_Plaat
+///   Project   = Projet | Project
 /// </summary>
 public class ColumnMap
 {
     public const string InfoFileName = "columns-li.txt";
     public const string PositionFileName = "columns-lp.txt";
 
-    /// <summary>One field: its key, the built-in header name and whether the file cannot do without it.</summary>
-    private record Field(string Key, string DefaultHeader, bool Required = true);
+    /// <summary>
+    /// One field: its key, the built-in header name(s) and whether the file cannot do without it.
+    /// Several accepted names are written with a | between them; the first one is the one of the newest export.
+    /// </summary>
+    private record Field(string Key, string DefaultHeaders, bool Required = true);
 
     /// <summary>
     /// The ten extra description fields (Desc1 = header "DESC1", ...). Optional in both files: a file without
@@ -31,19 +34,22 @@ public class ColumnMap
             .ToArray();
     }
 
+    // The order below is the order of the columns in the newest TopSolid export (French headers), which is also the
+    // order in a new columns-li.txt. The older Dutch header names stay accepted as a second name, so an export
+    // of the older kind (Naam_Plaat, Omschrijving, ...) is still understood.
     private static readonly Field[] InfoFields = new Field[]
     {
-        new(ColumnKeys.Info.SheetName, "Naam_Plaat"),
-        new(ColumnKeys.Info.Description, "Omschrijving"),
-        new(ColumnKeys.Info.Dimensions, "Afmetingen"),
-        new(ColumnKeys.Info.MaterialText, "Materiaal"),
+        new(ColumnKeys.Info.Project, "Projet|Test"), // "Test" was the badly named header of the project number
+        new(ColumnKeys.Info.SheetName, "Nom_panneau|Naam_Plaat"),
+        new(ColumnKeys.Info.Description, "Description|Omschrijving"),
+        new(ColumnKeys.Info.Dimensions, "Dimensions|Afmetingen"),
+        new(ColumnKeys.Info.MaterialText, "Matériau|Materiaal"),
         new(ColumnKeys.Info.EdgeL1, "L1"),
         new(ColumnKeys.Info.EdgeL2, "L2"),
         new(ColumnKeys.Info.EdgeB1, "B1"),
         new(ColumnKeys.Info.EdgeB2, "B2"),
         new(ColumnKeys.Info.Cam2, "CAM_2"),
-        new(ColumnKeys.Info.Opleg2, "Opleg_2_?"),
-        new(ColumnKeys.Info.Project, "Test"), // actually the project number (badly named header, open point 5)
+        new(ColumnKeys.Info.Cam3, "CAM_3"),
     }.Concat(DescriptionFields()).ToArray();
 
     private static readonly Field[] PositionFields = new Field[]
@@ -77,7 +83,7 @@ public class ColumnMap
 
         foreach (Field field in fields)
         {
-            _headers[field.Key] = new List<string> { field.DefaultHeader };
+            _headers[field.Key] = field.DefaultHeaders.Split('|').ToList();
         }
     }
 
@@ -240,7 +246,8 @@ public class ColumnMap
 
         // The example in the explanation uses the first field of THIS file, with a made-up second name.
         Field first = _fields[0];
-        string example = $"{first.Key} = {first.DefaultHeader} | {first.DefaultHeader}_2";
+        string firstName = first.DefaultHeaders.Split('|')[0];
+        string example = $"{first.Key} = {firstName} | {firstName}_2";
 
         foreach (string line in Messages.ColumnsFileIntro(FileKind, example).Split('\n'))
         {
@@ -248,10 +255,12 @@ public class ColumnMap
         }
 
         text.AppendLine();
+        bool previousWasRequired = true;
         foreach (Field field in _fields)
         {
             // A blank line and a note above the first field of each group of optional fields:
             // the description fields have a note of their own, the other optional fields the general one.
+            // (Optional fields that follow each other share one note.)
             if (field.Key == ColumnKeys.Desc(1))
             {
                 text.AppendLine();
@@ -260,13 +269,14 @@ public class ColumnMap
                     text.Append("# ").AppendLine(line);
                 }
             }
-            else if (!field.Required && !ColumnKeys.IsDesc(field.Key))
+            else if (!field.Required && !ColumnKeys.IsDesc(field.Key) && previousWasRequired)
             {
                 text.AppendLine();
                 text.Append("# ").AppendLine(Messages.ColumnsFileOptional);
             }
 
             text.Append(field.Key.PadRight(width)).Append(" = ").AppendLine(string.Join(" | ", _headers[field.Key]));
+            previousWasRequired = field.Required;
         }
 
         return text.ToString(); // AppendLine uses the Windows line ending (CRLF)

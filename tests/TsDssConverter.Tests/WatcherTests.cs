@@ -16,7 +16,7 @@ public class FakeClock
 /// </summary>
 public sealed class ExportFixture : IDisposable
 {
-    private const string Project = "Verschuren-P-20";
+    private const string Project = "DAAN_ROGIERS-P2026.09";
 
     private readonly TempFolder _root = new();
     public FakeClock Clock { get; } = new();
@@ -92,7 +92,7 @@ public class WatcherTests
         ScanResult scan = new ExportScanner(() => world.Clock.Now).Scan(world.Export, requireTriggerFile: true);
 
         ProjectFiles ready = Assert.Single(scan.Ready);
-        Assert.Equal("Verschuren-P-20", ready.Project);   // the project name is everything before -LI / -LP / -TR
+        Assert.Equal("DAAN_ROGIERS-P2026.09", ready.Project);   // the project name is everything before -LI / -LP / -TR
         Assert.Equal(world.InfoPath(), ready.InfoPath);
         Assert.False(scan.IsWaiting);
         Assert.Null(scan.FolderProblem);
@@ -115,7 +115,7 @@ public class WatcherTests
     {
         using var world = new ExportFixture();
         world.AddProject();
-        File.WriteAllText(Path.Combine(world.Export, "~$Verschuren-P-20-LI.xlsx"), "lock");
+        File.WriteAllText(Path.Combine(world.Export, "~$DAAN_ROGIERS-P2026.09-LI.xlsx"), "lock");
         File.WriteAllText(Path.Combine(world.Export, "prijslijst.xlsx"), "x");
         File.WriteAllText(Path.Combine(world.Export, "-TR.xlsx"), "x"); // no project name in front
         Directory.CreateDirectory(Path.Combine(world.Export, "_Verwerkt", "old"));
@@ -124,7 +124,7 @@ public class WatcherTests
 
         ScanResult scan = new ExportScanner(() => world.Clock.Now).Scan(world.Export, requireTriggerFile: true);
 
-        Assert.Equal("Verschuren-P-20", Assert.Single(scan.Ready).Project);
+        Assert.Equal("DAAN_ROGIERS-P2026.09", Assert.Single(scan.Ready).Project);
         Assert.Empty(scan.GaveUp);
     }
 
@@ -224,7 +224,7 @@ public class WatcherTests
         world.Clock.Advance(TimeSpan.FromMinutes(2));
 
         GaveUpProject gaveUp = Assert.Single(scanner.Scan(world.Export, true).GaveUp);
-        Assert.Contains("Verschuren-P-20-LI.xlsx", gaveUp.Reason);
+        Assert.Contains("DAAN_ROGIERS-P2026.09-LI.xlsx", gaveUp.Reason);
     }
 
     [Fact]
@@ -278,28 +278,49 @@ public class WatcherTests
     // ================================================================ the processor: convert and put the files away
 
     [Fact]
-    public void Processor_Success_WritesTheBatch_AndMovesLiLpAndTrToVerwerkt_ButNotTheCncFiles()
+    public void Processor_Success_WritesTheBatch_MovesLiLpAndTrToVerwerkt_AndTheCncFilesToTheirProjectFolder()
     {
         using var world = new ExportFixture();
         world.AddProject();
-        string cnc = Path.Combine(world.Export, "Verschuren-P-20_White_18_01.xcs");
+        string cnc = Path.Combine(world.Export, "Melamine_18#01.xcs");
         File.WriteAllText(cnc, "cnc");
 
         ProcessOutcome outcome = new ProjectProcessor(world.MaterialsFile).Process(world.Files(), world.Settings, world.Clock.Now);
 
         Assert.True(outcome.Success, outcome.Message);
-        Assert.StartsWith("11 platen, 63 labels", outcome.Message);
-        Assert.Equal(10, outcome.Warnings.Count);          // 11 CNC files expected, one of them exists
-        Assert.True(File.Exists(Path.Combine(world.Batch, "Verschuren-P-20.xml")));
-        Assert.Equal(11, Directory.GetFiles(world.Label, "*.csv").Length);
+        Assert.StartsWith("3 platen, 22 labels", outcome.Message);
+        Assert.Equal(2, outcome.Warnings.Count);           // 3 CNC files expected, one of them exists
+        Assert.True(File.Exists(Path.Combine(world.Batch, "DAAN_ROGIERS-P2026.09.xml")));
+        Assert.Equal(3, Directory.GetFiles(world.Label, "*.csv").Length);
 
         string done = world.StampFolder("_Verwerkt");
         Assert.Equal(done, outcome.MovedTo);
-        Assert.True(File.Exists(Path.Combine(done, "Verschuren-P-20-LI.xlsx")));
-        Assert.True(File.Exists(Path.Combine(done, "Verschuren-P-20-LP.xlsx")));
-        Assert.True(File.Exists(Path.Combine(done, "Verschuren-P-20-TR.xlsx")));
+        Assert.True(File.Exists(Path.Combine(done, "DAAN_ROGIERS-P2026.09-LI.xlsx")));
+        Assert.True(File.Exists(Path.Combine(done, "DAAN_ROGIERS-P2026.09-LP.xlsx")));
+        Assert.True(File.Exists(Path.Combine(done, "DAAN_ROGIERS-P2026.09-TR.xlsx")));
         Assert.False(File.Exists(world.InfoPath()));       // not in the export folder anymore
-        Assert.True(File.Exists(cnc));                     // the XML points to the CNC file: it stays
+        Assert.False(File.Exists(cnc));                    // the export folder only holds what is not converted yet ...
+        Assert.True(File.Exists(Path.Combine(world.Export, "CNC", "DAAN_ROGIERS-P2026.09", "Melamine_18#01.xcs")));   // ... the XML points here
+    }
+
+    [Fact]
+    public void Processor_ACncProgramOverwrittenByALaterExport_SendsTheJobToFout_AndLeavesThePrograms()
+    {
+        using var world = new ExportFixture();
+        world.AddProject();
+        string cnc = Path.Combine(world.Export, "Melamine_18#01.xcs");
+        File.WriteAllText(cnc, "written by another job, hours after this job's TR file");
+        File.SetLastWriteTimeUtc(cnc, File.GetLastWriteTimeUtc(world.TriggerPath()).AddHours(2));
+
+        ProcessOutcome outcome = new ProjectProcessor(world.MaterialsFile).Process(world.Files(), world.Settings, world.Clock.Now);
+
+        Assert.False(outcome.Success);
+        Assert.False(outcome.IsTemporary);                                   // the files are the problem: they go to _Fout
+        Assert.Contains("overschreven", outcome.Message);
+        Assert.Contains("Melamine_18#01.xcs", outcome.Message);
+        Assert.True(File.Exists(Path.Combine(world.StampFolder("_Fout"), "fout.txt")));
+        Assert.True(File.Exists(cnc));                                       // not touched
+        Assert.False(File.Exists(Path.Combine(world.Batch, "DAAN_ROGIERS-P2026.09.xml")));
     }
 
     [Fact]
@@ -310,7 +331,7 @@ public class WatcherTests
 
         ProcessOutcome outcome = new ProjectProcessor(world.MaterialsFile).Process(world.Files(), world.Settings, world.Clock.Now);
 
-        Assert.EndsWith(@"_Verwerkt\20260919-140000 Verschuren-P-20", outcome.MovedTo);
+        Assert.EndsWith(@"_Verwerkt\20260919-140000 DAAN_ROGIERS-P2026.09", outcome.MovedTo);
     }
 
     [Fact]
@@ -323,20 +344,20 @@ public class WatcherTests
 
         Assert.False(outcome.Success);
         Assert.False(outcome.IsTemporary);
-        Assert.Contains("Paars_18", outcome.Message);
+        Assert.Contains("Melamine_18", outcome.Message);
         Assert.Empty(Directory.GetFiles(world.Batch));     // nothing written
         Assert.Empty(Directory.GetFiles(world.Label));
 
         string folder = world.StampFolder("_Fout");
         Assert.Equal(folder, outcome.MovedTo);
-        Assert.True(File.Exists(Path.Combine(folder, "Verschuren-P-20-LI.xlsx")));
-        Assert.True(File.Exists(Path.Combine(folder, "Verschuren-P-20-TR.xlsx")));
+        Assert.True(File.Exists(Path.Combine(folder, "DAAN_ROGIERS-P2026.09-LI.xlsx")));
+        Assert.True(File.Exists(Path.Combine(folder, "DAAN_ROGIERS-P2026.09-TR.xlsx")));
         Assert.False(File.Exists(world.InfoPath()));
 
         string report = File.ReadAllText(Path.Combine(folder, "fout.txt"));
-        Assert.Contains("Projectnaam: Verschuren-P-20", report);
+        Assert.Contains("Projectnaam: DAAN_ROGIERS-P2026.09", report);
         Assert.Contains("Tijdstip: 2026-09-19 14:00:00", report);
-        foreach (string material in new[] { "Paars_18", "White_18", "White_9" })
+        foreach (string material in new[] { "Melamine_18", "Melamine_08" })
         {
             Assert.Contains($"Materiaal '{material}' staat niet in materials.csv.", report); // all problems, one per line
         }
@@ -396,7 +417,7 @@ public class WatcherTests
     {
         using var world = new ExportFixture();
         world.AddProject();
-        string existing = Path.Combine(world.Batch, "Verschuren-P-20.xml");
+        string existing = Path.Combine(world.Batch, "DAAN_ROGIERS-P2026.09.xml");
         File.WriteAllText(existing, "the warehouse is running this job");
 
         ProcessOutcome outcome = new ProjectProcessor(world.MaterialsFile).Process(world.Files(), world.Settings, world.Clock.Now);
@@ -433,8 +454,8 @@ public class WatcherTests
 
         Assert.False(outcome.Success);
         string folder = world.StampFolder("_Fout");
-        Assert.True(File.Exists(Path.Combine(folder, "Verschuren-P-20-LI.xlsx")));   // only the files that exist
-        Assert.True(File.Exists(Path.Combine(folder, "Verschuren-P-20-TR.xlsx")));
+        Assert.True(File.Exists(Path.Combine(folder, "DAAN_ROGIERS-P2026.09-LI.xlsx")));   // only the files that exist
+        Assert.True(File.Exists(Path.Combine(folder, "DAAN_ROGIERS-P2026.09-TR.xlsx")));
         Assert.Contains("LP-bestand ontbreekt", File.ReadAllText(Path.Combine(folder, "fout.txt")));
     }
 
@@ -458,11 +479,11 @@ public class WatcherTests
         Assert.True(outcome.Success, outcome.Message);
         Assert.True(outcome.MovePending);
         Assert.Contains(outcome.Warnings, w => w.Contains("_Verwerkt"));
-        Assert.True(File.Exists(Path.Combine(world.Batch, "Verschuren-P-20.xml")));   // the batch IS written
+        Assert.True(File.Exists(Path.Combine(world.Batch, "DAAN_ROGIERS-P2026.09.xml")));   // the batch IS written
 
         // Later the file is free: only what is left is moved.
         string folder = ProjectProcessor.MoveProcessedFiles(world.Files(), world.Export, world.Clock.Now);
-        Assert.True(File.Exists(Path.Combine(folder, "Verschuren-P-20-LP.xlsx")));
+        Assert.True(File.Exists(Path.Combine(folder, "DAAN_ROGIERS-P2026.09-LP.xlsx")));
         Assert.Empty(world.Files().ExistingFiles());
     }
 
@@ -494,10 +515,10 @@ public class WatcherTests
 
         watcher.RunOnce();
 
-        Assert.Equal(new[] { "Verschuren-P-20" }, events.Started);
+        Assert.Equal(new[] { "DAAN_ROGIERS-P2026.09" }, events.Started);
         ProcessOutcome outcome = Assert.Single(events.Finished);
         Assert.True(outcome.Success, outcome.Message);
-        Assert.True(File.Exists(Path.Combine(world.Batch, "Verschuren-P-20.xml")));
+        Assert.True(File.Exists(Path.Combine(world.Batch, "DAAN_ROGIERS-P2026.09.xml")));
 
         // A second round finds nothing more to do: the files are moved away.
         watcher.RunOnce();
@@ -584,7 +605,7 @@ public class WatcherTests
 
         Assert.True(events.Finished[3].Success);
         Assert.False(events.Finished[3].IsRepeat);
-        Assert.True(File.Exists(Path.Combine(world.Batch, "Verschuren-P-20.xml")));
+        Assert.True(File.Exists(Path.Combine(world.Batch, "DAAN_ROGIERS-P2026.09.xml")));
     }
 
     [Fact]
@@ -673,7 +694,7 @@ public class WatcherTests
 
         Assert.Single(events.Finished);
         Assert.False(File.Exists(world.InfoPath()));
-        Assert.True(File.Exists(Path.Combine(world.StampFolder("_Verwerkt"), "Verschuren-P-20-LP.xlsx")));
+        Assert.True(File.Exists(Path.Combine(world.StampFolder("_Verwerkt"), "DAAN_ROGIERS-P2026.09-LP.xlsx")));
     }
 
     [Fact]
@@ -723,8 +744,8 @@ public class WatcherTests
         watcher.RunOnce();
 
         string text = File.ReadAllText(log.CurrentLogFile);
-        Assert.Contains("Conversie gestart: Verschuren-P-20", text);
-        Assert.Contains("Waarschuwing bij Verschuren-P-20: CNC-programma niet gevonden", text);
+        Assert.Contains("Conversie gestart: DAAN_ROGIERS-P2026.09", text);
+        Assert.Contains("Waarschuwing bij DAAN_ROGIERS-P2026.09: CNC-programma niet gevonden", text);
         Assert.Contains("Bestanden verplaatst naar", text);
     }
 
@@ -745,7 +766,7 @@ public class WatcherTests
 
         Assert.True(finished.Wait(TimeSpan.FromSeconds(30)), "no conversion within 30 seconds");
         Assert.True(outcome!.Success, outcome.Message);
-        Assert.True(File.Exists(Path.Combine(world.Batch, "Verschuren-P-20.xml")));
+        Assert.True(File.Exists(Path.Combine(world.Batch, "DAAN_ROGIERS-P2026.09.xml")));
     }
 
     [Fact]

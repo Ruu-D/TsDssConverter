@@ -152,7 +152,7 @@ public class ExportScanner
         return projects;
     }
 
-    /// <summary>"Verschuren-P-20-LI" gives "LI". Anything that does not end in -LI, -LP or -TR gives null.</summary>
+    /// <summary>"DAAN_ROGIERS-P2026.09-LI" gives "LI". Anything that does not end in -LI, -LP or -TR gives null.</summary>
     private static string? FindSuffix(string nameWithoutExtension)
     {
         foreach (string suffix in new[] { "LI", "LP", "TR" })

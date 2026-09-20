@@ -23,11 +23,16 @@ public class Converter
     /// <param name="infoColumns">The header names in the LI file (columns-li.txt). Null = the built-in names.</param>
     /// <param name="positionColumns">The header names in the LP file (columns-lp.txt). Null = the built-in names.</param>
     /// <param name="labelColumns">The names of the ten DESC columns in the label CSV (columns-label.txt). Null = DESC1 .. DESC10.</param>
+    /// <param name="exportFinishedAt">
+    /// When TopSolid finished the export (time of the TR file, UTC). A CNC program that is clearly newer was overwritten by
+    /// a later export and is refused. Null = unknown (the CLI, or no trigger file): that check is skipped.
+    /// </param>
     public ConversionResult Convert(
         string infoPath, string positionPath, string materialsPath,
         string batchFolder, string labelFolder,
         ConverterSettings settings, DateTime planDate,
-        ColumnMap? infoColumns = null, ColumnMap? positionColumns = null, LabelColumnNames? labelColumns = null)
+        ColumnMap? infoColumns = null, ColumnMap? positionColumns = null, LabelColumnNames? labelColumns = null,
+        DateTime? exportFinishedAt = null)
     {
         string batchName = GetBatchName(infoPath);
 
@@ -49,7 +54,6 @@ public class Converter
         Encoding csvEncoding = settings.GetCsvEncoding();
         var result = new ConversionResult { BatchName = batchName };
         result.Warnings.AddRange(batch.Warnings);
-        AddCncWarnings(batch, settings, result.Warnings);
         var labelFiles = new List<PendingFile>();
 
         foreach (var plan in batch.Plans)
@@ -71,6 +75,10 @@ public class Converter
         };
         result.XmlPath = xmlFile.Path;
 
+        // Order: everything is checked first (nothing is changed), then the CNC programs are moved into the folder of
+        // this project (the XML points there), then the label CSVs and the XML LAST.
+        OutputWriter.CheckTargets(batchFolder, labelFolder, xmlFile.Path, batchName);
+        result.Warnings.AddRange(CncMover.MoveToProjectFolder(batch, settings, exportFinishedAt));
         OutputWriter.Write(batchFolder, labelFolder, labelFiles, xmlFile, batchName);
         return result;
     }
@@ -86,32 +94,6 @@ public class Converter
         {
             problems.AddRange(error.Problems);
             return null;
-        }
-    }
-
-    /// <summary>
-    /// A CNC program that does not exist yet is only a warning: TopSolid may still be writing the CAM files.
-    /// The check is done in the export folder on THIS PC (not in the prefix that is written in the XML).
-    /// </summary>
-    private static void AddCncWarnings(Batch batch, ConverterSettings settings, List<string> warnings)
-    {
-        if (!Directory.Exists(settings.TopSolidExportPath))
-        {
-            // One warning is clearer than one per sheet.
-            warnings.Add(Messages.CncFolderNotReachable(settings.TopSolidExportPath));
-            return;
-        }
-
-        foreach (var plan in batch.Plans)
-        {
-            foreach (var sheet in plan.Sheets)
-            {
-                string path = CncPathBuilder.BuildLocalPath(settings, batch.Name, sheet.Name);
-                if (!File.Exists(path))
-                {
-                    warnings.Add(Messages.CncFileNotFound(path));
-                }
-            }
         }
     }
 

@@ -75,9 +75,9 @@ public class ColumnMapTests
         var info = ColumnMap.DefaultLabelInfo();
         var position = ColumnMap.DefaultLabelPosition();
 
-        Assert.Equal(new[] { "Naam_Plaat" }, info.HeadersFor(ColumnKeys.Info.SheetName));
-        Assert.Equal(new[] { "Opleg_2_?" }, info.HeadersFor(ColumnKeys.Info.Opleg2));
-        Assert.Equal(new[] { "Test" }, info.HeadersFor(ColumnKeys.Info.Project));
+        Assert.Equal(new[] { "Nom_panneau", "Naam_Plaat" }, info.HeadersFor(ColumnKeys.Info.SheetName));
+        Assert.Equal(new[] { "CAM_3" }, info.HeadersFor(ColumnKeys.Info.Cam3));
+        Assert.Equal(new[] { "Projet", "Test" }, info.HeadersFor(ColumnKeys.Info.Project));
         Assert.Equal(new[] { "SP" }, position.HeadersFor(ColumnKeys.Position.SheetName));
         Assert.Equal(new[] { "SUP_DESIGNATION" }, position.HeadersFor(ColumnKeys.Position.Designation));
     }
@@ -95,7 +95,7 @@ public class ColumnMapTests
         Assert.Equal(new[] { "Projectnummer" }, map.HeadersFor(ColumnKeys.Info.Project));
         Assert.Equal(new[] { "CAM 2" }, map.HeadersFor(ColumnKeys.Info.Cam2));
         Assert.Equal(new[] { "L1" }, map.HeadersFor(ColumnKeys.Info.EdgeL1));           // in a comment: not changed
-        Assert.Equal(new[] { "Naam_Plaat" }, map.HeadersFor(ColumnKeys.Info.SheetName)); // not in the file: keeps its name
+        Assert.Equal(new[] { "Nom_panneau", "Naam_Plaat" }, map.HeadersFor(ColumnKeys.Info.SheetName)); // not in the file: keeps its names
     }
 
     [Fact]
@@ -145,8 +145,8 @@ public class ColumnMapTests
     {
         using var folder = new TempFolder();
 
-        Assert.Equal(new[] { "Test" }, ColumnMap.LoadLabelInfo(folder.File("weg.txt")).HeadersFor(ColumnKeys.Info.Project));
-        Assert.Equal(new[] { "Test" }, ColumnMap.LoadLabelInfo(null).HeadersFor(ColumnKeys.Info.Project));
+        Assert.Equal(new[] { "Projet", "Test" }, ColumnMap.LoadLabelInfo(folder.File("weg.txt")).HeadersFor(ColumnKeys.Info.Project));
+        Assert.Equal(new[] { "Projet", "Test" }, ColumnMap.LoadLabelInfo(null).HeadersFor(ColumnKeys.Info.Project));
     }
 
     [Fact]
@@ -194,7 +194,7 @@ public class ColumnMapTests
 
         var info = ColumnMap.LoadLabelInfo(infoPath);
         var position = ColumnMap.LoadLabelPosition(positionPath);
-        foreach (string key in new[] { ColumnKeys.Info.SheetName, ColumnKeys.Info.Opleg2, ColumnKeys.Info.Project })
+        foreach (string key in new[] { ColumnKeys.Info.SheetName, ColumnKeys.Info.Cam3, ColumnKeys.Info.Project })
         {
             Assert.Equal(ColumnMap.DefaultLabelInfo().HeadersFor(key), info.HeadersFor(key));
         }
@@ -212,18 +212,21 @@ public class ColumnMapTests
         string position = ColumnMap.DefaultLabelPosition().ToText();
 
         Assert.StartsWith("# TsDssConverter - kolomnamen in het LI-bestand", info);
-        Assert.Contains("SheetName    = Naam_Plaat", info);            // the '=' signs line up
-        Assert.Contains("Opleg2       = Opleg_2_?", info);
-        Assert.Contains("Project      = Test", info);
+        // The LI file follows the order of the columns in the newest export; the older Dutch names are the second names.
+        Assert.Contains("Project      = Projet | Test", info);            // the '=' signs line up
+        Assert.Contains("SheetName    = Nom_panneau | Naam_Plaat", info);
+        Assert.Contains("Cam2         = CAM_2\r\nCam3         = CAM_3\r\n", info);   // both fixed, in this order
+        Assert.True(info.IndexOf("Project ") < info.IndexOf("SheetName"));
+        Assert.DoesNotContain("Opleg", info);                             // gone from the export and from the program
         Assert.Equal(21, info.Split("\r\n").Count(line => line.Contains(" = ") && !line.StartsWith('#')));   // 11 + the 10 DESC fields
-        Assert.DoesNotContain("optioneel", info);                      // every LI column is needed (the DESC fields have their own note)
+        Assert.DoesNotContain("optioneel", info);                        // every LI field is needed (the DESC fields have their own note)
 
         Assert.Equal(18, position.Split("\r\n").Count(line => line.Contains(" = ") && !line.StartsWith('#')));  // 8 + the 10 DESC fields
         Assert.Contains("# optioneel", position);
         Assert.True(position.IndexOf("# optioneel") < position.IndexOf("Designation"));   // the note is above its field
 
         // The example in the explanation is about a field of THIS file (Project does not exist in the LP file).
-        Assert.Contains("# Bijvoorbeeld:  SheetName = Naam_Plaat | Naam_Plaat_2", info);
+        Assert.Contains("# Bijvoorbeeld:  Project = Projet | Projet_2", info);
         Assert.Contains("# Bijvoorbeeld:  SheetName = SP | SP_2", position);
         Assert.DoesNotContain("Project", position);
 
@@ -253,11 +256,11 @@ public class ColumnMapTests
     {
         using var folder = new TempFolder();
         string renamed = folder.File("P-1-LI.xlsx");
-        RenameHeader(TestPaths.InfoFile, renamed, "Test", "Project");
+        RenameHeader(TestPaths.InfoFile, renamed, "Projet", "Project");
 
         // Without a line in columns-li.txt the program does not know the new name: a clear error with a tip.
         var error = Assert.Throws<ConversionException>(() => TopSolidReader.ReadLabelInfo(renamed));
-        Assert.Contains("'Test'", error.Problems[0]);
+        Assert.Contains("'Projet' / 'Test'", error.Problems[0]);
         Assert.Contains("columns-li.txt", error.Problems[1]);
         Assert.Contains("Config", error.Problems[1]);
 
@@ -265,7 +268,7 @@ public class ColumnMapTests
         var original = TopSolidReader.ReadLabelInfo(TestPaths.InfoFile);
         var rows = TopSolidReader.ReadLabelInfo(renamed, InfoMap("Project = Project"));
         Assert.Equal(original.Select(row => row.Project), rows.Select(row => row.Project));
-        Assert.Equal(63, rows.Count);
+        Assert.Equal(22, rows.Count);
     }
 
     [Fact]
@@ -273,12 +276,12 @@ public class ColumnMapTests
     {
         using var folder = new TempFolder();
         string renamed = folder.File("P-1-LI.xlsx");
-        RenameHeader(TestPaths.InfoFile, renamed, "Test", "Project");
-        var map = InfoMap("Project = Test | Project");
+        RenameHeader(TestPaths.InfoFile, renamed, "Projet", "Project");
+        var map = InfoMap("Project = Projet | Project");
 
-        // The old export (Test) and the new one (Project) are both understood.
-        Assert.Equal(63, TopSolidReader.ReadLabelInfo(TestPaths.InfoFile, map).Count);
-        Assert.Equal(63, TopSolidReader.ReadLabelInfo(renamed, map).Count);
+        // The export with the header "Projet" and the one with "Project" are both understood.
+        Assert.Equal(22, TopSolidReader.ReadLabelInfo(TestPaths.InfoFile, map).Count);
+        Assert.Equal(22, TopSolidReader.ReadLabelInfo(renamed, map).Count);
     }
 
     [Fact]
@@ -312,8 +315,8 @@ public class ColumnMapTests
         var positionAfter = TopSolidReader.ReadLabelPositions(reversedPosition);
 
         Assert.Equal(
-            infoBefore.Select(r => (r.SheetName, r.Description, r.Dimensions, r.MaterialText, r.EdgeL1, r.EdgeB2, r.Cam2, r.Opleg2, r.Project)),
-            infoAfter.Select(r => (r.SheetName, r.Description, r.Dimensions, r.MaterialText, r.EdgeL1, r.EdgeB2, r.Cam2, r.Opleg2, r.Project)));
+            infoBefore.Select(r => (r.SheetName, r.Description, r.Dimensions, r.MaterialText, r.EdgeL1, r.EdgeB2, r.Cam2, r.Cam3, r.Project)),
+            infoAfter.Select(r => (r.SheetName, r.Description, r.Dimensions, r.MaterialText, r.EdgeL1, r.EdgeB2, r.Cam2, r.Cam3, r.Project)));
         Assert.Equal(
             positionBefore.Select(r => (r.SheetName, r.Description, r.SheetLength, r.SheetWidth, r.LabelX, r.LabelY, r.LabelAngle, r.Designation)),
             positionAfter.Select(r => (r.SheetName, r.Description, r.SheetLength, r.SheetWidth, r.LabelX, r.LabelY, r.LabelAngle, r.Designation)));
@@ -344,25 +347,68 @@ public class ColumnMapTests
     }
 
     [Fact]
+    public void Cam2AndCam3_AreBothRequired_ADifferentHeaderIsAnErrorWithATip()
+    {
+        // The fixed fields of the export end with CAM_2 and CAM_3. An export without CAM_3 is refused, so a renamed
+        // header can never silently give empty CAM3 values.
+        using var folder = new TempFolder();
+        string noCam3 = folder.File("d-LI.xlsx");
+        DeleteColumn(TestPaths.InfoFile, noCam3, "CAM_3");
+
+        var error = Assert.Throws<ConversionException>(() => TopSolidReader.ReadLabelInfo(noCam3));
+
+        Assert.Contains("'CAM_3'", error.Problems[0]);
+        Assert.Contains("columns-li.txt", error.Problems[1]);
+
+        // ... and the header can be changed in the column file, like any other.
+        string renamed = folder.File("e-LI.xlsx");
+        RenameHeader(TestPaths.InfoFile, renamed, "CAM_3", "CAM 3");
+        var rows = TopSolidReader.ReadLabelInfo(renamed, InfoMap("Cam3 = CAM 3"));
+        Assert.Equal("0003575_3.cix", rows.Single(r => r.Description == "K1 - Front - 3575").Cam3);
+        Assert.Equal(5, rows.Count(r => r.Cam3 != ""));     // only 5 of the 22 parts have a third program
+    }
+
+    [Fact]
     public void AMissingColumnWithSeveralNames_NamesAllOfThem()
     {
         using var folder = new TempFolder();
         string noProject = folder.File("c-LI.xlsx");
-        DeleteColumn(TestPaths.InfoFile, noProject, "Test");
+        DeleteColumn(TestPaths.InfoFile, noProject, "Projet");
 
-        var error = Assert.Throws<ConversionException>(() => TopSolidReader.ReadLabelInfo(noProject, InfoMap("Project = Test | Project")));
+        // The built-in names are the header of the newest export and, as a second name, the older one.
+        var error = Assert.Throws<ConversionException>(() => TopSolidReader.ReadLabelInfo(noProject));
 
-        Assert.Contains("'Test' / 'Project'", error.Problems[0]);
+        Assert.Contains("'Projet' / 'Test'", error.Problems[0]);
+    }
+
+    [Fact]
+    public void TheOlderDutchHeaders_AreStillUnderstood_ByTheBuiltInNames()
+    {
+        // The old export named its columns Naam_Plaat, Omschrijving, Afmetingen, Materiaal and Test.
+        using var folder = new TempFolder();
+        string step1 = folder.File("f1-LI.xlsx"), step2 = folder.File("f2-LI.xlsx"), step3 = folder.File("f3-LI.xlsx");
+        string step4 = folder.File("f4-LI.xlsx"), older = folder.File("f5-LI.xlsx");
+        RenameHeader(TestPaths.InfoFile, step1, "Nom_panneau", "Naam_Plaat");
+        RenameHeader(step1, step2, "Description", "Omschrijving");
+        RenameHeader(step2, step3, "Dimensions", "Afmetingen");
+        RenameHeader(step3, step4, "Matériau", "Materiaal");
+        RenameHeader(step4, older, "Projet", "Test");
+
+        var rows = TopSolidReader.ReadLabelInfo(older);
+
+        Assert.Equal(22, rows.Count);
+        Assert.Equal("K1 - Front - 3575", rows[0].Description);
+        Assert.Equal("P2026.09", rows[0].Project);
     }
 
     // ---------------------------------------------------------------- in the running program: the processor
 
-    /// <summary>A world with the sample project whose LI header "Test" was renamed to "Project".</summary>
+    /// <summary>A world with the sample project whose LI header "Projet" was renamed to "Project".</summary>
     private static ExportFixture WorldWithARenamedHeader()
     {
         var world = new ExportFixture();
         world.AddProject();
-        RenameHeader(TestPaths.InfoFile, world.InfoPath(), "Test", "Project");
+        RenameHeader(TestPaths.InfoFile, world.InfoPath(), "Projet", "Project");
         return world;
     }
 
@@ -378,7 +424,7 @@ public class ColumnMapTests
         Assert.False(outcome.Success);
         Assert.False(outcome.IsTemporary);   // the files really are different: they go to _Fout
         string report = File.ReadAllText(Path.Combine(outcome.MovedTo!, "fout.txt"));
-        Assert.Contains("Kolom 'Test' ontbreekt in het LI-bestand", report);
+        Assert.Contains("Kolom 'Projet' / 'Test' ontbreekt in het LI-bestand", report);
         Assert.Contains("columns-li.txt", report);
     }
 
@@ -393,8 +439,8 @@ public class ColumnMapTests
             .Process(world.Files(), world.Settings, world.Clock.Now);
 
         Assert.True(outcome.Success, outcome.Message);
-        Assert.StartsWith("11 platen, 63 labels", outcome.Message);
-        Assert.True(File.Exists(Path.Combine(world.Batch, "Verschuren-P-20.xml")));
+        Assert.StartsWith("3 platen, 22 labels", outcome.Message);
+        Assert.True(File.Exists(Path.Combine(world.Batch, "DAAN_ROGIERS-P2026.09.xml")));
     }
 
     [Fact]
@@ -425,14 +471,14 @@ public class ColumnMapTests
     }
 
     [Theory]
-    [InlineData(AppLanguage.French, "La colonne 'Test' est absente du fichier LI.", "Conseil pour le fichier LI")]
-    [InlineData(AppLanguage.English, "Column 'Test' is missing in the LI file.", "Tip for the LI file")]
+    [InlineData(AppLanguage.French, "La colonne 'Projet' / 'Test' est absente du fichier LI.", "Conseil pour le fichier LI")]
+    [InlineData(AppLanguage.English, "Column 'Projet' / 'Test' is missing in the LI file.", "Tip for the LI file")]
     public void TheMissingColumnMessageAndTheTip_AreInTheSelectedLanguage(AppLanguage language, string missing, string tip)
     {
         using var scope = new LanguageScope(language);
         using var folder = new TempFolder();
         string renamed = folder.File("P-1-LI.xlsx");
-        RenameHeader(TestPaths.InfoFile, renamed, "Test", "Project");
+        RenameHeader(TestPaths.InfoFile, renamed, "Projet", "Project");
 
         var error = Assert.Throws<ConversionException>(() => TopSolidReader.ReadLabelInfo(renamed));
 

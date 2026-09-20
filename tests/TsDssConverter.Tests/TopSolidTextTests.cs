@@ -64,9 +64,9 @@ public class TopSolidTextTests
     }
 
     [Theory]
-    [InlineData("Verschuren - K2 - Front - 19587", "19587")]
-    [InlineData("Verschuren - K2 - Zijkant links - 13099", "13099")]
-    [InlineData("Verschuren - K2 - Front - 19587 ", "19587")]
+    [InlineData("K1 - Front - 3575", "3575")]
+    [InlineData("K2 - Zijkant links - 4544", "4544")]
+    [InlineData("K1 - Front - 3575 ", "3575")]
     public void GetPartId_IsTheTrailingNumber(string description, string expected)
     {
         Assert.Equal(expected, TopSolidText.GetPartId(description));
@@ -75,7 +75,7 @@ public class TopSolidTextTests
     [Fact]
     public void GetPartId_WithoutTrailingNumber_IsAnError()
     {
-        Assert.Throws<ConversionException>(() => TopSolidText.GetPartId("Verschuren - K2 - Front"));
+        Assert.Throws<ConversionException>(() => TopSolidText.GetPartId("K2 - Front"));
     }
 
     [Theory]

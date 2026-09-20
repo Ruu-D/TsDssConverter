@@ -3,7 +3,7 @@ using System.Text;
 namespace TsDssConverter.Core;
 
 /// <summary>
-/// The one folder of the program: C:\TsDssConverter\ with the exe, settings.json, materials.csv and logs\.
+/// The one folder of the program: C:\TsDssConverter\ with the exe, settings.json, materials.csv, the column files and logs\.
 /// The tool is so small that everything lives together; "uninstall" is deleting this folder.
 /// </summary>
 public class AppDataFolder
@@ -38,9 +38,9 @@ public class AppDataFolder
     }
 
     /// <summary>
-    /// Creates the folders, an empty materials.csv (header row only) and the three column files (columns-li.txt,
-    /// columns-lp.txt and columns-label.txt, with the default names) if they are not there yet, so there is always a file to open.
-    /// An existing file is never touched: the customer may have changed it.
+    /// Creates the folders and, for every file that is not there yet, the default file that comes with the program
+    /// (<see cref="PackedDefaults"/>): settings.json, materials.csv, columns-li.txt, columns-lp.txt and columns-label.txt.
+    /// So there is always a file to open. An existing file is never touched: the customer may have changed it.
     /// Throws IOException or UnauthorizedAccessException if the folder cannot be created (for example
     /// when the IT department locked down C:\); the caller shows a message.
     /// </summary>
@@ -49,25 +49,34 @@ public class AppDataFolder
         Directory.CreateDirectory(Root);
         Directory.CreateDirectory(LogFolder);
 
-        if (!File.Exists(MaterialsFile))
+        // If a default file were ever missing from the exe (a test checks that none is), the older way is the fallback:
+        // an empty materials.csv (header row only) and the column files written from the built-in names.
+        CreateFromDefault(SettingsFile, () => { });   // the program writes settings.json itself
+        CreateFromDefault(MaterialsFile, () =>
         {
             string header = "TopSolidMaterial;DssMaterial;Thickness;Grain" + "\r\n";
             File.WriteAllText(MaterialsFile, header, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        });
+        CreateFromDefault(InfoColumnsFile, () => ColumnMap.DefaultLabelInfo().WriteTemplate(InfoColumnsFile));
+        CreateFromDefault(PositionColumnsFile, () => ColumnMap.DefaultLabelPosition().WriteTemplate(PositionColumnsFile));
+        CreateFromDefault(LabelColumnsFile, () => new LabelColumnNames().WriteTemplate(LabelColumnsFile));
+    }
+
+    private static void CreateFromDefault(string path, Action writeFallback)
+    {
+        if (File.Exists(path))
+        {
+            return;
         }
 
-        if (!File.Exists(InfoColumnsFile))
+        byte[]? packed = PackedDefaults.Read(Path.GetFileName(path));
+        if (packed != null)
         {
-            ColumnMap.DefaultLabelInfo().WriteTemplate(InfoColumnsFile);
+            File.WriteAllBytes(path, packed);
         }
-
-        if (!File.Exists(PositionColumnsFile))
+        else
         {
-            ColumnMap.DefaultLabelPosition().WriteTemplate(PositionColumnsFile);
-        }
-
-        if (!File.Exists(LabelColumnsFile))
-        {
-            new LabelColumnNames().WriteTemplate(LabelColumnsFile);
+            writeFallback();
         }
     }
 }

@@ -1,0 +1,19 @@
+﻿# TsDssConverter - kolomnamen in het LI-bestand van TopSolid (-LI.xlsx)
+# Links van het = staat wat het programma nodig heeft (niet wijzigen).
+# Rechts staat de kolomnaam in het Excel-bestand. Pas die aan als TopSolid een kolom anders noemt.
+# Meerdere namen mogen, gescheiden door |. De eerste naam die in het bestand voorkomt, wordt gebruikt.
+# Bijvoorbeeld:  SheetName = Naam_Plaat | Naam_Plaat_2
+# De volgorde van de kolommen in Excel maakt niet uit, en hoofdletters ook niet.
+# Regels die met # beginnen worden genegeerd. Na het opslaan is herstarten niet nodig.
+
+Project      = Projet | Project
+SheetName    = Nom_panneau | Naam_Plaat
+Description  = Description | Omschrijving
+Dimensions   = Dimensions | Afmetingen
+MaterialText = Matériau | Materiaal
+EdgeL1       = L1
+EdgeL2       = L2
+EdgeB1       = B1
+EdgeB2       = B2
+Cam2         = CAM_2
+Cam3         = CAM_3

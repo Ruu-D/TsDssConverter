@@ -305,6 +305,12 @@ public static class Messages
         $"Programme CNC introuvable (TopSolid est peut-être encore en train de l'écrire) : {path}",
         $"CNC program not found (TopSolid may still be writing it): {path}");
 
+    // Not a warning but an error: the program on disk belongs to another job, so it must not be used.
+    public static string CncOverwrittenByLaterExport(string path) => T(
+        $"CNC-programma is overschreven door een latere export (nieuwer dan het TR-bestand): {path}. Exporteer deze job opnieuw uit TopSolid.",
+        $"Le programme CNC a été écrasé par un export plus récent (plus récent que le fichier TR) : {path}. Exportez ce job à nouveau depuis TopSolid.",
+        $"CNC program was overwritten by a later export (newer than the TR file): {path}. Export this job again from TopSolid.");
+
     public static string DuplicatePartId(string id, IEnumerable<string> sheetNames)
     {
         string sheets = string.Join(", ", sheetNames);
@@ -324,6 +330,13 @@ public static class Messages
     }
 
     // ---- Watching the export folder and processing (stage 4) ----
+
+    // The two folders inside the export folder where the TopSolid files are put away. Named in the selected language.
+    // The scanner only looks at the top level, so whatever the name, these folders are never scanned again.
+    public static string DoneFolderName => T("_Verwerkt", "_Effectuee", "_Converted");
+
+    public static string ErrorFolderName => T("_Fout", "_Erreur", "_Error");
+
     public static string ConversionDone(int sheets, int parts, int warnings)
     {
         string text = T(

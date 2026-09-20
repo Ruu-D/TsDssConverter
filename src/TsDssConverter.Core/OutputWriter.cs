@@ -15,7 +15,11 @@ public class PendingFile
 /// </summary>
 public static class OutputWriter
 {
-    public static void Write(string batchFolder, string labelFolder, List<PendingFile> labelFiles, PendingFile xmlFile, string batchName)
+    /// <summary>
+    /// The checks before anything is written: both folders reachable and the batch not there yet. The converter runs
+    /// this BEFORE it moves the CNC programs, so a refused job leaves the export folder untouched.
+    /// </summary>
+    public static void CheckTargets(string batchFolder, string labelFolder, string xmlPath, string batchName)
     {
         if (!Directory.Exists(batchFolder))
         {
@@ -27,10 +31,15 @@ public static class OutputWriter
             throw new ConversionException(Messages.FolderNotFound(labelFolder)) { IsTemporary = true };
         }
 
-        if (File.Exists(xmlFile.Path))
+        if (File.Exists(xmlPath))
         {
             throw new ConversionException(Messages.BatchAlreadyExists(batchName));
         }
+    }
+
+    public static void Write(string batchFolder, string labelFolder, List<PendingFile> labelFiles, PendingFile xmlFile, string batchName)
+    {
+        CheckTargets(batchFolder, labelFolder, xmlFile.Path, batchName);
 
         // Order matters: the XML is the last one.
         var allFiles = new List<PendingFile>(labelFiles) { xmlFile };

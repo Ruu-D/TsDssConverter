@@ -25,7 +25,7 @@ public class Label
     public string EdgeB1 { get; set; } = "";
     public string EdgeB2 { get; set; } = "";
     public string Cam2 { get; set; } = "";
-    public string Opleg2 { get; set; } = "";
+    public string Cam3 { get; set; } = "";
     public string Project { get; set; } = "";
 
     /// <summary>The ten extra description fields (DESC1..DESC10), index 0 = Desc1: the last columns of the label CSV.</summary>
@@ -41,7 +41,7 @@ public class Sheet
     public string Name { get; set; } = "";
     public int Number { get; set; }
 
-    /// <summary>File name only, e.g. "Verschuren-P-20_001.csv". The XML gets the label folder in front of it.</summary>
+    /// <summary>File name only, e.g. "DAAN_ROGIERS-P2026.09_001.csv". The XML gets the label folder in front of it.</summary>
     public string LabelFileName { get; set; } = "";
 
     /// <summary>Full path as written in the XML.</summary>

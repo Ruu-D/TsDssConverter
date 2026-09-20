@@ -4,41 +4,66 @@ using TsDssConverter.Core;
 namespace TsDssConverter.Tests;
 
 /// <summary>
-/// Tests for the ten extra description columns (DESC1 .. DESC10): they are optional columns in the LI and LP file,
-/// they are merged (LI first, LP fills the gaps) and they are the last columns of the label CSV, with names that can
-/// be changed in columns-label.txt.
+/// Tests for the fixed field CAM3 and the ten extra description columns (DESC1 .. DESC10). The sample export has them
+/// in the LI file; the LP file may have them too (LI first, LP fills the gaps). They are the last columns of the label
+/// CSV, with names that can be changed in columns-label.txt.
 /// </summary>
 public class LabelColumnTests
 {
     // ---------------------------------------------------------------- helpers
 
+    private static readonly string[] DescriptionHeaders = Enumerable.Range(1, ColumnKeys.DescriptionCount).Select(n => "DESC" + n).ToArray();
+
+    private static (string Header, Func<int, string?> Value) Column(string header, Func<int, string?> value) => (header, value);
+
     /// <summary>
-    /// Copies a sample file and adds the description columns after the last column.
-    /// <paramref name="value"/> gives the text of each cell (number of the field 1..10, data row 2..n); null = empty cell.
-    /// <paramref name="header"/> gives the header of each column.
+    /// Copies a sample file and changes columns. A column in <paramref name="columns"/> is found by its header and
+    /// overwritten, or added after the last column if the file has none like that; the function gives the text of each
+    /// cell for a data row (2..n), null = an empty cell. A header in <paramref name="withoutHeader"/> is emptied:
+    /// a column without a name does not exist for the reader.
     /// </summary>
-    private static void AddDescriptionColumns(
-        string source, string target, Func<int, string> header, Func<int, int, string?> value, int count = ColumnKeys.DescriptionCount)
+    private static void ChangeColumns(
+        string source, string target, (string Header, Func<int, string?> Value)[] columns, params string[] withoutHeader)
     {
         using var workbook = new XLWorkbook(source);
         var sheet = workbook.Worksheets.First();
-        int firstNew = sheet.LastColumnUsed()!.ColumnNumber() + 1;
         int lastRow = sheet.LastRowUsed()!.RowNumber();
+        int nextFree = sheet.LastColumnUsed()!.ColumnNumber() + 1;
 
-        for (int number = 1; number <= count; number++)
+        foreach (var (header, value) in columns)
         {
-            sheet.Cell(1, firstNew + number - 1).Value = header(number);
+            var headerCell = sheet.Row(1).CellsUsed().FirstOrDefault(cell => cell.GetString().Trim() == header);
+            int column = headerCell?.Address.ColumnNumber ?? nextFree++;
+            sheet.Cell(1, column).Value = header;
+
             for (int row = 2; row <= lastRow; row++)
             {
-                string? text = value(number, row);
-                if (text != null)
+                string? text = value(row);
+                if (text == null)
                 {
-                    sheet.Cell(row, firstNew + number - 1).Value = text;
+                    sheet.Cell(row, column).Clear();
+                }
+                else
+                {
+                    sheet.Cell(row, column).Value = text;
                 }
             }
         }
 
+        foreach (string header in withoutHeader)
+        {
+            sheet.Row(1).CellsUsed().First(cell => cell.GetString().Trim() == header).Value = "";
+        }
+
         workbook.SaveAs(target);
+    }
+
+    /// <summary>The sample LI without its ten DESC columns, named like the real one so the batch name is right.</summary>
+    private static string InfoWithoutDescriptions(TempFolder folder)
+    {
+        string info = folder.File("DAAN_ROGIERS-P2026.09-LI.xlsx");
+        ChangeColumns(TestPaths.InfoFile, info, Array.Empty<(string, Func<int, string?>)>(), DescriptionHeaders);
+        return info;
     }
 
     private static ConversionResult Convert(
@@ -47,17 +72,26 @@ public class LabelColumnTests
     {
         return new Converter().Convert(
             infoPath, positionPath, TestPaths.MaterialsFile, outFolder, outFolder,
-            new ConverterSettings(), TestPaths.GoldenPlanDate, infoColumns, null, labelColumns);
+            TestPaths.SafeSettings(), TestPaths.GoldenPlanDate, infoColumns, null, labelColumns);
     }
 
     /// <summary>The label CSV of the first sheet as rows of cells (tab separated), header included.</summary>
     private static List<string[]> ReadFirstCsv(string folder)
     {
-        string path = Path.Combine(folder, "Verschuren-P-20_001.csv");
+        string path = Path.Combine(folder, "DAAN_ROGIERS-P2026.09_001.csv");
         return File.ReadAllLines(path).Select(line => line.Split('\t')).ToList();
     }
 
-    private const int FixedColumns = 23;
+    /// <summary>All the rows of all the label CSVs of a conversion (without the header rows).</summary>
+    private static List<string[]> ReadAllRows(string folder)
+    {
+        return Directory.GetFiles(folder, "*.csv")
+            .SelectMany(file => File.ReadAllLines(file).Skip(1))
+            .Select(line => line.Split('\t'))
+            .ToList();
+    }
+
+    private const int FixedColumns = 23;   // the fixed columns of the label CSV, before the ten DESC columns
 
     // ---------------------------------------------------------------- the columns in the LI and LP files
 
@@ -94,19 +128,25 @@ public class LabelColumnTests
     }
 
     [Fact]
-    public void Reader_FillsTheDescriptions_WhenTheColumnsAreThere_AndLeavesThemEmptyWhenNot()
+    public void Reader_FillsTheDescriptionsFromTheSampleLi_AndLeavesThemEmptyWhereTheColumnsAreNotThere()
     {
         using var folder = new TempFolder();
-        string withColumns = folder.File("a-LI.xlsx");
-        AddDescriptionColumns(TestPaths.InfoFile, withColumns, n => "DESC" + n, (n, row) => $"info{n}-{row}");
 
-        var rows = TopSolidReader.ReadLabelInfo(withColumns);
-        Assert.Equal("info1-2", rows[0].Descriptions[0]);
-        Assert.Equal("info10-2", rows[0].Descriptions[9]);
-        Assert.Equal("info3-64", rows[62].Descriptions[2]);
+        // The sample LI has the ten columns, filled for every part.
+        Assert.All(TopSolidReader.ReadLabelInfo(TestPaths.InfoFile), row =>
+        {
+            Assert.Equal("Nr bon commande", row.Descriptions[0]);
+            Assert.Equal("Extra texte 2", row.Descriptions[1]);
+            Assert.Equal("Extra texte 10", row.Descriptions[9]);
+        });
 
-        Assert.All(TopSolidReader.ReadLabelInfo(TestPaths.InfoFile), row => Assert.All(row.Descriptions, d => Assert.Equal("", d)));
-        Assert.All(TopSolidReader.ReadLabelPositions(TestPaths.PositionFile), row => Assert.Equal(10, row.Descriptions.Length));
+        // The sample LP has none, and the LI without the ten columns neither: empty texts, never a missing value.
+        Assert.All(TopSolidReader.ReadLabelPositions(TestPaths.PositionFile), row =>
+        {
+            Assert.Equal(10, row.Descriptions.Length);
+            Assert.All(row.Descriptions, d => Assert.Equal("", d));
+        });
+        Assert.All(TopSolidReader.ReadLabelInfo(InfoWithoutDescriptions(folder)), row => Assert.All(row.Descriptions, d => Assert.Equal("", d)));
     }
 
     [Fact]
@@ -114,26 +154,29 @@ public class LabelColumnTests
     {
         using var folder = new TempFolder();
         string renamed = folder.File("b-LI.xlsx");
-        AddDescriptionColumns(TestPaths.InfoFile, renamed, n => "Extra " + n, (n, row) => $"v{n}", count: 2);
+        ChangeColumns(TestPaths.InfoFile, renamed, new[] { Column("Extra 1", row => "v1") }, "DESC1");
         var map = ColumnMap.DefaultLabelInfo();
-        map.ApplyText("Desc1 = Extra 1\r\nDesc2 = Extra 2 | DESC2");
 
+        // The built-in names do not know "Extra 1": Desc1 is empty. The other columns are read as before.
+        var withoutMap = TopSolidReader.ReadLabelInfo(renamed);
+        Assert.Equal("", withoutMap[0].Descriptions[0]);
+        Assert.Equal("Extra texte 2", withoutMap[0].Descriptions[1]);
+
+        map.ApplyText("Desc1 = Extra 1");
         var rows = TopSolidReader.ReadLabelInfo(renamed, map);
 
         Assert.Equal("v1", rows[0].Descriptions[0]);
-        Assert.Equal("v2", rows[0].Descriptions[1]);
-        Assert.Equal("", rows[0].Descriptions[2]);    // no such column: empty
+        Assert.Equal("Extra texte 2", rows[0].Descriptions[1]);
     }
 
     [Fact]
-    public void ADescriptionColumn_IsNeverRequired_SoOldExportsKeepWorking()
+    public void ADescriptionColumn_IsNeverRequired()
     {
-        // The sample files have no DESC columns at all, and still convert.
         using var folder = new TempFolder();
 
-        ConversionResult result = Convert(TestPaths.InfoFile, TestPaths.PositionFile, folder.Path);
+        ConversionResult result = Convert(InfoWithoutDescriptions(folder), TestPaths.PositionFile, folder.Path);
 
-        Assert.Equal(63, result.PartCount);
+        Assert.Equal(22, result.PartCount);
     }
 
     // ---------------------------------------------------------------- the label CSV
@@ -142,8 +185,8 @@ public class LabelColumnTests
     public void LabelCsv_HasTheFixedColumnsFirst_AndTenDescriptionColumnsAtTheEnd()
     {
         using var folder = new TempFolder();
-        string info = folder.File("Verschuren-P-20-LI.xlsx");
-        AddDescriptionColumns(TestPaths.InfoFile, info, n => "DESC" + n, (n, row) => $"D{n}");
+        string info = folder.File("DAAN_ROGIERS-P2026.09-LI.xlsx");
+        ChangeColumns(TestPaths.InfoFile, info, DescriptionHeaders.Select((h, i) => Column(h, row => $"D{i + 1}")).ToArray());
 
         Convert(info, TestPaths.PositionFile, folder.Path);
         List<string[]> csv = ReadFirstCsv(folder.Path);
@@ -151,9 +194,41 @@ public class LabelColumnTests
         Assert.Equal(23, LabelCsvWriter.FixedColumnNames.Count);
         Assert.Equal(FixedColumns + 10, csv[0].Length);
         Assert.Equal("SHEET", csv[0][FixedColumns - 1]);
-        Assert.Equal(Enumerable.Range(1, 10).Select(n => "DESC" + n), csv[0].Skip(FixedColumns));
+        Assert.Equal(DescriptionHeaders, csv[0].Skip(FixedColumns));
         Assert.All(csv, row => Assert.Equal(FixedColumns + 10, row.Length));             // every row has all the columns
         Assert.Equal(Enumerable.Range(1, 10).Select(n => "D" + n), csv[1].Skip(FixedColumns));
+        Assert.DoesNotContain("OPLEG2", csv[0]);                                          // gone for good
+    }
+
+    [Fact]
+    public void Cam2AndCam3_AreTheSpecialColumns_CAM3RightAfterCAM2_FilledFromTheCam3Column()
+    {
+        using var folder = new TempFolder();
+
+        Convert(TestPaths.InfoFile, TestPaths.PositionFile, folder.Path);
+        string[] header = ReadFirstCsv(folder.Path)[0];
+        List<string[]> rows = ReadAllRows(folder.Path);
+
+        int cam2 = Array.IndexOf(header, "CAM2"), cam3 = Array.IndexOf(header, "CAM3");
+        Assert.Equal(cam2 + 1, cam3);                                                   // right after CAM2
+        Assert.Equal(22, rows.Count);
+        Assert.All(rows, row => Assert.NotEqual("", row[cam2]));                         // every part has a second program ...
+        Assert.Equal(5, rows.Count(row => row[cam3] != ""));                             // ... and only 5 of the 22 have a third
+        Assert.All(rows.Where(row => row[cam3] != ""), row => Assert.Equal(row[cam2].Replace("_2.cix", "_3.cix"), row[cam3]));
+    }
+
+    [Fact]
+    public void Cam3_CanBeRenamedInTheColumnFile_AndItsNameIsTakenForTheLabelColumns()
+    {
+        var map = ColumnMap.DefaultLabelInfo();
+        Assert.Equal(new[] { "CAM_3" }, map.HeadersFor(ColumnKeys.Info.Cam3));
+
+        map.ApplyText("Cam3 = CAM 3 | CAM_3");
+        Assert.Equal(new[] { "CAM 3", "CAM_3" }, map.HeadersFor(ColumnKeys.Info.Cam3));
+
+        // "CAM3" is a fixed column of the label CSV, so a description column cannot have that name
+        var error = Assert.Throws<ConversionException>(() => new LabelColumnNames().ApplyText("Desc1 = CAM3"));
+        Assert.Contains("'CAM3'", error.Problems[0]);
     }
 
     [Fact]
@@ -161,10 +236,10 @@ public class LabelColumnTests
     {
         using var folder = new TempFolder();
 
-        Convert(TestPaths.InfoFile, TestPaths.PositionFile, folder.Path);
+        Convert(InfoWithoutDescriptions(folder), TestPaths.PositionFile, folder.Path);
         List<string[]> csv = ReadFirstCsv(folder.Path);
 
-        Assert.Equal(Enumerable.Range(1, 10).Select(n => "DESC" + n), csv[0].Skip(FixedColumns));
+        Assert.Equal(DescriptionHeaders, csv[0].Skip(FixedColumns));
         Assert.All(csv.Skip(1), row => Assert.All(row.Skip(FixedColumns), value => Assert.Equal("", value)));
     }
 
@@ -172,23 +247,22 @@ public class LabelColumnTests
     public void Descriptions_ComeFromLi_AndLpFillsTheGaps()
     {
         using var folder = new TempFolder();
-        string info = folder.File("Verschuren-P-20-LI.xlsx");
-        string position = folder.File("Verschuren-P-20-LP.xlsx");
-        // LI: DESC1 filled in the even rows only (32 of the 63 parts). LP: DESC1 in every row, DESC2 only in LP.
-        AddDescriptionColumns(TestPaths.InfoFile, info, n => "DESC" + n, (n, row) => row % 2 == 0 ? "from-LI" : null, count: 1);
-        AddDescriptionColumns(TestPaths.PositionFile, position, n => "DESC" + n, (n, row) => n == 1 ? "from-LP-1" : "from-LP-2", count: 2);
+        string info = folder.File("DAAN_ROGIERS-P2026.09-LI.xlsx");
+        string position = folder.File("DAAN_ROGIERS-P2026.09-LP.xlsx");
+
+        // LI: DESC1 filled in the even data rows only (11 of the 22 parts), DESC2 .. DESC10 emptied.
+        var liColumns = DescriptionHeaders.Select((header, i) => Column(header, row => i == 0 && row % 2 == 0 ? "from-LI" : null)).ToArray();
+        ChangeColumns(TestPaths.InfoFile, info, liColumns);
+
+        // LP: DESC1 in every row, and DESC2 which only the LP has.
+        ChangeColumns(TestPaths.PositionFile, position, new[] { Column("DESC1", row => "from-LP-1"), Column("DESC2", row => "from-LP-2") });
 
         Convert(info, position, folder.Path);
+        List<string[]> rows = ReadAllRows(folder.Path);   // (the order of the rows follows the LP file: count instead of picking one)
 
-        // (the order of the rows follows the LP file, so count over all the label files instead of picking one row)
-        List<string[]> rows = Directory.GetFiles(folder.Path, "*.csv")
-            .SelectMany(file => File.ReadAllLines(file).Skip(1))
-            .Select(line => line.Split('\t'))
-            .ToList();
-
-        Assert.Equal(63, rows.Count);
-        Assert.Equal(32, rows.Count(row => row[FixedColumns] == "from-LI"));       // the LI value wins over the LP value
-        Assert.Equal(31, rows.Count(row => row[FixedColumns] == "from-LP-1"));     // LI was empty: the LP value fills the gap
+        Assert.Equal(22, rows.Count);
+        Assert.Equal(11, rows.Count(row => row[FixedColumns] == "from-LI"));       // the LI value wins over the LP value
+        Assert.Equal(11, rows.Count(row => row[FixedColumns] == "from-LP-1"));     // LI was empty: the LP value fills the gap
         Assert.All(rows, row => Assert.Equal("from-LP-2", row[FixedColumns + 1])); // only LP has DESC2
         Assert.All(rows, row => Assert.Equal("", row[FixedColumns + 2]));          // nobody has DESC3
     }
@@ -197,8 +271,8 @@ public class LabelColumnTests
     public void TabsAndLineBreaksInADescription_AreReplacedByASpace_SoTheCsvStaysIntact()
     {
         using var folder = new TempFolder();
-        string info = folder.File("Verschuren-P-20-LI.xlsx");
-        AddDescriptionColumns(TestPaths.InfoFile, info, n => "DESC" + n, (n, row) => "eerste\tregel\ntweede", count: 1);
+        string info = folder.File("DAAN_ROGIERS-P2026.09-LI.xlsx");
+        ChangeColumns(TestPaths.InfoFile, info, new[] { Column("DESC1", row => "eerste\tregel\ntweede") });
 
         Convert(info, TestPaths.PositionFile, folder.Path);
         List<string[]> csv = ReadFirstCsv(folder.Path);
@@ -220,6 +294,7 @@ public class LabelColumnTests
         Assert.Equal("KLANT", csv[0][FixedColumns]);
         Assert.Equal("OPMERKING", csv[0][FixedColumns + 1]);
         Assert.Equal("DESC3", csv[0][FixedColumns + 2]);   // not in the file: keeps its name
+        Assert.Equal("Nr bon commande", csv[1][FixedColumns]);   // the value still comes from the DESC1 column of the export
     }
 
     // ---------------------------------------------------------------- columns-label.txt
@@ -371,7 +446,7 @@ public class LabelColumnTests
         ProcessOutcome second = processor.Process(world.Files(), world.Settings, world.Clock.Now);
         Assert.True(second.Success, second.Message);
 
-        string header = File.ReadLines(Path.Combine(world.Label, "Verschuren-P-20_001.csv")).First();
+        string header = File.ReadLines(Path.Combine(world.Label, "DAAN_ROGIERS-P2026.09_001.csv")).First();
         Assert.Equal("KLANT", header.Split('\t')[FixedColumns]);
     }
 }

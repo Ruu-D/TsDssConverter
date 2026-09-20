@@ -21,7 +21,7 @@ public class AppFilesTests
     }
 
     [Fact]
-    public void EnsureCreated_MakesTheTwoColumnFiles_WithTheDefaultNames_ThatTheProgramCanRead()
+    public void EnsureCreated_MakesTheColumnFiles_WithTheNamesOfThePackedDefaults_ThatTheProgramCanRead()
     {
         using var temp = new TempFolder();
         var folder = new AppDataFolder(temp.File("TsDssConverter"));
@@ -30,7 +30,7 @@ public class AppFilesTests
 
         var info = ColumnMap.LoadLabelInfo(folder.InfoColumnsFile);
         var position = ColumnMap.LoadLabelPosition(folder.PositionColumnsFile);
-        Assert.Equal(new[] { "Test" }, info.HeadersFor(ColumnKeys.Info.Project));
+        Assert.Equal(new[] { "Projet", "Project" }, info.HeadersFor(ColumnKeys.Info.Project));   // as in defaults\columns-li.txt
         Assert.Equal(new[] { "LABEL_X" }, position.HeadersFor(ColumnKeys.Position.LabelX));
         Assert.Contains("SheetName", File.ReadAllText(folder.InfoColumnsFile));
         Assert.Contains("SUP_DESIGNATION", File.ReadAllText(folder.PositionColumnsFile));
@@ -53,7 +53,7 @@ public class AppFilesTests
     }
 
     [Fact]
-    public void EnsureCreated_MakesTheFolders_AndAnEmptyMaterialsFileThatTheProgramCanRead()
+    public void EnsureCreated_MakesTheFolders_AndTheMaterialsFileOfThePackedDefaults()
     {
         using var temp = new TempFolder();
         var folder = new AppDataFolder(temp.File("TsDssConverter"));
@@ -61,8 +61,9 @@ public class AppFilesTests
         folder.EnsureCreated();
 
         Assert.True(Directory.Exists(folder.LogFolder));
-        Assert.Equal("TopSolidMaterial;DssMaterial;Thickness;Grain\r\n", File.ReadAllText(folder.MaterialsFile));
-        Assert.Throws<ConversionException>(() => MaterialTable.Load(folder.MaterialsFile).Find("White_18")); // valid file, no materials yet
+        Assert.StartsWith("TopSolidMaterial;DssMaterial;Thickness;Grain\r\n", File.ReadAllText(folder.MaterialsFile));
+        Assert.Equal("standaard_plaat_18mm", MaterialTable.Load(folder.MaterialsFile).Find("Melamine_18").DssName);   // defaults\materials.csv
+        Assert.Throws<ConversionException>(() => MaterialTable.Load(folder.MaterialsFile).Find("White_18"));          // not in the list: never guessed
     }
 
     [Fact]

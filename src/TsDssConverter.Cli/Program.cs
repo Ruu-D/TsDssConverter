@@ -51,7 +51,7 @@ if (paths.Count != 4)
     Console.WriteLine("Options:");
     Console.WriteLine("  --flipx               label zero point: X = sheet length - LABEL_X");
     Console.WriteLine("  --flipy               label zero point: Y = sheet width - LABEL_Y");
-    Console.WriteLine(@"  --export-path <path>  TopSolid export folder used in the CNC paths (default Z:\TopSolid\Export\)");
+    Console.WriteLine(@"  --export-path <path>  TopSolid export folder: its CNC programs are MOVED to <path>\CNC\<project>\ (default Z:\TopSolid\Export\)");
     Console.WriteLine("  --lang <nl|fr|en>     language of the messages (default nl)");
     return 1;
 }

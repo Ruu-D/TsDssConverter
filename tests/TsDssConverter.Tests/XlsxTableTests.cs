@@ -76,9 +76,9 @@ public class XlsxTableTests
     }
 
     [Fact]
-    public void SampleFiles_HaveSixtyThreeParts()
+    public void SampleFiles_HaveTwentyTwoParts()
     {
-        Assert.Equal(63, TopSolidReader.ReadLabelInfo(TestPaths.InfoFile).Count);
-        Assert.Equal(63, TopSolidReader.ReadLabelPositions(TestPaths.PositionFile).Count);
+        Assert.Equal(22, TopSolidReader.ReadLabelInfo(TestPaths.InfoFile).Count);
+        Assert.Equal(22, TopSolidReader.ReadLabelPositions(TestPaths.PositionFile).Count);
     }
 }

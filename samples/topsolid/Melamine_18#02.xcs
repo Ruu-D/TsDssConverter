@@ -1,0 +1,542 @@
+SetMachiningParameters ("HE", 1, 10, 0, false);
+
+CreateFinishedWorkpieceBox ("DAAN-ROGIERS_____Melamine_18#02", 2850, 2100, 18);
+CreateRawWorkpiece ("DAAN-ROGIERS_____Melamine_18#02", 0, 0, 0, 0, 0, 0);
+SetWorkpieceSetupPosition (20, 0, 0, 0);
+
+//SLOT MILL FREES_FIX_6MM
+
+//WCS part 174
+SelectWorkplane ("Top");
+
+//Instruction below is to acknownledge the nesting machine that it is automatic panel loading via BARBARIC
+CreateIso("XPIECEIDENTIFIER - DUIVESTEIN panel loading","XPIECEIDENTIFIER a=PANEL_TYPE r=PANEL_MAGPOS s=PANEL_COD","", true);
+
+//Instruction below is for panel loading sequence
+CreateMacro("Pload - PANEL LOADING SEQUENCE","Pload",1);
+
+//18 -14
+
+
+
+//FLAT DRILL BOOR4
+
+SetJerk (0);
+CreateDrill ("OP8_1", 18.99, 2050.01, 16, 4, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP8_2", 18.99, 1892.01, 16, 4, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP8_3", 18.99, 1734.01, 16, 4, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP8_4", 18.99, 1576.01, 16, 4, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP8_5", 800.99, 1576.01, 16, 4, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP8_6", 800.99, 1734.01, 16, 4, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP8_7", 800.99, 1892.01, 16, 4, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP8_8", 800.99, 2050.01, 16, 4, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+
+//FLAT DRILL BOOR5
+
+SetJerk (0);
+CreateDrill ("OP9_1", 127.99, 2070.51, 14, 5, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP9_2", 127.99, 2038.51, 14, 5, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP9_3", 691.99, 2038.51, 14, 5, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP9_4", 691.99, 2070.51, 14, 5, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+
+//SLOT MILL AIRDIA20R
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP10_1_point",422.49, 1510.02);
+CreateRoughFinish ("OP10_1",-10,"",TypeOfProcess.GeneralRouting, "E002", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP10_1_ToolPath", 422.49, 1510.02, 10, true);
+AddSegmentToToolpath (575.61, 1510.02, -17);
+AddSegmentToToolpath (809.98, 1510.02, -17);
+AddSegmentToToolpath (809.98, 2090, -17);
+AddSegmentToToolpath (10, 2090, -17);
+AddSegmentToToolpath (10, 1510.02, -17);
+AddSegmentToToolpath (397.49, 1510.02, -17);
+AddSegmentToToolpath (409.99, 1510.02, -17);
+AddSegmentToToolpath (422.49, 1510.02, -17);
+AddSegmentToToolpath (575.61, 1510.02, -17);
+AddSegmentToToolpath (575.61, 1510.02, 10);
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP11_1_point",334.26, 1499.02);
+CreateRoughFinish ("OP11_1",7,"",TypeOfProcess.GeneralRouting, "E002", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP11_1_ToolPath", 334.26, 1499.02, -7, true);
+AddSegmentToToolpath (397.49, 1499.02, -18.15);
+AddSegmentToToolpath (397.49, 1510.02, -18.15);
+AddSegmentToToolpath (809.98, 1510.02, -18.15);
+AddSegmentToToolpath (809.98, 2090, -18.15);
+AddSegmentToToolpath (10, 2090, -18.15);
+AddSegmentToToolpath (10, 1510.02, -18.15);
+AddSegmentToToolpath (422.49, 1510.02, -18.15);
+AddSegmentToToolpath (422.49, 1499.02, -18.15);
+AddSegmentToToolpath (422.49, 1499.02, 10);
+
+//DISC MILL GROOVE_FIX_6MM
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP12_1_Polyline", 1429.97, 1606.01);
+AddSegmentToPolyline (1429.97, 1606.01);
+CreateRoughFinish ("OP12_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP12_1_ToolPath", 1429.97, 1606.01, 13);
+AddSegmentToToolpath (1429.97, 1606.01, -9);
+AddSegmentToToolpath (1416.97, 1606.01, -9);
+AddSegmentToToolpath (1416.97, 1606.21, -9);
+AddSegmentToToolpath (1429.97, 1606.21, -9);
+AddSegmentToToolpath (1429.97, 1606.21, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP13_1_Polyline", 1429.97, 1813.01);
+AddSegmentToPolyline (1429.97, 1813.01);
+CreateRoughFinish ("OP13_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP13_1_ToolPath", 1429.97, 1813.01, 13);
+AddSegmentToToolpath (1429.97, 1813.01, -9);
+AddSegmentToToolpath (1416.97, 1813.01, -9);
+AddSegmentToToolpath (1416.97, 1813.21, -9);
+AddSegmentToToolpath (1429.97, 1813.21, -9);
+AddSegmentToToolpath (1429.97, 1813.21, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP14_1_Polyline", 1429.97, 2020.01);
+AddSegmentToPolyline (1429.97, 2020.01);
+CreateRoughFinish ("OP14_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP14_1_ToolPath", 1429.97, 2020.01, 13);
+AddSegmentToToolpath (1429.97, 2020.01, -9);
+AddSegmentToToolpath (1416.97, 2020.01, -9);
+AddSegmentToToolpath (1416.97, 2020.21, -9);
+AddSegmentToToolpath (1429.97, 2020.21, -9);
+AddSegmentToToolpath (1429.97, 2020.21, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP15_1_Polyline", 829.97, 2020.01);
+AddSegmentToPolyline (829.97, 2020.01);
+CreateRoughFinish ("OP15_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP15_1_ToolPath", 829.97, 2020.01, 13);
+AddSegmentToToolpath (829.97, 2020.01, -9);
+AddSegmentToToolpath (842.97, 2020.01, -9);
+AddSegmentToToolpath (842.97, 2019.81, -9);
+AddSegmentToToolpath (829.97, 2019.81, -9);
+AddSegmentToToolpath (829.97, 2019.81, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP16_1_Polyline", 829.97, 1813.01);
+AddSegmentToPolyline (829.97, 1813.01);
+CreateRoughFinish ("OP16_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP16_1_ToolPath", 829.97, 1813.01, 13);
+AddSegmentToToolpath (829.97, 1813.01, -9);
+AddSegmentToToolpath (842.97, 1813.01, -9);
+AddSegmentToToolpath (842.97, 1812.81, -9);
+AddSegmentToToolpath (829.97, 1812.81, -9);
+AddSegmentToToolpath (829.97, 1812.81, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP17_1_Polyline", 829.97, 1606.01);
+AddSegmentToPolyline (829.97, 1606.01);
+CreateRoughFinish ("OP17_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP17_1_ToolPath", 829.97, 1606.01, 13);
+AddSegmentToToolpath (829.97, 1606.01, -9);
+AddSegmentToToolpath (842.97, 1606.01, -9);
+AddSegmentToToolpath (842.97, 1605.81, -9);
+AddSegmentToToolpath (829.97, 1605.81, -9);
+AddSegmentToToolpath (829.97, 1605.81, 13);
+
+//FLAT DRILL POTBOOR35MM
+
+SetJerk (0);
+CreateDrill ("OP18_1", 829.97, 2020.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP18_2", 829.97, 1813.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP18_3", 829.97, 1606.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP18_4", 1429.97, 1606.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP18_5", 1429.97, 1813.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP18_6", 1429.97, 2020.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+
+//SLOT MILL AIRDIA20R
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP19_1_point",1142.47, 1536.02);
+CreateRoughFinish ("OP19_1",-10,"",TypeOfProcess.GeneralRouting, "E002", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP19_1_ToolPath", 1142.47, 1536.02, 10, true);
+AddSegmentToToolpath (1295.59, 1536.02, -17);
+AddSegmentToToolpath (1411.96, 1536.02, -17);
+AddSegmentToToolpath (1411.96, 2090, -17);
+AddSegmentToToolpath (847.98, 2090, -17);
+AddSegmentToToolpath (847.98, 1536.02, -17);
+AddSegmentToToolpath (1117.47, 1536.02, -17);
+AddSegmentToToolpath (1129.97, 1536.02, -17);
+AddSegmentToToolpath (1142.47, 1536.02, -17);
+AddSegmentToToolpath (1295.59, 1536.02, -17);
+AddSegmentToToolpath (1295.59, 1536.02, 10);
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP20_1_point",1054.24, 1525.02);
+CreateRoughFinish ("OP20_1",7,"",TypeOfProcess.GeneralRouting, "E002", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP20_1_ToolPath", 1054.24, 1525.02, -7, true);
+AddSegmentToToolpath (1117.47, 1525.02, -18.15);
+AddSegmentToToolpath (1117.47, 1536.02, -18.15);
+AddSegmentToToolpath (1411.96, 1536.02, -18.15);
+AddSegmentToToolpath (1411.96, 2090, -18.15);
+AddSegmentToToolpath (847.98, 2090, -18.15);
+AddSegmentToToolpath (847.98, 1536.02, -18.15);
+AddSegmentToToolpath (1142.47, 1536.02, -18.15);
+AddSegmentToToolpath (1142.47, 1525.02, -18.15);
+AddSegmentToToolpath (1142.47, 1525.02, 10);
+
+//DISC MILL GROOVE_FIX_6MM
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP21_1_Polyline", 591.99, 988.03);
+AddSegmentToPolyline (591.99, 988.03);
+CreateRoughFinish ("OP21_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP21_1_ToolPath", 591.99, 988.03, 13);
+AddSegmentToToolpath (591.99, 988.03, -9);
+AddSegmentToToolpath (578.99, 988.03, -9);
+AddSegmentToToolpath (578.99, 988.23, -9);
+AddSegmentToToolpath (591.99, 988.23, -9);
+AddSegmentToToolpath (591.99, 988.23, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP22_1_Polyline", 591.99, 1195.03);
+AddSegmentToPolyline (591.99, 1195.03);
+CreateRoughFinish ("OP22_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP22_1_ToolPath", 591.99, 1195.03, 13);
+AddSegmentToToolpath (591.99, 1195.03, -9);
+AddSegmentToToolpath (578.99, 1195.03, -9);
+AddSegmentToToolpath (578.99, 1195.23, -9);
+AddSegmentToToolpath (591.99, 1195.23, -9);
+AddSegmentToToolpath (591.99, 1195.23, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP23_1_Polyline", 591.99, 1402.03);
+AddSegmentToPolyline (591.99, 1402.03);
+CreateRoughFinish ("OP23_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP23_1_ToolPath", 591.99, 1402.03, 13);
+AddSegmentToToolpath (591.99, 1402.03, -9);
+AddSegmentToToolpath (578.99, 1402.03, -9);
+AddSegmentToToolpath (578.99, 1402.23, -9);
+AddSegmentToToolpath (591.99, 1402.23, -9);
+AddSegmentToToolpath (591.99, 1402.23, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP24_1_Polyline", -8.01, 1402.03);
+AddSegmentToPolyline (-8.01, 1402.03);
+CreateRoughFinish ("OP24_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP24_1_ToolPath", -8.01, 1402.03, 13);
+AddSegmentToToolpath (-8.01, 1402.03, -9);
+AddSegmentToToolpath (4.99, 1402.03, -9);
+AddSegmentToToolpath (4.99, 1401.83, -9);
+AddSegmentToToolpath (-8.01, 1401.83, -9);
+AddSegmentToToolpath (-8.01, 1401.83, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP25_1_Polyline", -8.01, 1195.03);
+AddSegmentToPolyline (-8.01, 1195.03);
+CreateRoughFinish ("OP25_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP25_1_ToolPath", -8.01, 1195.03, 13);
+AddSegmentToToolpath (-8.01, 1195.03, -9);
+AddSegmentToToolpath (4.99, 1195.03, -9);
+AddSegmentToToolpath (4.99, 1194.83, -9);
+AddSegmentToToolpath (-8.01, 1194.83, -9);
+AddSegmentToToolpath (-8.01, 1194.83, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP26_1_Polyline", -8.01, 988.03);
+AddSegmentToPolyline (-8.01, 988.03);
+CreateRoughFinish ("OP26_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP26_1_ToolPath", -8.01, 988.03, 13);
+AddSegmentToToolpath (-8.01, 988.03, -9);
+AddSegmentToToolpath (4.99, 988.03, -9);
+AddSegmentToToolpath (4.99, 987.83, -9);
+AddSegmentToToolpath (-8.01, 987.83, -9);
+AddSegmentToToolpath (-8.01, 987.83, 13);
+
+//FLAT DRILL POTBOOR35MM
+
+SetJerk (0);
+CreateDrill ("OP27_1", -8.01, 1402.03, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP27_2", -8.01, 1195.03, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP27_3", -8.01, 988.03, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP27_4", 591.99, 988.03, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP27_5", 591.99, 1195.03, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP27_6", 591.99, 1402.03, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+
+//SLOT MILL AIRDIA20R
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP28_1_point",304.49, 918.04);
+CreateRoughFinish ("OP28_1",-10,"",TypeOfProcess.GeneralRouting, "E002", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP28_1_ToolPath", 304.49, 918.04, 10, true);
+AddSegmentToToolpath (457.61, 918.04, -17);
+AddSegmentToToolpath (573.98, 918.04, -17);
+AddSegmentToToolpath (573.98, 1472.02, -17);
+AddSegmentToToolpath (10, 1472.02, -17);
+AddSegmentToToolpath (10, 918.04, -17);
+AddSegmentToToolpath (279.49, 918.04, -17);
+AddSegmentToToolpath (291.99, 918.04, -17);
+AddSegmentToToolpath (304.49, 918.04, -17);
+AddSegmentToToolpath (457.61, 918.04, -17);
+AddSegmentToToolpath (457.61, 918.04, 10);
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP29_1_point",216.26, 907.04);
+CreateRoughFinish ("OP29_1",7,"",TypeOfProcess.GeneralRouting, "E002", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP29_1_ToolPath", 216.26, 907.04, -7, true);
+AddSegmentToToolpath (279.49, 907.04, -18.15);
+AddSegmentToToolpath (279.49, 918.04, -18.15);
+AddSegmentToToolpath (573.98, 918.04, -18.15);
+AddSegmentToToolpath (573.98, 1472.02, -18.15);
+AddSegmentToToolpath (10, 1472.02, -18.15);
+AddSegmentToToolpath (10, 918.04, -18.15);
+AddSegmentToToolpath (304.49, 918.04, -18.15);
+AddSegmentToToolpath (304.49, 907.04, -18.15);
+AddSegmentToToolpath (304.49, 907.04, 10);
+
+//DISC MILL GROOVE_FIX_6MM
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP30_1_Polyline", 2031.95, 1606.01);
+AddSegmentToPolyline (2031.95, 1606.01);
+CreateRoughFinish ("OP30_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP30_1_ToolPath", 2031.95, 1606.01, 13);
+AddSegmentToToolpath (2031.95, 1606.01, -9);
+AddSegmentToToolpath (2018.95, 1606.01, -9);
+AddSegmentToToolpath (2018.95, 1606.21, -9);
+AddSegmentToToolpath (2031.95, 1606.21, -9);
+AddSegmentToToolpath (2031.95, 1606.21, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP31_1_Polyline", 2031.95, 1813.01);
+AddSegmentToPolyline (2031.95, 1813.01);
+CreateRoughFinish ("OP31_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP31_1_ToolPath", 2031.95, 1813.01, 13);
+AddSegmentToToolpath (2031.95, 1813.01, -9);
+AddSegmentToToolpath (2018.95, 1813.01, -9);
+AddSegmentToToolpath (2018.95, 1813.21, -9);
+AddSegmentToToolpath (2031.95, 1813.21, -9);
+AddSegmentToToolpath (2031.95, 1813.21, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP32_1_Polyline", 2031.95, 2020.01);
+AddSegmentToPolyline (2031.95, 2020.01);
+CreateRoughFinish ("OP32_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP32_1_ToolPath", 2031.95, 2020.01, 13);
+AddSegmentToToolpath (2031.95, 2020.01, -9);
+AddSegmentToToolpath (2018.95, 2020.01, -9);
+AddSegmentToToolpath (2018.95, 2020.21, -9);
+AddSegmentToToolpath (2031.95, 2020.21, -9);
+AddSegmentToToolpath (2031.95, 2020.21, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP33_1_Polyline", 1431.95, 2020.01);
+AddSegmentToPolyline (1431.95, 2020.01);
+CreateRoughFinish ("OP33_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP33_1_ToolPath", 1431.95, 2020.01, 13);
+AddSegmentToToolpath (1431.95, 2020.01, -9);
+AddSegmentToToolpath (1444.95, 2020.01, -9);
+AddSegmentToToolpath (1444.95, 2019.81, -9);
+AddSegmentToToolpath (1431.95, 2019.81, -9);
+AddSegmentToToolpath (1431.95, 2019.81, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP34_1_Polyline", 1431.95, 1813.01);
+AddSegmentToPolyline (1431.95, 1813.01);
+CreateRoughFinish ("OP34_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP34_1_ToolPath", 1431.95, 1813.01, 13);
+AddSegmentToToolpath (1431.95, 1813.01, -9);
+AddSegmentToToolpath (1444.95, 1813.01, -9);
+AddSegmentToToolpath (1444.95, 1812.81, -9);
+AddSegmentToToolpath (1431.95, 1812.81, -9);
+AddSegmentToToolpath (1431.95, 1812.81, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP35_1_Polyline", 1431.95, 1606.01);
+AddSegmentToPolyline (1431.95, 1606.01);
+CreateRoughFinish ("OP35_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP35_1_ToolPath", 1431.95, 1606.01, 13);
+AddSegmentToToolpath (1431.95, 1606.01, -9);
+AddSegmentToToolpath (1444.95, 1606.01, -9);
+AddSegmentToToolpath (1444.95, 1605.81, -9);
+AddSegmentToToolpath (1431.95, 1605.81, -9);
+AddSegmentToToolpath (1431.95, 1605.81, 13);
+
+//FLAT DRILL POTBOOR35MM
+
+SetJerk (0);
+CreateDrill ("OP36_1", 1431.95, 2020.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP36_2", 1431.95, 1813.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP36_3", 1431.95, 1606.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP36_4", 2031.95, 1606.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP36_5", 2031.95, 1813.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP36_6", 2031.95, 2020.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+
+//SLOT MILL AIRDIA20R
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP37_1_point",1744.45, 1536.02);
+CreateRoughFinish ("OP37_1",-10,"",TypeOfProcess.GeneralRouting, "E002", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP37_1_ToolPath", 1744.45, 1536.02, 10, true);
+AddSegmentToToolpath (1897.57, 1536.02, -17);
+AddSegmentToToolpath (2013.94, 1536.02, -17);
+AddSegmentToToolpath (2013.94, 2090, -17);
+AddSegmentToToolpath (1449.96, 2090, -17);
+AddSegmentToToolpath (1449.96, 1536.02, -17);
+AddSegmentToToolpath (1719.45, 1536.02, -17);
+AddSegmentToToolpath (1731.95, 1536.02, -17);
+AddSegmentToToolpath (1744.45, 1536.02, -17);
+AddSegmentToToolpath (1897.57, 1536.02, -17);
+AddSegmentToToolpath (1897.57, 1536.02, 10);
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP38_1_point",1656.22, 1525.02);
+CreateRoughFinish ("OP38_1",7,"",TypeOfProcess.GeneralRouting, "E002", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP38_1_ToolPath", 1656.22, 1525.02, -7, true);
+AddSegmentToToolpath (1719.45, 1525.02, -18.15);
+AddSegmentToToolpath (1719.45, 1536.02, -18.15);
+AddSegmentToToolpath (2013.94, 1536.02, -18.15);
+AddSegmentToToolpath (2013.94, 2090, -18.15);
+AddSegmentToToolpath (1449.96, 2090, -18.15);
+AddSegmentToToolpath (1449.96, 1536.02, -18.15);
+AddSegmentToToolpath (1744.45, 1536.02, -18.15);
+AddSegmentToToolpath (1744.45, 1525.02, -18.15);
+AddSegmentToToolpath (1744.45, 1525.02, 10);
+
+//DISC MILL GROOVE_FIX_6MM
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP39_1_Polyline", 2033.93, 2020.01);
+AddSegmentToPolyline (2033.93, 2020.01);
+CreateRoughFinish ("OP39_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP39_1_ToolPath", 2033.93, 2020.01, 13);
+AddSegmentToToolpath (2033.93, 2020.01, -9);
+AddSegmentToToolpath (2046.93, 2020.01, -9);
+AddSegmentToToolpath (2046.93, 2019.81, -9);
+AddSegmentToToolpath (2033.93, 2019.81, -9);
+AddSegmentToToolpath (2033.93, 2019.81, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP40_1_Polyline", 2033.93, 1813.01);
+AddSegmentToPolyline (2033.93, 1813.01);
+CreateRoughFinish ("OP40_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP40_1_ToolPath", 2033.93, 1813.01, 13);
+AddSegmentToToolpath (2033.93, 1813.01, -9);
+AddSegmentToToolpath (2046.93, 1813.01, -9);
+AddSegmentToToolpath (2046.93, 1812.81, -9);
+AddSegmentToToolpath (2033.93, 1812.81, -9);
+AddSegmentToToolpath (2033.93, 1812.81, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP41_1_Polyline", 2033.93, 1606.01);
+AddSegmentToPolyline (2033.93, 1606.01);
+CreateRoughFinish ("OP41_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP41_1_ToolPath", 2033.93, 1606.01, 13);
+AddSegmentToToolpath (2033.93, 1606.01, -9);
+AddSegmentToToolpath (2046.93, 1606.01, -9);
+AddSegmentToToolpath (2046.93, 1605.81, -9);
+AddSegmentToToolpath (2033.93, 1605.81, -9);
+AddSegmentToToolpath (2033.93, 1605.81, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP42_1_Polyline", 2633.93, 1606.01);
+AddSegmentToPolyline (2633.93, 1606.01);
+CreateRoughFinish ("OP42_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP42_1_ToolPath", 2633.93, 1606.01, 13);
+AddSegmentToToolpath (2633.93, 1606.01, -9);
+AddSegmentToToolpath (2620.93, 1606.01, -9);
+AddSegmentToToolpath (2620.93, 1606.21, -9);
+AddSegmentToToolpath (2633.93, 1606.21, -9);
+AddSegmentToToolpath (2633.93, 1606.21, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP43_1_Polyline", 2633.93, 1813.01);
+AddSegmentToPolyline (2633.93, 1813.01);
+CreateRoughFinish ("OP43_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP43_1_ToolPath", 2633.93, 1813.01, 13);
+AddSegmentToToolpath (2633.93, 1813.01, -9);
+AddSegmentToToolpath (2620.93, 1813.01, -9);
+AddSegmentToToolpath (2620.93, 1813.21, -9);
+AddSegmentToToolpath (2633.93, 1813.21, -9);
+AddSegmentToToolpath (2633.93, 1813.21, 13);
+
+SetPneumaticHoodPosition (1);
+SetJerk (3);
+CreatePolyline ("OP44_1_Polyline", 2633.93, 2020.01);
+AddSegmentToPolyline (2633.93, 2020.01);
+CreateRoughFinish ("OP44_1",-13,"",TypeOfProcess.GeneralRouting, "E007", "-1", 0, -1, -1, -1, 0);
+CreateToolpath ("OP44_1_ToolPath", 2633.93, 2020.01, 13);
+AddSegmentToToolpath (2633.93, 2020.01, -9);
+AddSegmentToToolpath (2620.93, 2020.01, -9);
+AddSegmentToToolpath (2620.93, 2020.21, -9);
+AddSegmentToToolpath (2633.93, 2020.21, -9);
+AddSegmentToToolpath (2633.93, 2020.21, 13);
+
+//FLAT DRILL POTBOOR35MM
+
+SetJerk (0);
+CreateDrill ("OP45_1", 2033.93, 2020.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP45_2", 2033.93, 1813.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP45_3", 2033.93, 1606.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP45_4", 2633.93, 1606.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP45_5", 2633.93, 1813.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+CreateDrill ("OP45_6", 2633.93, 2020.01, 13, 35, "", TypeOfProcess.Drilling, "-1", "-1", 0, -1, -1, "P", 0, 10);
+
+//SLOT MILL AIRDIA20R
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP46_1_point",2346.43, 1536.02);
+CreateRoughFinish ("OP46_1",-10,"",TypeOfProcess.GeneralRouting, "E002", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP46_1_ToolPath", 2346.43, 1536.02, 10, true);
+AddSegmentToToolpath (2499.55, 1536.02, -17);
+AddSegmentToToolpath (2615.92, 1536.02, -17);
+AddSegmentToToolpath (2615.92, 2090, -17);
+AddSegmentToToolpath (2051.94, 2090, -17);
+AddSegmentToToolpath (2051.94, 1536.02, -17);
+AddSegmentToToolpath (2321.43, 1536.02, -17);
+AddSegmentToToolpath (2333.93, 1536.02, -17);
+AddSegmentToToolpath (2346.43, 1536.02, -17);
+AddSegmentToToolpath (2499.55, 1536.02, -17);
+AddSegmentToToolpath (2499.55, 1536.02, 10);
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP47_1_point",2258.2, 1525.02);
+CreateRoughFinish ("OP47_1",7,"",TypeOfProcess.GeneralRouting, "E002", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP47_1_ToolPath", 2258.2, 1525.02, -7, true);
+AddSegmentToToolpath (2321.43, 1525.02, -18.15);
+AddSegmentToToolpath (2321.43, 1536.02, -18.15);
+AddSegmentToToolpath (2615.92, 1536.02, -18.15);
+AddSegmentToToolpath (2615.92, 2090, -18.15);
+AddSegmentToToolpath (2051.94, 2090, -18.15);
+AddSegmentToToolpath (2051.94, 1536.02, -18.15);
+AddSegmentToToolpath (2346.43, 1536.02, -18.15);
+AddSegmentToToolpath (2346.43, 1525.02, -18.15);
+AddSegmentToToolpath (2346.43, 1525.02, 10);
+ResetJerk ();

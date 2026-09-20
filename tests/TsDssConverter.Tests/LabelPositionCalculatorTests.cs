@@ -4,7 +4,7 @@ namespace TsDssConverter.Tests;
 
 public class LabelPositionCalculatorTests
 {
-    // Part "Verschuren - K2 - Zijkant links - 13099" on sheet White_18#01 (3050 x 1300).
+    // An example part on a sheet of 3050 x 1300 (from the first sample export; the numbers are only used here).
     private const double SheetLength = 3050;
     private const double SheetWidth = 1300;
     private const double LabelX = 2055.9699999999998;

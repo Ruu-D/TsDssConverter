@@ -35,7 +35,7 @@ public static class LabelCsvWriter
         ("EDGE_B1", (plan, sheet, label) => label.EdgeB1),
         ("EDGE_B2", (plan, sheet, label) => label.EdgeB2),
         ("CAM2", (plan, sheet, label) => label.Cam2),
-        ("OPLEG2", (plan, sheet, label) => label.Opleg2),
+        ("CAM3", (plan, sheet, label) => label.Cam3),
         ("PROJECT", (plan, sheet, label) => label.Project),
         ("SHEET", (plan, sheet, label) => label.SheetName),
     };

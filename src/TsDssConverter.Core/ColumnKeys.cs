@@ -30,7 +30,7 @@ public static class ColumnKeys
         public const string EdgeB1 = "EdgeB1";
         public const string EdgeB2 = "EdgeB2";
         public const string Cam2 = "Cam2";
-        public const string Opleg2 = "Opleg2";
+        public const string Cam3 = "Cam3";
         public const string Project = "Project";
     }
 

@@ -15,7 +15,7 @@ public class SampleConversionTests
     {
         return new Converter().Convert(
             TestPaths.InfoFile, TestPaths.PositionFile, materialsFile ?? TestPaths.MaterialsFile,
-            outFolder, outFolder, settings ?? new ConverterSettings(), TestPaths.GoldenPlanDate);
+            outFolder, outFolder, settings ?? TestPaths.SafeSettings(), TestPaths.GoldenPlanDate);
     }
 
     /// <summary>Reads a label CSV of the converted sample into rows keyed by column name.</summary>
@@ -32,6 +32,7 @@ public class SampleConversionTests
 
     // The label folder that is written in the golden XML (the default of the third setting).
     private const string GoldenLabelFolder = @"Z:\Duivestein\Label";
+    private const string GoldenExportFolder = @"Z:\TopSolid\Export";
 
     [Fact]
     public void LabelFilenames_InTheXml_AreTheLabelFolderPlusTheFileName()
@@ -44,14 +45,14 @@ public class SampleConversionTests
 
         new Converter().Convert(
             TestPaths.InfoFile, TestPaths.PositionFile, TestPaths.MaterialsFile,
-            batchFolder, labelFolder, new ConverterSettings(), TestPaths.GoldenPlanDate);
+            batchFolder, labelFolder, TestPaths.SafeSettings(), TestPaths.GoldenPlanDate);
 
-        var xml = XDocument.Load(System.IO.Path.Combine(batchFolder, "Verschuren-P-20.xml"));
+        var xml = XDocument.Load(System.IO.Path.Combine(batchFolder, "DAAN_ROGIERS-P2026.09.xml"));
         string[] labelNames = xml.Descendants("LabelFilename").Select(e => e.Value).ToArray();
 
-        Assert.Equal(11, labelNames.Length);
-        Assert.Equal(System.IO.Path.Combine(labelFolder, "Verschuren-P-20_001.csv"), labelNames[0]);
-        Assert.Equal(System.IO.Path.Combine(labelFolder, "Verschuren-P-20_011.csv"), labelNames[10]);
+        Assert.Equal(3, labelNames.Length);
+        Assert.Equal(System.IO.Path.Combine(labelFolder, "DAAN_ROGIERS-P2026.09_001.csv"), labelNames[0]);
+        Assert.Equal(System.IO.Path.Combine(labelFolder, "DAAN_ROGIERS-P2026.09_003.csv"), labelNames[2]);
 
         // The path points at the file that was really written.
         Assert.All(labelNames, path => Assert.True(File.Exists(path), path));
@@ -80,8 +81,8 @@ public class SampleConversionTests
 
         ConvertSample(folder.Path);
 
-        string[] goldenFiles = Directory.GetFiles(TestPaths.GoldenFolder, "Verschuren-P-20*");
-        Assert.Equal(12, goldenFiles.Length); // 1 XML + 11 CSVs
+        string[] goldenFiles = Directory.GetFiles(TestPaths.GoldenFolder, "DAAN_ROGIERS-P2026.09*");
+        Assert.Equal(4, goldenFiles.Length); // 1 XML + 3 CSVs
 
         foreach (string goldenFile in goldenFiles)
         {
@@ -96,7 +97,9 @@ public class SampleConversionTests
                 // The XML holds the full path of every label file: the label folder + the file name. The golden file
                 // has the folder of the settings (Z:\Duivestein\Label); this test wrote to a temp folder. Put the
                 // golden folder in the place of the temp folder, and compare everything else byte for byte.
+                // The same for the export folder: the CNC paths hold the (non-existing) test export folder.
                 string text = new UTF8Encoding(false).GetString(actual);
+                text = text.Replace(TestPaths.NoExportFolder + @"\", GoldenExportFolder + @"\");
                 actual = new UTF8Encoding(false).GetBytes(text.Replace(folder.Path + @"\", GoldenLabelFolder + @"\"));
             }
 
@@ -106,7 +109,7 @@ public class SampleConversionTests
         }
 
         // Nothing else was written, and no ".tmp" files are left behind.
-        Assert.Equal(12, Directory.GetFiles(folder.Path).Length);
+        Assert.Equal(4, Directory.GetFiles(folder.Path).Length);
     }
 
     [Fact]
@@ -121,8 +124,8 @@ public class SampleConversionTests
 
             ConvertSample(folder.Path);
 
-            byte[] golden = File.ReadAllBytes(System.IO.Path.Combine(TestPaths.GoldenFolder, "Verschuren-P-20_002.csv"));
-            byte[] actual = File.ReadAllBytes(folder.File("Verschuren-P-20_002.csv"));
+            byte[] golden = File.ReadAllBytes(System.IO.Path.Combine(TestPaths.GoldenFolder, "DAAN_ROGIERS-P2026.09_002.csv"));
+            byte[] actual = File.ReadAllBytes(folder.File("DAAN_ROGIERS-P2026.09_002.csv"));
             Assert.True(golden.SequenceEqual(actual));
         }
         finally
@@ -132,26 +135,22 @@ public class SampleConversionTests
     }
 
     [Fact]
-    public void BatchXml_HasFivePlansInLpOrder()
+    public void BatchXml_HasTwoPlansInLpOrder()
     {
         using var folder = new TempFolder();
         var result = ConvertSample(folder.Path);
 
-        Assert.Equal("Verschuren-P-20", result.BatchName);
-        Assert.Equal(11, result.LabelPaths.Count);
-        Assert.Equal(63, result.PartCount);
+        Assert.Equal("DAAN_ROGIERS-P2026.09", result.BatchName);
+        Assert.Equal(3, result.LabelPaths.Count);
+        Assert.Equal(22, result.PartCount);
 
-        var plans = XDocument.Load(folder.File("Verschuren-P-20.xml")).Root!.Element("Plans")!.Elements("Plan").ToList();
+        var plans = XDocument.Load(folder.File("DAAN_ROGIERS-P2026.09.xml")).Root!.Element("Plans")!.Elements("Plan").ToList();
 
         // Order of first appearance in the LP file, with the number of sheets per material.
-        string chene = "Ch\u00eane";
         var expected = new (string Material, int Sheets)[]
         {
-            ("Paars_18", 1),
-            ("White_18", 5),
-            ("H1145_-_ST10_-_" + chene + "_Bardolino_naturel_Zijdewit_19", 2),
-            ("H1145_-_ST10_-_" + chene + "_Bardolino_naturel_Zijdewit_40", 1),
-            ("White_9", 2),
+            ("Melamine_18", 2),
+            ("Melamine_08", 1),
         };
 
         Assert.Equal(expected.Length, plans.Count);
@@ -163,7 +162,7 @@ public class SampleConversionTests
             Assert.Equal(expected[i].Sheets, plans[i].Element("CNCFilenames")!.Elements().Count());
         }
 
-        Assert.Equal("2026-09-19", XDocument.Load(folder.File("Verschuren-P-20.xml")).Root!.Element("PlanDate")!.Value);
+        Assert.Equal("2026-09-20", XDocument.Load(folder.File("DAAN_ROGIERS-P2026.09.xml")).Root!.Element("PlanDate")!.Value);
     }
 
     [Fact]
@@ -172,78 +171,101 @@ public class SampleConversionTests
         using var folder = new TempFolder();
         ConvertSample(folder.Path);
 
-        // Parts per sheet, in file order 001 ... 011.
-        int[] expectedRows = { 6, 10, 9, 7, 10, 8, 4, 2, 1, 5, 1 };
+        // Parts per sheet, in file order 001 ... 003 (Melamine_18#01, Melamine_18#02, Melamine_08#01).
+        int[] expectedRows = { 13, 5, 4 };
 
         for (int i = 0; i < expectedRows.Length; i++)
         {
-            var rows = ReadCsv(folder.File($"Verschuren-P-20_{i + 1:000}.csv"));
+            var rows = ReadCsv(folder.File($"DAAN_ROGIERS-P2026.09_{i + 1:000}.csv"));
             Assert.Equal(expectedRows[i], rows.Count);
 
             // N runs 1..n on every sheet.
             Assert.Equal(Enumerable.Range(1, rows.Count).Select(n => n.ToString()), rows.Select(r => r["N"]));
         }
 
-        Assert.Equal(63, expectedRows.Sum());
+        Assert.Equal(22, expectedRows.Sum());
     }
 
     [Fact]
-    public void Part13099_HasTheExpectedValues()
+    public void Part3575_HasTheExpectedValues()
     {
         using var folder = new TempFolder();
         ConvertSample(folder.Path);
 
-        // White_18#01 is the first sheet of the second plan = label file 002.
-        var row = ReadCsv(folder.File("Verschuren-P-20_002.csv")).Single(r => r["ID"] == "13099");
+        // Melamine_18#01 is the first sheet of the first plan = label file 001.
+        var row = ReadCsv(folder.File("DAAN_ROGIERS-P2026.09_001.csv")).Single(r => r["ID"] == "3575");
 
-        Assert.Equal("White_18", row["MATERIAL"]);
-        Assert.Equal("3050", row["SHEETLENGTH"]);
-        Assert.Equal("1300", row["SHEETWIDTH"]);
+        Assert.Equal("Melamine_18", row["MATERIAL"]);
+        Assert.Equal("2850", row["SHEETLENGTH"]);
+        Assert.Equal("2100", row["SHEETWIDTH"]);
         Assert.Equal("18", row["SHEETTHICKNESS"]);
         Assert.Equal("0", row["GRAIN"]);
         Assert.Equal("Geen", row["GRAINSTR"]);
-        Assert.Equal("2056", row["X"]);
-        Assert.Equal("289", row["Y"]);
+        Assert.Equal("399", row["X"]);                  // LABEL_X 398.99, rounded
+        Assert.Equal("540", row["Y"]);                  // LABEL_Y 540.05
         Assert.Equal("180", row["ROTATION"]);
-        Assert.Equal("734", row["PANELLENGTH"]);
-        Assert.Equal("568,5", row["PANELWIDTH"]);
-        Assert.Equal("Verschuren - K2 - Zijkant links - 13099", row["DESCRIPTION"]);
-        Assert.Equal("White", row["MATERIALNAME"]);  // trailing space of the LI text is trimmed
-        Assert.Equal("P-20", row["PROJECT"]);
-        Assert.Equal("White_18#01", row["SHEET"]);
+        Assert.Equal("1", row["N"]);
+        Assert.Equal("778", row["PANELLENGTH"]);
+        Assert.Equal("596", row["PANELWIDTH"]);
+        Assert.Equal("K1 - Front - 3575", row["DESCRIPTION"]);
+        Assert.Equal("Melamine_18", row["MATERIALNAME"]);
+        Assert.Equal("FR", row["EDGE_L1"]);
+        Assert.Equal("FR", row["EDGE_B2"]);
+        Assert.Equal("0003575_2.cix", row["CAM2"]);
+        Assert.Equal("0003575_3.cix", row["CAM3"]);
+        Assert.Equal("P2026.09", row["PROJECT"]);
+        Assert.Equal("Melamine_18#01", row["SHEET"]);
+
+        // The ten description columns come last, in the order of the export.
+        Assert.Equal("Nr bon commande", row["DESC1"]);
+        Assert.Equal("Extra texte 2", row["DESC2"]);
+        Assert.Equal("Extra texte 10", row["DESC10"]);
     }
 
     [Fact]
-    public void Part13099_WithFlipX_HasX994()
-    {
-        using var folder = new TempFolder();
-        ConvertSample(folder.Path, new ConverterSettings { FlipX = true });
-
-        var row = ReadCsv(folder.File("Verschuren-P-20_002.csv")).Single(r => r["ID"] == "13099");
-
-        Assert.Equal("994", row["X"]);
-        Assert.Equal("289", row["Y"]);
-    }
-
-    [Fact]
-    public void Part13099_WithFlipY_HasY1011()
-    {
-        using var folder = new TempFolder();
-        ConvertSample(folder.Path, new ConverterSettings { FlipY = true });
-
-        var row = ReadCsv(folder.File("Verschuren-P-20_002.csv")).Single(r => r["ID"] == "13099");
-
-        Assert.Equal("2056", row["X"]);
-        Assert.Equal("1011", row["Y"]);
-    }
-
-    [Fact]
-    public void Part17075_Angle360BecomesRotation0()
+    public void ThePartsWithoutEdgeBandingOrCam3_HaveEmptyValues_NotMissingColumns()
     {
         using var folder = new TempFolder();
         ConvertSample(folder.Path);
 
-        var row = ReadCsv(folder.File("Verschuren-P-20_002.csv")).Single(r => r["ID"] == "17075");
+        var row = ReadCsv(folder.File("DAAN_ROGIERS-P2026.09_001.csv")).Single(r => r["ID"] == "1824");   // a Rugband
+
+        Assert.Equal("", row["EDGE_L1"]);
+        Assert.Equal("", row["CAM3"]);
+        Assert.Equal("0001824_2.cix", row["CAM2"]);
+    }
+
+    [Fact]
+    public void Part3575_WithFlipX_HasX2451()
+    {
+        using var folder = new TempFolder();
+        ConvertSample(folder.Path, new ConverterSettings { FlipX = true, TopSolidExportPath = TestPaths.NoExportFolder });
+
+        var row = ReadCsv(folder.File("DAAN_ROGIERS-P2026.09_001.csv")).Single(r => r["ID"] == "3575");
+
+        Assert.Equal("2451", row["X"]);    // 2850 - 398.99 = 2451.01
+        Assert.Equal("540", row["Y"]);
+    }
+
+    [Fact]
+    public void Part3575_WithFlipY_HasY1560()
+    {
+        using var folder = new TempFolder();
+        ConvertSample(folder.Path, new ConverterSettings { FlipY = true, TopSolidExportPath = TestPaths.NoExportFolder });
+
+        var row = ReadCsv(folder.File("DAAN_ROGIERS-P2026.09_001.csv")).Single(r => r["ID"] == "3575");
+
+        Assert.Equal("399", row["X"]);
+        Assert.Equal("1560", row["Y"]);    // 2100 - 540.05 = 1559.95, rounded
+    }
+
+    [Fact]
+    public void Part4544_Angle360BecomesRotation0()
+    {
+        using var folder = new TempFolder();
+        ConvertSample(folder.Path);
+
+        var row = ReadCsv(folder.File("DAAN_ROGIERS-P2026.09_001.csv")).Single(r => r["ID"] == "4544");
 
         Assert.Equal("0", row["ROTATION"]);
     }
@@ -252,12 +274,12 @@ public class SampleConversionTests
     public void CncPrefix_ReplacesTheExportFolderInTheXml()
     {
         using var folder = new TempFolder();
-        var settings = new ConverterSettings { CncPathPrefixInXml = @"\\server\topsolid\Export" };
+        var settings = new ConverterSettings { CncPathPrefixInXml = @"\\server\topsolid\Export", TopSolidExportPath = TestPaths.NoExportFolder };
 
         ConvertSample(folder.Path, settings);
 
-        string xml = File.ReadAllText(folder.File("Verschuren-P-20.xml"));
-        Assert.Contains(@"<CNCFilename>\\server\topsolid\Export\Verschuren-P-20_White_18_01.xcs</CNCFilename>", xml);
+        string xml = File.ReadAllText(folder.File("DAAN_ROGIERS-P2026.09.xml"));
+        Assert.Contains(@"<CNCFilename>\\server\topsolid\Export\CNC\DAAN_ROGIERS-P2026.09\Melamine_18#01.xcs</CNCFilename>", xml);
         Assert.DoesNotContain("Z:", xml);
     }
 
@@ -266,12 +288,12 @@ public class SampleConversionTests
     {
         using var folder = new TempFolder();
         ConvertSample(folder.Path);
-        byte[] xmlBefore = File.ReadAllBytes(folder.File("Verschuren-P-20.xml"));
+        byte[] xmlBefore = File.ReadAllBytes(folder.File("DAAN_ROGIERS-P2026.09.xml"));
 
         var error = Assert.Throws<ConversionException>(() => ConvertSample(folder.Path));
 
         Assert.Contains("Batch bestaat al", error.Message);
-        Assert.True(xmlBefore.SequenceEqual(File.ReadAllBytes(folder.File("Verschuren-P-20.xml"))));
+        Assert.True(xmlBefore.SequenceEqual(File.ReadAllBytes(folder.File("DAAN_ROGIERS-P2026.09.xml"))));
     }
 
     [Fact]
@@ -285,11 +307,16 @@ public class SampleConversionTests
 
         var error = Assert.Throws<ConversionException>(() => ConvertSample(outFolder, materialsFile: materialsFile));
 
-        Assert.Contains("'White_18'", error.Message);
-        Assert.Contains("'White_9'", error.Message);
-        Assert.Contains("Zijdewit_19'", error.Message);
-        Assert.Contains("Zijdewit_40'", error.Message);
+        Assert.Contains("'Melamine_18'", error.Message);   // every unknown material is named, not just the first
+        Assert.Contains("'Melamine_08'", error.Message);
         Assert.DoesNotContain("'Paars_18'", error.Message);
+        Assert.Empty(Directory.GetFiles(outFolder));
+
+        // With one of the two known, only the other one is named.
+        File.WriteAllText(materialsFile, "TopSolidMaterial;DssMaterial;Thickness;Grain\nMelamine_18;Melamine_18;18;0\n");
+        var second = Assert.Throws<ConversionException>(() => ConvertSample(outFolder, materialsFile: materialsFile));
+        Assert.Contains("'Melamine_08'", second.Message);
+        Assert.DoesNotContain("'Melamine_18'", second.Message);
         Assert.Empty(Directory.GetFiles(outFolder));
     }
 
@@ -306,8 +333,8 @@ public class SampleConversionTests
     }
 
     [Theory]
-    [InlineData(@"C:\export\Verschuren-P-20-LI.xlsx", "Verschuren-P-20")]
-    [InlineData(@"C:\export\Verschuren-P-20-li.xlsx", "Verschuren-P-20")]
+    [InlineData(@"C:\export\DAAN_ROGIERS-P2026.09-LI.xlsx", "DAAN_ROGIERS-P2026.09")]
+    [InlineData(@"C:\export\DAAN_ROGIERS-P2026.09-li.xlsx", "DAAN_ROGIERS-P2026.09")]
     [InlineData(@"C:\export\Huppy-002-LI.xlsx", "Huppy-002")]
     public void BatchName_IsTheFileNameWithoutTheLiSuffix(string path, string expected)
     {
@@ -315,8 +342,8 @@ public class SampleConversionTests
     }
 
     [Theory]
-    [InlineData(@"C:\export\Verschuren-P-20.xlsx")]
-    [InlineData(@"C:\export\Verschuren-P-20-LP.xlsx")]
+    [InlineData(@"C:\export\DAAN_ROGIERS-P2026.09.xlsx")]
+    [InlineData(@"C:\export\DAAN_ROGIERS-P2026.09-LP.xlsx")]
     [InlineData(@"C:\export\-LI.xlsx")]
     public void BatchName_WithoutLiSuffix_IsAnError(string path)
     {

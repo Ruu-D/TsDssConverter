@@ -68,26 +68,26 @@ Excel or Office is **not** needed on the PC.
 
 ### Example
 
-The included sample project (63 parts) becomes:
+The included sample project (22 parts) becomes:
 
-- 1 batch XML with 5 plans (one per material), and
-- 11 label files, one for each physical sheet.
+- 1 batch XML with 2 plans (one per material), and
+- 3 label files, one for each physical sheet.
 
 An extract of the batch XML:
 
 ```xml
 <Plan>
-  <PlanName>002</PlanName>
-  <Material>White_18</Material>
-  <XDimSize>3050</XDimSize>
-  <YDimSize>1300</YDimSize>
-  <Quantity>5</Quantity>
+  <PlanName>001</PlanName>
+  <Material>Melamine_18</Material>
+  <XDimSize>2850</XDimSize>
+  <YDimSize>2100</YDimSize>
+  <Quantity>2</Quantity>
   <LabelFilenames>
-    <LabelFilename>Z:\Duivestein\Label\Verschuren-P-20_002.csv</LabelFilename>
+    <LabelFilename>Z:\Duivestein\Label\DAAN_ROGIERS-P2026.09_001.csv</LabelFilename>
     <!-- ... one per sheet ... -->
   </LabelFilenames>
   <CNCFilenames>
-    <CNCFilename>Z:\TopSolid\Export\Verschuren-P-20_White_18_01.xcs</CNCFilename>
+    <CNCFilename>Z:\TopSolid\Export\CNC\DAAN_ROGIERS-P2026.09\Melamine_18#01.xcs</CNCFilename>
     <!-- ... same order as the label files ... -->
   </CNCFilenames>
 </Plan>
@@ -103,6 +103,10 @@ A wrong job in an automatic warehouse means a wrong board on the machine, so the
   clear message that names the material.
 - **It never overwrites a job.** If a batch with the same name already exists in the warehouse folder,
   nothing is written.
+- **Jobs cannot overwrite each other's CNC programs.** TopSolid writes the programs of all jobs in one folder and names them
+  after the sheet only (`Melamine_18#01.xcs`), so a second job would overwrite the first. After the conversion the program
+  files of a job are moved to their own folder, `CNC\<project>\`, and the batch XML points there. A program that is newer
+  than the job's trigger file (a later export overwrote it) is refused with a clear message: export that job again.
 - **The warehouse never sees half a job.** All label files are written first and the batch XML last; every
   file is written under a temporary name and renamed when complete.
 - **Incomplete or inconsistent input is refused, not repaired.** Missing columns, parts that appear in only one
@@ -126,9 +130,10 @@ programs, and the trigger file (`-TR`) as the very last one. When the trigger fi
 1. The program waits until the three files are complete and no longer in use (it checks every 2 seconds, and gives up
    with an error after 2 minutes).
 2. It converts the project (one at a time) and writes the label files and the batch XML for the warehouse.
-3. It moves the three files to `_Verwerkt<date-time> <project>` in the export folder. The CNC programs stay where
-   they are, because the batch XML points to them.
-4. If something is wrong with the files, they go to `_Fout<date-time> <project>` together with a `fout.txt` that
+3. It moves the three files to `_Verwerkt\<date-time> <project>` in the export folder (`_Effectuee` / `_Converted` in French /
+   English, the folder names follow the selected language), and the CNC programs of the job
+   to `CNC\<project>\` (the batch XML points there). The export folder itself then only holds what is not converted yet.
+4. If something is wrong with the files, they go to `_Fout\<date-time> <project>` (`_Erreur` / `_Error`) together with a `fout.txt` that
    explains in plain language (in the selected language) what to correct. Putting the files back in the export folder
    starts a new attempt.
 
@@ -148,7 +153,7 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 
 **What is verified so far**
 
-- 352 automated tests pass.
+- 363 automated tests pass.
 - Converting the sample TopSolid export gives exactly the expected files (compared byte for byte).
 - Every error and warning listed above is covered by a test, including a wrong pair of files and several
   problems at once.
@@ -194,6 +199,8 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
   other export files and the CNC programs are complete.
 - CNC programs have the extension `.xcs`.
 - The CNC paths in the batch XML use the drive letter of the shared folder (for example `Z:`).
+- After the conversion the CNC programs of a job are moved to `Z:\TopSolid\Export\CNC\<project>\` (decided by Daan, so that
+  jobs with the same material and sheet number never overwrite each other's programs).
 - The TopSolid material name is the master name; the same names are used in the warehouse.
 - Duivestein checks that the sheet sizes in the batch match their stock.
 
@@ -201,7 +208,7 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 
 | From | Question |
 |---|---|
-| TopSolid | Exact naming and folder of the CNC program per sheet (the current naming is provisional) |
+| TopSolid | Confirm the naming and folder of the CNC program per sheet. The program assumes `{sheet name}.xcs` in the export folder (for example `Melamine_18#01.xcs`), which is how all the exports we have look. Also: could the project name be part of that file name? Then two jobs could never collide, even before conversion |
 | TopSolid | The sheet thickness column in the export is always 18; fix in the export (the tool takes the thickness from `materials.csv`) |
 | Duivestein | Restrictions on batch name (length, characters) and what happens when a batch is sent twice |
 | Duivestein | Character encoding for accented characters in the label files (UTF-8 is used for now) |
@@ -217,7 +224,7 @@ will be delivered as one self-contained `.exe`, so the customer PC needs no inst
 dotnet test
 
 # Convert the sample project (output goes to C:\Temp\out)
-dotnet run --project src/TsDssConverter.Cli -- samples/topsolid/Verschuren-P-20-LI.xlsx samples/topsolid/Verschuren-P-20-LP.xlsx samples/materials.sample.csv C:\Temp\out
+dotnet run --project src/TsDssConverter.Cli -- samples/topsolid/DAAN_ROGIERS-P2026.09-LI.xlsx samples/topsolid/DAAN_ROGIERS-P2026.09-LP.xlsx samples/materials.sample.csv C:\Temp\out
 ```
 
 Options for the command line tool:
@@ -226,7 +233,7 @@ Options for the command line tool:
 |---|---|
 | `--flipx` | Label zero point at the other side in X (X = sheet length − X) |
 | `--flipy` | Label zero point at the other side in Y (Y = sheet width − Y) |
-| `--export-path <path>` | TopSolid export folder as used in the CNC paths (default `Z:\TopSolid\Export\`) |
+| `--export-path <path>` | TopSolid export folder; its CNC programs are **moved** to `<path>\CNC\<project>\` (default `Z:\TopSolid\Export\`) |
 | `--lang <nl\|fr\|en>` | Language of the messages (default `nl`) |
 
 Exit code: `0` = OK, `1` = a problem in the input (message in Dutch), `2` = unexpected error.
@@ -255,7 +262,10 @@ The delivery is **one file**, `TsDssConverter.exe` (about 52 MB). It contains ev
 needed. It runs on 64-bit Windows 10 and 11. There is no installer: the program keeps all its files in one folder and
 uninstalling is deleting that folder.
 
-1. Create the folder `C:\TsDssConverter` and copy `TsDssConverter.exe` into it. (The SHA-256 checksum that
+1. Create the folder `C:\TsDssConverter` and copy `TsDssConverter.exe` into it. On the first start the program writes the
+   default `settings.json`, `materials.csv`, `columns-li.txt`, `columns-lp.txt` and `columns-label.txt` there (they are
+   built into the exe, from the folder `defaults` of the project, so it stays one file). An existing file is never replaced.
+   To change what a new installation starts with, edit the files in `defaults` and run `publish.cmd` again. (The SHA-256 checksum that
    `publish.cmd` prints can be compared with `certutil -hashfile TsDssConverter.exe SHA256` to check the copy.)
 2. Start it by double-clicking. The exe is not code-signed, so Windows SmartScreen may say "Windows protected your
    PC": choose *More info* and *Run anyway*. If the file came by download or e-mail, first right-click it, choose
@@ -269,11 +279,12 @@ uninstalling is deleting that folder.
    conversion of a project, by design.
 5. If TopSolid names a header differently than the sample export, adjust it with the **Config** buttons.
 6. Test with a real export. The list in the settings window shows the result of every conversion, and the button
-   **Open logmap** opens the log files. Files that could not be converted are in `_Fout` in the export folder,
-   together with a `fout.txt`.
+   **Open logmap** opens the log files. Files that could not be converted are in `_Fout` (`_Erreur` / `_Error` in French /
+   English) in the export folder, together with a `fout.txt`.
 
 **Updating** to a new version: exit the program (tray menu, *Afsluiten*), replace `TsDssConverter.exe` by the new one
-and start it again. `settings.json`, `materials.csv`, the three column files and the logs are not touched.
+and start it again. `settings.json`, `materials.csv`, the three column files and the logs are not touched (so a new version never
+overwrites the customer's own materials list).
 **Uninstalling**: exit the program, untick *Start met Windows*, and delete `C:\TsDssConverter`.
 
 The folder `C:\TsDssConverter` is shared by all Windows users of the PC: if more than one user works on it, give them
@@ -286,8 +297,8 @@ direction. It is a semicolon-separated file that opens directly in Belgian Excel
 
 ```
 TopSolidMaterial;DssMaterial;Thickness;Grain
-White_18;White_18;18;0
-White_9;White_9;9;0
+Melamine_18;Melamine_18;18;0
+Melamine_08;Melamine_08;8;0
 ```
 
 Grain: `0` = none, `1` = along the length, `2` = across. See [`samples/materials.sample.csv`](samples/materials.sample.csv).
@@ -296,16 +307,16 @@ Grain: `0` = none, `1` = along the length, `2` = across. See [`samples/materials
 
 The program finds every column of the TopSolid files by its **header name**, never by position, so the order of the
 columns does not matter. If TopSolid ever names a header differently, the converter would stop with a message such as
-*Column 'Test' is missing in the LI file*. To follow such a change without a new version of the program, the names are
+*Column 'Projet' / 'Test' is missing in the LI file*. To follow such a change without a new version of the program, the names are
 in text files in `C:\TsDssConverter\`, which open in Notepad from the buttons **Config** in the settings window
 (the first two are under the TopSolid export folder: the first for the LI file, the second for the LP file; the third,
 for the label CSV, is described below):
 
 ```
 # columns-li.txt (the explanation at the top of the file is left out here)
-SheetName    = Naam_Plaat
-Description  = Omschrijving
-Project      = Test | Project
+Project      = Projet | Test
+SheetName    = Nom_panneau | Naam_Plaat
+Description  = Description | Omschrijving
 ```
 
 - Left of the `=` is what the program needs (do not change it), right of it is the header in the Excel file.
@@ -317,6 +328,11 @@ Project      = Test | Project
   folder: they wait and the conversion is tried again as soon as the file is correct. The message names the file and
   the line.
 - If a column is really missing, the error names all missing columns at once and adds a tip about this file.
+- The fixed columns of the LI file are required, including `CAM_2` and `CAM_3` (the two special columns; `CAM3` comes right
+  after `CAM2` in the label CSV). Only the ten `DESC` columns may be missing without an error: the label CSV then simply
+  has empty `DESC` columns. The built-in names are the headers of the newest TopSolid export (`Projet`, `Nom_panneau`,
+  `Description`, `Dimensions`, `Matériau`, ...); the older Dutch names (`Test`, `Naam_Plaat`, `Omschrijving`, ...) are
+  accepted as a second name.
 
 **Ten extra description fields for the label.** The LI and the LP file may contain the optional columns `DESC1` to
 `DESC10` (their header names are in `columns-li.txt` and `columns-lp.txt` like all others). They become the **last ten

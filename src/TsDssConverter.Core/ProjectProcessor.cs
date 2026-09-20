@@ -33,15 +33,17 @@ public class ProcessOutcome
 
 /// <summary>
 /// Converts ONE project and puts its files away:
-///   success  -> {export}\_Verwerkt\{yyyyMMdd-HHmmss} {project}\
-///   an error -> {export}\_Fout\{yyyyMMdd-HHmmss} {project}\ together with fout.txt (in the selected language)
-/// The CNC programs stay in the export folder: the batch XML points to them there.
+///   success  -> {export}\_Verwerkt\{yyyyMMdd-HHmmss} {project}\   (_Effectuee / _Converted in French / English)
+///   an error -> {export}\_Fout\{yyyyMMdd-HHmmss} {project}\ together with fout.txt (in the selected language; _Erreur / _Error)
+/// The CNC programs are moved by the converter to {export}\CNC\{project}\ (the batch XML points there), so the
+/// export folder itself only holds what is not converted yet.
 /// This class never throws: every problem ends up in the outcome.
 /// </summary>
 public class ProjectProcessor
 {
-    public const string DoneFolderName = "_Verwerkt";
-    public const string ErrorFolderName = "_Fout";
+    /// <summary>The folder names depend on the selected language (Messages): _Verwerkt / _Effectuee / _Converted and _Fout / _Erreur / _Error.</summary>
+    public static string DoneFolderName => Messages.DoneFolderName;
+    public static string ErrorFolderName => Messages.ErrorFolderName;
     public const string ErrorFileName = "fout.txt";
 
     private readonly string _materialsFile;
@@ -87,7 +89,7 @@ public class ProjectProcessor
             ConversionResult result = new Converter().Convert(
                 files.InfoPath, files.PositionPath, _materialsFile,
                 settings.BatchFolder, settings.LabelFolder, settings.ToConverterSettings(), now.Date,
-                infoColumns, positionColumns, labelColumns);
+                infoColumns, positionColumns, labelColumns, GetExportFinishedAt(files));
 
             outcome.Success = true;
             outcome.Message = Messages.ConversionDone(result.LabelPaths.Count, result.PartCount, result.Warnings.Count);
@@ -118,6 +120,12 @@ public class ProjectProcessor
         // The batch is written. Now put the input files away, so they are not converted a second time.
         TryMove(files, settings.TopSolidExportPath, DoneFolderName, now, outcome);
         return outcome;
+    }
+
+    /// <summary>TopSolid writes the TR file last, so its time is the end of the export. Null when there is no TR file.</summary>
+    private static DateTime? GetExportFinishedAt(ProjectFiles files)
+    {
+        return files.TriggerPath != null && File.Exists(files.TriggerPath) ? File.GetLastWriteTimeUtc(files.TriggerPath) : null;
     }
 
     /// <summary>

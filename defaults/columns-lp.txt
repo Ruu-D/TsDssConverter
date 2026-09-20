@@ -1,0 +1,18 @@
+﻿# TsDssConverter - kolomnamen in het LP-bestand van TopSolid (-LP.xlsx)
+# Links van het = staat wat het programma nodig heeft (niet wijzigen).
+# Rechts staat de kolomnaam in het Excel-bestand. Pas die aan als TopSolid een kolom anders noemt.
+# Meerdere namen mogen, gescheiden door |. De eerste naam die in het bestand voorkomt, wordt gebruikt.
+# Bijvoorbeeld:  SheetName = SP | SP_2
+# De volgorde van de kolommen in Excel maakt niet uit, en hoofdletters ook niet.
+# Regels die met # beginnen worden genegeerd. Na het opslaan is herstarten niet nodig.
+
+SheetName   = SP
+Description = ID
+SheetLength = SUP_L
+SheetWidth  = SUP_B
+LabelX      = LABEL_X
+LabelY      = LABEL_Y
+LabelAngle  = LABEL_ANGLE
+
+# optioneel: mag ontbreken in het Excel-bestand
+Designation = SUP_DESIGNATION

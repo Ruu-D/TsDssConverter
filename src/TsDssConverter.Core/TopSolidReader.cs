@@ -12,7 +12,7 @@ public class LabelInfoRow
     public string EdgeB1 { get; set; } = "";
     public string EdgeB2 { get; set; } = "";
     public string Cam2 { get; set; } = "";
-    public string Opleg2 { get; set; } = "";
+    public string Cam3 { get; set; } = "";
     public string Project { get; set; } = "";
 
     /// <summary>The ten extra description fields (DESC1..DESC10), index 0 = Desc1. Empty text if the column is not in the file.</summary>
@@ -64,7 +64,7 @@ public static class TopSolidReader
         return descriptions;
     }
 
-    /// <param name="columns">The header names to look for. Null = the built-in names of the sample files.</param>
+    /// <param name="columns">The header names to look for. Null = the built-in names (the newest export, plus the older Dutch names).</param>
     public static List<LabelInfoRow> ReadLabelInfo(string path, ColumnMap? columns = null)
     {
         var table = XlsxTable.Load(path);
@@ -84,7 +84,7 @@ public static class TopSolidReader
                 EdgeB1 = values[header[ColumnKeys.Info.EdgeB1]],
                 EdgeB2 = values[header[ColumnKeys.Info.EdgeB2]],
                 Cam2 = values[header[ColumnKeys.Info.Cam2]],
-                Opleg2 = values[header[ColumnKeys.Info.Opleg2]],
+                Cam3 = values[header[ColumnKeys.Info.Cam3]],
                 Project = values[header[ColumnKeys.Info.Project]],
                 Descriptions = ReadDescriptions(values, header),
             });
@@ -93,7 +93,7 @@ public static class TopSolidReader
         return rows;
     }
 
-    /// <param name="columns">The header names to look for. Null = the built-in names of the sample files.</param>
+    /// <param name="columns">The header names to look for. Null = the built-in names (the newest export, plus the older Dutch names).</param>
     public static List<LabelPositionRow> ReadLabelPositions(string path, ColumnMap? columns = null)
     {
         var table = XlsxTable.Load(path);

@@ -276,8 +276,8 @@ public class LocalizationTests
         {
             using var folder = new TempFolder();
             new Converter().Convert(
-                TestPaths.InfoFile, TestPaths.PositionFile, TestPaths.MaterialsFile, folder.Path, folder.Path, new ConverterSettings(), TestPaths.GoldenPlanDate);
-            return File.ReadAllBytes(folder.File("Verschuren-P-20_002.csv")); // contains the grain text "Geen"
+                TestPaths.InfoFile, TestPaths.PositionFile, TestPaths.MaterialsFile, folder.Path, folder.Path, TestPaths.SafeSettings(), TestPaths.GoldenPlanDate);
+            return File.ReadAllBytes(folder.File("DAAN_ROGIERS-P2026.09_001.csv")); // contains the grain text "Geen"
         }
     }
 }

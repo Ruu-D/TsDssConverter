@@ -1,0 +1,143 @@
+SetMachiningParameters ("HE", 1, 10, 0, false);
+
+CreateFinishedWorkpieceBox ("DAAN-ROGIERS_____Melamine_08#01", 2850, 2100, 8);
+CreateRawWorkpiece ("DAAN-ROGIERS_____Melamine_08#01", 0, 0, 0, 0, 0, 0);
+SetWorkpieceSetupPosition (0, 0, 0, 0);
+
+//SLOT MILL AIRDIA12
+
+//WCS part 157
+SelectWorkplane ("Top");
+
+//Instruction below is to acknownledge the nesting machine that it is automatic panel loading via BARBARIC
+CreateIso("XPIECEIDENTIFIER - DUIVESTEIN panel loading","XPIECEIDENTIFIER a=PANEL_TYPE r=PANEL_MAGPOS s=PANEL_COD","", true);
+
+//Instruction below is for panel loading sequence
+CreateMacro("Pload - PANEL LOADING SEQUENCE","Pload",1);
+
+SetPneumaticHoodPosition (1);
+ResetAuxiliaryHood ();
+ResetDustpan ();
+SetJerk (-2);
+CreatePoint ("OP1_1_point",418.5, 1508);
+CreateRoughFinish ("OP1_1",-10,"",TypeOfProcess.GeneralRouting, "E003", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP1_1_ToolPath", 418.5, 1508, 10, true);
+AddSegmentToToolpath (514.91, 1508, -7);
+AddSegmentToToolpath (810, 1508, -7);
+AddSegmentToToolpath (810, 2090, -7);
+AddSegmentToToolpath (10, 2090, -7);
+AddSegmentToToolpath (10, 1508, -7);
+AddSegmentToToolpath (401.5, 1508, -7);
+AddSegmentToToolpath (410, 1508, -7);
+AddSegmentToToolpath (418.5, 1508, -7);
+AddSegmentToToolpath (514.91, 1508, -7);
+AddSegmentToToolpath (514.91, 1508, 10);
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP2_1_point",418.5, 888);
+CreateRoughFinish ("OP2_1",-10,"",TypeOfProcess.GeneralRouting, "E003", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP2_1_ToolPath", 418.5, 888, 10, true);
+AddSegmentToToolpath (514.91, 888, -7);
+AddSegmentToToolpath (810, 888, -7);
+AddSegmentToToolpath (810, 1470, -7);
+AddSegmentToToolpath (10, 1470, -7);
+AddSegmentToToolpath (10, 888, -7);
+AddSegmentToToolpath (401.5, 888, -7);
+AddSegmentToToolpath (410, 888, -7);
+AddSegmentToToolpath (418.5, 888, -7);
+AddSegmentToToolpath (514.91, 888, -7);
+AddSegmentToToolpath (514.91, 888, 10);
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP3_1_point",1256.5, 1508);
+CreateRoughFinish ("OP3_1",-10,"",TypeOfProcess.GeneralRouting, "E003", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP3_1_ToolPath", 1256.5, 1508, 10, true);
+AddSegmentToToolpath (1352.91, 1508, -7);
+AddSegmentToToolpath (1648, 1508, -7);
+AddSegmentToToolpath (1648, 2090, -7);
+AddSegmentToToolpath (848, 2090, -7);
+AddSegmentToToolpath (848, 1508, -7);
+AddSegmentToToolpath (1239.5, 1508, -7);
+AddSegmentToToolpath (1248, 1508, -7);
+AddSegmentToToolpath (1256.5, 1508, -7);
+AddSegmentToToolpath (1352.91, 1508, -7);
+AddSegmentToToolpath (1352.91, 1508, 10);
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP4_1_point",2077.5, 2090);
+CreateRoughFinish ("OP4_1",-10,"",TypeOfProcess.GeneralRouting, "E003", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP4_1_ToolPath", 2077.5, 2090, 10, true);
+AddSegmentToToolpath (1981.09, 2090, -7);
+AddSegmentToToolpath (1686, 2090, -7);
+AddSegmentToToolpath (1686, 1508, -7);
+AddSegmentToToolpath (2486, 1508, -7);
+AddSegmentToToolpath (2486, 2090, -7);
+AddSegmentToToolpath (2094.5, 2090, -7);
+AddSegmentToToolpath (2086, 2090, -7);
+AddSegmentToToolpath (2077.5, 2090, -7);
+AddSegmentToToolpath (1981.09, 2090, -7);
+AddSegmentToToolpath (1981.09, 2090, 10);
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP5_1_point",2157.73, 2097);
+CreateRoughFinish ("OP5_1",-3,"",TypeOfProcess.GeneralRouting, "E003", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP5_1_ToolPath", 2157.73, 2097, 3, true);
+AddSegmentToToolpath (2094.5, 2097, -8.15);
+AddSegmentToToolpath (2094.5, 2090, -8.15);
+AddSegmentToToolpath (1686, 2090, -8.15);
+AddSegmentToToolpath (1686, 1508, -8.15);
+AddSegmentToToolpath (2486, 1508, -8.15);
+AddSegmentToToolpath (2486, 2090, -8.15);
+AddSegmentToToolpath (2077.5, 2090, -8.15);
+AddSegmentToToolpath (2077.5, 2097, -8.15);
+AddSegmentToToolpath (2077.5, 2097, 10);
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP6_1_point",1176.27, 1501);
+CreateRoughFinish ("OP6_1",-3,"",TypeOfProcess.GeneralRouting, "E003", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP6_1_ToolPath", 1176.27, 1501, 3, true);
+AddSegmentToToolpath (1239.5, 1501, -8.15);
+AddSegmentToToolpath (1239.5, 1508, -8.15);
+AddSegmentToToolpath (1648, 1508, -8.15);
+AddSegmentToToolpath (1648, 2090, -8.15);
+AddSegmentToToolpath (848, 2090, -8.15);
+AddSegmentToToolpath (848, 1508, -8.15);
+AddSegmentToToolpath (1256.5, 1508, -8.15);
+AddSegmentToToolpath (1256.5, 1501, -8.15);
+AddSegmentToToolpath (1256.5, 1501, 10);
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP7_1_point",338.27, 1501);
+CreateRoughFinish ("OP7_1",-3,"",TypeOfProcess.GeneralRouting, "E003", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP7_1_ToolPath", 338.27, 1501, 3, true);
+AddSegmentToToolpath (401.5, 1501, -8.15);
+AddSegmentToToolpath (401.5, 1508, -8.15);
+AddSegmentToToolpath (810, 1508, -8.15);
+AddSegmentToToolpath (810, 2090, -8.15);
+AddSegmentToToolpath (10, 2090, -8.15);
+AddSegmentToToolpath (10, 1508, -8.15);
+AddSegmentToToolpath (418.5, 1508, -8.15);
+AddSegmentToToolpath (418.5, 1501, -8.15);
+AddSegmentToToolpath (418.5, 1501, 10);
+
+SetPneumaticHoodPosition (1);
+SetJerk (-2);
+CreatePoint ("OP8_1_point",338.27, 881);
+CreateRoughFinish ("OP8_1",-3,"",TypeOfProcess.GeneralRouting, "E003", "-1", 2, -1, -1, -1, 0);
+CreateToolpath ("OP8_1_ToolPath", 338.27, 881, 3, true);
+AddSegmentToToolpath (401.5, 881, -8.15);
+AddSegmentToToolpath (401.5, 888, -8.15);
+AddSegmentToToolpath (810, 888, -8.15);
+AddSegmentToToolpath (810, 1470, -8.15);
+AddSegmentToToolpath (10, 1470, -8.15);
+AddSegmentToToolpath (10, 888, -8.15);
+AddSegmentToToolpath (418.5, 888, -8.15);
+AddSegmentToToolpath (418.5, 881, -8.15);
+AddSegmentToToolpath (418.5, 881, 10);
+ResetJerk ();

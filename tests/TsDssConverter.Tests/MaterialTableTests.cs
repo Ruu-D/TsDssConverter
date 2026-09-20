@@ -11,24 +11,21 @@ public class MaterialTableTests
     private const string Chene = "Ch\u00eane";
 
     [Fact]
-    public void SampleFile_HasTheFiveMaterialsOfTheSampleExport()
+    public void SampleFile_HasTheTwoMaterialsOfTheSampleExport()
     {
         var table = MaterialTable.Load(TestPaths.MaterialsFile);
 
-        var white = table.Find("White_18");
-        Assert.Equal("White_18", white.DssName);
-        Assert.Equal(18, white.Thickness);
-        Assert.Equal(0, white.Grain);
-        Assert.Equal("Geen", white.GrainText);
+        var thick = table.Find("Melamine_18");
+        Assert.Equal("Melamine_18", thick.DssName);   // the TopSolid name is the master name: same name for now
+        Assert.Equal(18, thick.Thickness);
+        Assert.Equal(0, thick.Grain);
+        Assert.Equal("Geen", thick.GrainText);
 
-        var oak = table.Find("H1145_-_ST10_-_" + Chene + "_Bardolino_naturel_Zijdewit_19");
-        Assert.Equal(19, oak.Thickness);
-        Assert.Equal(1, oak.Grain);
-        Assert.Equal("Langs", oak.GrainText);
+        var thin = table.Find("Melamine_08");
+        Assert.Equal(8, thin.Thickness);
+        Assert.Equal(0, thin.Grain);
 
-        Assert.Equal(9, table.Find("White_9").Thickness);
-        Assert.Equal(40, table.Find("H1145_-_ST10_-_" + Chene + "_Bardolino_naturel_Zijdewit_40").Thickness);
-        Assert.Equal(18, table.Find("Paars_18").Thickness);
+        Assert.Throws<ConversionException>(() => table.Find("Paars_18"));   // not in this file: never guessed
     }
 
     [Fact]

@@ -239,7 +239,7 @@ public static class BatchBuilder
             EdgeB1 = info.EdgeB1,
             EdgeB2 = info.EdgeB2,
             Cam2 = info.Cam2,
-            Opleg2 = info.Opleg2,
+            Cam3 = info.Cam3,
             Project = info.Project,
             Descriptions = MergeDescriptions(info, position),
             SheetName = position.SheetName,

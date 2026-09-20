@@ -22,12 +22,12 @@ public class ValidationTests
     {
         string probeFolder = folder.File("probe");
         Directory.CreateDirectory(probeFolder);
-        ConvertSample(probeFolder, new ConverterSettings());
+        ConvertSample(probeFolder, TestPaths.SafeSettings());
 
         string exportFolder = folder.File("export");
         Directory.CreateDirectory(exportFolder);
 
-        var cncPaths = XDocument.Load(System.IO.Path.Combine(probeFolder, "Verschuren-P-20.xml"))
+        var cncPaths = XDocument.Load(System.IO.Path.Combine(probeFolder, "DAAN_ROGIERS-P2026.09.xml"))
             .Descendants("CNCFilename").Select(e => e.Value);
         foreach (string cncPath in cncPaths)
         {
@@ -62,16 +62,16 @@ public class ValidationTests
     {
         using var folder = new TempFolder();
         string exportFolder = CreateExportFolderWithAllCncFiles(folder);
-        File.Delete(System.IO.Path.Combine(exportFolder, "Verschuren-P-20_White_18_02.xcs"));
-        File.Delete(System.IO.Path.Combine(exportFolder, "Verschuren-P-20_White_9_01.xcs"));
+        File.Delete(System.IO.Path.Combine(exportFolder, "Melamine_18#02.xcs"));
+        File.Delete(System.IO.Path.Combine(exportFolder, "Melamine_08#01.xcs"));
         string outFolder = NewOutFolder(folder);
 
         var result = ConvertSample(outFolder, new ConverterSettings { TopSolidExportPath = exportFolder });
 
         Assert.Equal(2, result.Warnings.Count);
-        Assert.Contains(result.Warnings, w => w.Contains("CNC-programma niet gevonden") && w.Contains("White_18_02.xcs"));
-        Assert.Contains(result.Warnings, w => w.Contains("White_9_01.xcs"));
-        Assert.True(File.Exists(System.IO.Path.Combine(outFolder, "Verschuren-P-20.xml"))); // still written
+        Assert.Contains(result.Warnings, w => w.Contains("CNC-programma niet gevonden") && w.Contains("Melamine_18#02.xcs"));
+        Assert.Contains(result.Warnings, w => w.Contains("Melamine_08#01.xcs"));
+        Assert.True(File.Exists(System.IO.Path.Combine(outFolder, "DAAN_ROGIERS-P2026.09.xml"))); // still written
     }
 
     [Fact]
@@ -109,19 +109,41 @@ public class ValidationTests
         using var folder = new TempFolder();
         var settings = new ConverterSettings { TopSolidExportPath = CreateExportFolderWithAllCncFiles(folder) };
 
-        // White_9 is 9 mm in TopSolid (SUP_DESIGNATION). Here materials.csv says 8.
+        // The check compares materials.csv with the NUMBER AT THE START of SUP_DESIGNATION ("8.0_panel 8mm"). The sample
+        // export has none ("Melamine___2850x2100x8"), so give the Melamine_08 sheet one: TopSolid says 8 mm ...
+        string positionFile = folder.File("DAAN_ROGIERS-P2026.09-LP.xlsx");
+        using (var workbook = new ClosedXML.Excel.XLWorkbook(TestPaths.PositionFile))
+        {
+            var sheet = workbook.Worksheets.First();
+            int lastRow = sheet.LastRowUsed()!.RowNumber();
+            for (int row = 2; row <= lastRow; row++)
+            {
+                if (sheet.Cell(row, 2).GetString().StartsWith("Melamine_08"))   // column B = SP, column A = SUP_DESIGNATION
+                {
+                    sheet.Cell(row, 1).Value = "8.0_Melamine_08 2850x2100x8";
+                }
+            }
+
+            workbook.SaveAs(positionFile);
+        }
+
+        // ... and here materials.csv says 9.
         string materialsFile = folder.File("materials.csv");
-        File.WriteAllText(materialsFile, File.ReadAllText(TestPaths.MaterialsFile).Replace("White_9;White_9;9;0", "White_9;White_9;8;0"));
+        File.WriteAllText(materialsFile, File.ReadAllText(TestPaths.MaterialsFile).Replace("Melamine_08;Melamine_08;8;0", "Melamine_08;Melamine_08;9;0"));
         string outFolder = NewOutFolder(folder);
 
-        var result = ConvertSample(outFolder, settings, materialsFile);
+        var result = new Converter().Convert(
+            TestPaths.InfoFile, positionFile, materialsFile, outFolder, outFolder, settings, TestPaths.GoldenPlanDate);
 
         Assert.Single(result.Warnings);
-        Assert.Contains("'White_9'", result.Warnings[0]);
+        Assert.Contains("'Melamine_08'", result.Warnings[0]);
 
-        // materials.csv is the truth: the label file of White_9 (sheet 010) says 8.
-        string firstDataRow = File.ReadAllLines(System.IO.Path.Combine(outFolder, "Verschuren-P-20_010.csv"))[1];
-        Assert.Equal("8", firstDataRow.Split('\t')[3]); // SHEETTHICKNESS
+        // materials.csv is the truth: the label file of Melamine_08 (the third sheet) says 9.
+        string firstDataRow = File.ReadAllLines(System.IO.Path.Combine(outFolder, "DAAN_ROGIERS-P2026.09_003.csv"))[1];
+        Assert.Equal("9", firstDataRow.Split('\t')[3]); // SHEETTHICKNESS
+
+        // The 18 mm sheets have no number in front: nothing to compare, so no warning for them.
+        Assert.DoesNotContain(result.Warnings, w => w.Contains("Melamine_18"));
     }
 
     // ---------------------------------------------------------------- errors: all inputs at once
@@ -141,7 +163,7 @@ public class ValidationTests
         string outFolder = NewOutFolder(folder);
 
         var error = Assert.Throws<ConversionException>(() => new Converter().Convert(
-            infoPath, positionPath, materialsPath, outFolder, outFolder, new ConverterSettings(), TestPaths.GoldenPlanDate));
+            infoPath, positionPath, materialsPath, outFolder, outFolder, TestPaths.SafeSettings(), TestPaths.GoldenPlanDate));
 
         Assert.Contains(error.Problems, p => p.Contains("'Omschrijving'") && p.Contains("LI"));
         Assert.Contains(error.Problems, p => p.Contains("'Afmetingen'") && p.Contains("LI"));
