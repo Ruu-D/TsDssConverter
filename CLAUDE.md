@@ -49,7 +49,8 @@ The tool only produces files. It does not print labels, talk to the machine or t
 - `TsDssConverter.Tests` — xUnit tests, using the files in `samples/`.
 - ClosedXML to read XLSX. `System.Xml.Linq` (`XDocument`) to write XML.
 - Final delivery: single self-contained exe, no .NET install needed on the customer PC:
-  `dotnet publish src/TsDssConverter.Tray -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true`
+  run `publish.cmd` (it runs the tests, then `dotnet publish src/TsDssConverter.Tray -c Release -r win-x64
+  --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true`; result in `dist\v<version>\`)
 
 Suggested layout:
 
@@ -521,8 +522,18 @@ Physical test sheet:
 
 ## Status
 
-- Stage: 4 (Watcher + processing) — first draft done, waiting for confirmation before stage 5 (Delivery).
-  Paused on 2026-09-20: Daan first collects more sample files from TopSolid and tests with them; stage 5 starts after that.
+- Stage: 5 (Delivery) — the delivery file for version 1.0.0 is built (2026-09-20, asked by Daan); next is the test on the
+  customer PC (see "Delivery" below). Stage 4 was finished earlier the same day and the UI is considered finished.
+- **Delivery (stage 5, first version):** `publish.cmd` in the project folder (a `.cmd`, not `.ps1`: PowerShell scripts are
+  blocked by policy on Daan's PC) runs all tests, then publishes ONE file `dist\v<version>\TsDssConverter.exe`
+  (self-contained, win-x64, single file, compressed: 52 MB, was 126 MB), checks that it is the only file and prints size,
+  version and SHA-256. The version comes from `<Version>` in the Tray csproj. `dist\` is git-ignored. No installer: install =
+  copy the exe to `C:\TsDssConverter\` and start it (steps in README, "Installing at the customer"). Not code-signed, so
+  Windows SmartScreen may warn. Checked with the published exe in an environment without .NET (PATH and DOTNET_ROOT
+  removed): the sample export became 11 label CSVs identical to the golden files + the XML, files moved to `_Verwerkt`,
+  data files created. Start takes 0.7 – 2 s (the very first start of a new file can take ~13 s: Windows scans the new exe).
+  An installer (e.g. Inno Setup, start menu entry, uninstaller) was NOT made: not installed here and not asked for.
+  Still open for stage 5: test on the customer PC, physical test sheet (label position/rotation, flips), real materials.csv.
 - Built: `TsDssConverter.slnx` with `Core`, `Cli`, `Tray` and `Tests`.
 - The CLI output of the sample is byte-identical to the golden files in `samples/duivestein/`.
   352 unit tests pass (`dotnet test`). The Tests project targets `net10.0-windows` so it can test `Tray`.
@@ -568,8 +579,7 @@ Physical test sheet:
   (`bin\` is ignored by git). A running exe locks the files in `bin\Debug`, so exit it first for a normal build.
 - `TrayApp.ReportResult(project, success, message)` and `SetState(...)` can be called from any thread (the watcher
   does). The history list is in memory only (empty after a restart).
-- The single-file publish works (`-r win-x64 --self-contained -p:PublishSingleFile=true`), 126 MB. Stage 5:
-  consider `-p:EnableCompressionInSingleFile=true` to make it smaller.
+- The single-file publish (`publish.cmd`, see "Delivery" above) uses `-p:EnableCompressionInSingleFile=true` (52 MB).
 - Stage 4, Core (no Windows dependency, all tested with a fake clock): `ExportScanner` (which projects are ready: finds
   LI/LP/TR by name, ignores `~$` files and other xlsx files, only the top level so `_Verwerkt` / `_Fout` are never
   scanned; trigger mode waits until all three files can be opened exclusively, gives up after 2 minutes; without a

@@ -6,8 +6,8 @@ TsDssConverter is a small Windows tray application that watches a folder for Top
 converts them, without any manual work, into a job that the Duivestein automatic warehouse understands.
 
 > **Status: under development.** The conversion engine, its input checks, a command line tool, the tray application
-> and the automatic folder watching are finished and tested (stages 1 to 4 of 5). The installation at the customer
-> and the test with the real machines are still to come.
+> and the automatic folder watching are finished and tested (stages 1 to 4 of 5), and the delivery file for version
+> 1.0.0 exists (stage 5). The test at the customer and with the real machines is still to come.
 > See [Status and roadmap](#status-and-roadmap).
 
 ---
@@ -128,7 +128,7 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 | 2 | **Validation**: all checks and warnings, one clear report, exit code for errors | **Done (first draft)** |
 | 3 | **Tray application (shell)**: icon with four looks (normal, busy, error, paused), menu, settings window, `settings.json`, start with Windows, log files. No conversion yet | **Done (first draft)** |
 | 4 | **Folder watching and processing**: trigger file, one conversion at a time, `_Verwerkt` / `_Fout` folders with a readable `fout.txt`, notifications, recovery when the network drive is gone | **Done (first draft)** |
-| 5 | **Delivery**: single-file installation, install at the customer, physical test sheet | Next |
+| 5 | **Delivery**: one file `TsDssConverter.exe` (version 1.0.0, 52 MB, no .NET needed), install at the customer, physical test sheet | **File built, customer test next** |
 
 **What is verified so far**
 
@@ -137,7 +137,8 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 - Every error and warning listed above is covered by a test, including a wrong pair of files and several
   problems at once.
 - The tray application starts, creates its files, refuses a second copy, and can be published as one
-  self-contained `.exe` (about 126 MB, no .NET installation needed on the customer PC).
+  self-contained `.exe` (about 52 MB, no .NET installation needed on the customer PC). The delivered exe was tried
+  on a PC environment without .NET: the sample export became the expected batch and label files.
 - The settings window (saving, cancelling, hiding instead of closing, the history list) and the
   "start with Windows" registry setting are covered by tests.
 - The folder watching and processing is covered by tests with a fake clock (waiting for the trigger file, giving up
@@ -227,11 +228,40 @@ right away. The icon appears next to the clock (possibly under the `^` arrow); d
 settings window. The window adapts to the screen scaling (100%, 125%, 150%, ...) and opens at the height of its
 content, so the list of conversions is visible at once.
 
-To build the single-file version for the customer PC:
+To build the delivery file for the customer PC, double-click or run `publish.cmd` in the project folder. It runs all
+the tests first, and only if they pass it makes `dist\v1.0.0\TsDssConverter.exe` (the number is the `<Version>` in
+`src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`) and shows its size, version and SHA-256 checksum.
+Use `publish.cmd -SkipTests` to skip the tests.
 
-```
-dotnet publish src/TsDssConverter.Tray -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
-```
+### Installing at the customer
+
+The delivery is **one file**, `TsDssConverter.exe` (about 52 MB). It contains everything, so no .NET installation is
+needed. It runs on 64-bit Windows 10 and 11. There is no installer: the program keeps all its files in one folder and
+uninstalling is deleting that folder.
+
+1. Create the folder `C:\TsDssConverter` and copy `TsDssConverter.exe` into it. (The SHA-256 checksum that
+   `publish.cmd` prints can be compared with `certutil -hashfile TsDssConverter.exe SHA256` to check the copy.)
+2. Start it by double-clicking. The exe is not code-signed, so Windows SmartScreen may say "Windows protected your
+   PC": choose *More info* and *Run anyway*. If the file came by download or e-mail, first right-click it, choose
+   *Properties* and tick *Unblock*. The very first start can take a few seconds (Windows scans the new file); later
+   starts take about one second.
+3. The icon appears in the tray (next to the clock, possibly under the `^` arrow). Double-click it to open the settings.
+   Check the three folders (TopSolid export, Duivestein batch, Duivestein label), choose the language, tick *Start met
+   Windows* if the program must start with the PC, and press *Opslaan*.
+4. Press **Open materiaaltabel** and fill in every TopSolid material of the customer
+   (`TopSolidMaterial;DssMaterial;Thickness;Grain`, see *Material mapping*). A material that is missing stops the
+   conversion of a project, by design.
+5. If TopSolid names a header differently than the sample export, adjust it with the **Config** buttons.
+6. Test with a real export. The list in the settings window shows the result of every conversion, and the button
+   **Open logmap** opens the log files. Files that could not be converted are in `_Fout` in the export folder,
+   together with a `fout.txt`.
+
+**Updating** to a new version: exit the program (tray menu, *Afsluiten*), replace `TsDssConverter.exe` by the new one
+and start it again. `settings.json`, `materials.csv`, the three column files and the logs are not touched.
+**Uninstalling**: exit the program, untick *Start met Windows*, and delete `C:\TsDssConverter`.
+
+The folder `C:\TsDssConverter` is shared by all Windows users of the PC: if more than one user works on it, give them
+write permission on the folder.
 
 ### Material mapping
 
@@ -306,6 +336,7 @@ tests/
   TsDssConverter.Tests/  Automated tests, using the files in samples/
 media/                   Application icon, banner and the colour theme used by the whole project
 docs/                    Background documentation
+publish.cmd              Builds the delivery file (runs the tests, then makes dist\v<version>\TsDssConverter.exe)
 CLAUDE.md                Detailed technical specification and working notes
 ```
 
