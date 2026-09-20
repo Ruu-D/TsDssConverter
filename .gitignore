@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 # Delivery files made by publish.ps1
 dist/
+
+# Ignoring file for shared GitHub repo
+CLAUDE.md
