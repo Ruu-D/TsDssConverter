@@ -3,6 +3,13 @@
 The history of TsDssConverter, newest first. `CLAUDE.md` describes the current state; this file says how it got there.
 The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`.
 
+## Not released yet (documentation only)
+
+- README shortened (404 → 239 lines): the section "Getting started (for developers)" is removed completely (developer commands,
+  CLI options, trying out the tray app, the customer install guide, material mapping and column names; the old text is in git
+  history, the facts are in CLAUDE.md §5, §6, §14), and "Built to be safe", "What is verified so far" and "Decisions taken so far"
+  are about half as long.
+
 ## 1.0.3 — 2026-09-21
 
 - Delivery file: `dist\v1.0.3\TsDssConverter.exe`, 54,664,898 bytes, SHA-256 `e8aa2b95367f69cad3320ef00a16f63bb3522df16a146072ddd55dbe7e19b271`.
