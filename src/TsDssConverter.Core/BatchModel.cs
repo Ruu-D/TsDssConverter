@@ -68,6 +68,12 @@ public class Batch
     public DateTime PlanDate { get; set; }
     public List<Plan> Plans { get; } = new();
 
+    /// <summary>Number of physical sheets in the whole batch (the XML node BoardCount).</summary>
+    public int BoardCount => Plans.Sum(plan => plan.Sheets.Count);
+
+    /// <summary>Number of parts = labels in the whole batch (the XML node PartCount).</summary>
+    public int PartCount => Plans.Sum(plan => plan.Sheets.Sum(sheet => sheet.Labels.Count));
+
     /// <summary>Things that are not wrong enough to stop the conversion (plain Dutch text).</summary>
     public List<string> Warnings { get; } = new();
 }

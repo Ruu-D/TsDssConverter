@@ -21,11 +21,21 @@ public static class BatchXmlWriter
             plans.Add(BuildPlan(plan, labelFolder));
         }
 
+        // The header is the syntax that DSSClient accepted in the test of 2026-09-21 (the "corrected file"): Date (not PlanDate),
+        // no AutoExpand, and the counts. The order of the nodes is the order of that file. Confirmed by Daan:
+        //   MaxStackHeight   always 1      (never more than one panel is machined at a time)
+        //   EqualStackHeight always False
+        //   CutCount         always 0      (not used here)
         var root = new XElement("DSSBatch",
             new XElement("BatchName", batch.Name),
             new XElement("BatchDescription", batch.Name),
-            new XElement("PlanDate", batch.PlanDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
-            new XElement("AutoExpand", "False"),
+            new XElement("Date", batch.PlanDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+            new XElement("MaxStackHeight", 1),
+            new XElement("EqualStackHeight", "False"),
+            new XElement("PlanCount", batch.Plans.Count),
+            new XElement("BoardCount", batch.BoardCount),
+            new XElement("PartCount", batch.PartCount),
+            new XElement("CutCount", 0),
             plans,
             new XElement("Routes",
                 new XElement("Route",
@@ -71,7 +81,7 @@ public static class BatchXmlWriter
 
         return new XElement("Plan",
             new XElement("PlanName", plan.PlanName),
-            new XElement("Material", plan.Material.DssName),
+            new XElement("MaterialName", plan.Material.DssName), // "Material" in the HP002 example; MaterialName is the correct name
             new XElement("XDimSize", NumberFormat.ToInvariantText(plan.SheetLength)),
             new XElement("YDimSize", NumberFormat.ToInvariantText(plan.SheetWidth)),
             new XElement("Grain", plan.Material.Grain),

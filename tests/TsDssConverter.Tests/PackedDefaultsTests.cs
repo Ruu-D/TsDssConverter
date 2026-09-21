@@ -96,8 +96,8 @@ public class PackedDefaultsTests
         Assert.Equal(22, result.PartCount);
 
         string xml = File.ReadAllText(Path.Combine(outFolder, "DAAN_ROGIERS-P2026.09.xml"));
-        Assert.Contains("<Material>standaard_plaat_18mm</Material>", xml);   // the warehouse names of defaults\materials.csv
-        Assert.Contains("<Material>rugpanelen</Material>", xml);
+        Assert.Contains("<MaterialName>standaard_plaat_18mm</MaterialName>", xml);   // the warehouse names of defaults\materials.csv
+        Assert.Contains("<MaterialName>rugpanelen</MaterialName>", xml);
 
         string[] header = File.ReadAllLines(Path.Combine(outFolder, "DAAN_ROGIERS-P2026.09_001.csv"))[0].Split('\t');
         Assert.Equal(33, header.Length);

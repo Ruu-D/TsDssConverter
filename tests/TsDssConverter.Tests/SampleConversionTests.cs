@@ -81,8 +81,14 @@ public class SampleConversionTests
 
         ConvertSample(folder.Path);
 
-        string[] goldenFiles = Directory.GetFiles(TestPaths.GoldenFolder, "DAAN_ROGIERS-P2026.09*");
-        Assert.Equal(4, goldenFiles.Length); // 1 XML + 3 CSVs
+        // An explicit list: the folder also holds the "corrected file" from Duivestein (see the test below), which is no golden file.
+        string[] goldenFiles = new[]
+            {
+                "DAAN_ROGIERS-P2026.09.xml", "DAAN_ROGIERS-P2026.09_001.csv", "DAAN_ROGIERS-P2026.09_002.csv", "DAAN_ROGIERS-P2026.09_003.csv",
+            }
+            .Select(name => System.IO.Path.Combine(TestPaths.GoldenFolder, name))
+            .ToArray();
+        Assert.All(goldenFiles, path => Assert.True(File.Exists(path), path)); // 1 XML + 3 CSVs
 
         foreach (string goldenFile in goldenFiles)
         {
@@ -110,6 +116,29 @@ public class SampleConversionTests
 
         // Nothing else was written, and no ".tmp" files are left behind.
         Assert.Equal(4, Directory.GetFiles(folder.Path).Length);
+    }
+
+    [Fact]
+    public void Output_WithTheRealMaterials_IsTheBatchXmlThatDssClientAccepted()
+    {
+        // Daan tested our first XML in DSSClient and corrected it by hand: the "corrected file" (MaterialName in every plan, and
+        // the constants MaxStackHeight 1, EqualStackHeight False, CutCount 0, all confirmed by Daan). With Daan's real
+        // materials.csv (the packed defaults) our XML must be that file, byte for byte.
+        using var temp = new TempFolder();
+        var appData = new AppDataFolder(temp.File("data"));
+        appData.EnsureCreated();
+        string outFolder = Directory.CreateDirectory(temp.File("out")).FullName;
+
+        new Converter().Convert(
+            TestPaths.InfoFile, TestPaths.PositionFile, appData.MaterialsFile, outFolder, outFolder,
+            TestPaths.SafeSettings(), TestPaths.GoldenPlanDate);
+
+        string actual = File.ReadAllText(System.IO.Path.Combine(outFolder, "DAAN_ROGIERS-P2026.09.xml"), new UTF8Encoding(false));
+        actual = actual.Replace(TestPaths.NoExportFolder + @"\", GoldenExportFolder + @"\").Replace(outFolder + @"\", GoldenLabelFolder + @"\");
+
+        string corrected = File.ReadAllText(TestPaths.AcceptedByDssClientFile, new UTF8Encoding(false));
+
+        Assert.Equal(corrected, actual);
     }
 
     [Fact]
@@ -156,13 +185,81 @@ public class SampleConversionTests
         Assert.Equal(expected.Length, plans.Count);
         for (int i = 0; i < expected.Length; i++)
         {
-            Assert.Equal(expected[i].Material, plans[i].Element("Material")!.Value);
+            Assert.Equal(expected[i].Material, plans[i].Element("MaterialName")!.Value);
             Assert.Equal(expected[i].Sheets.ToString(), plans[i].Element("Quantity")!.Value);
             Assert.Equal(expected[i].Sheets, plans[i].Element("LabelFilenames")!.Elements().Count());
             Assert.Equal(expected[i].Sheets, plans[i].Element("CNCFilenames")!.Elements().Count());
         }
 
-        Assert.Equal("2026-09-20", XDocument.Load(folder.File("DAAN_ROGIERS-P2026.09.xml")).Root!.Element("PlanDate")!.Value);
+        Assert.Equal("2026-09-20", XDocument.Load(folder.File("DAAN_ROGIERS-P2026.09.xml")).Root!.Element("Date")!.Value);
+    }
+
+    [Fact]
+    public void BatchXml_HasTheSyntaxThatDssClientAccepted_InThatOrder()
+    {
+        // The "corrected file" of Duivestein (test in DSSClient, 2026-09-21): these nodes in this order, and the counts.
+        using var folder = new TempFolder();
+        ConvertSample(folder.Path);
+        XElement root = XDocument.Load(folder.File("DAAN_ROGIERS-P2026.09.xml")).Root!;
+
+        Assert.Equal(
+            new[]
+            {
+                "BatchName", "BatchDescription", "Date", "MaxStackHeight", "EqualStackHeight",
+                "PlanCount", "BoardCount", "PartCount", "CutCount", "Plans", "Routes",
+            },
+            root.Elements().Select(element => element.Name.LocalName));
+
+        // The old names must be gone: DSSClient did not accept them.
+        Assert.Null(root.Element("PlanDate"));
+        Assert.Null(root.Element("AutoExpand"));
+
+        Assert.Equal("1", root.Element("MaxStackHeight")!.Value);
+        Assert.Equal("False", root.Element("EqualStackHeight")!.Value);
+        Assert.Equal("2", root.Element("PlanCount")!.Value);   // 2 materials
+        Assert.Equal("3", root.Element("BoardCount")!.Value);  // 3 sheets = 3 label files
+        Assert.Equal("22", root.Element("PartCount")!.Value);  // 22 parts = 22 labels
+        Assert.Equal("0", root.Element("CutCount")!.Value);
+
+        // The material of EVERY plan is called MaterialName.
+        foreach (XElement plan in root.Element("Plans")!.Elements("Plan"))
+        {
+            Assert.Equal(
+                new[]
+                {
+                    "PlanName", "MaterialName", "XDimSize", "YDimSize", "Grain", "Quantity", "Rotation",
+                    "LabelFilenames", "CNCFilenames",
+                },
+                plan.Elements().Select(element => element.Name.LocalName));
+        }
+    }
+
+    [Fact]
+    public void BatchXml_CountsFollowTheBatch_NotTheSample()
+    {
+        // PlanCount, BoardCount and PartCount are counted, never typed: check them with a batch of another size.
+        var batch = new Batch { Name = "Daan", PlanDate = TestPaths.GoldenPlanDate };
+        var material = new Material { TopSolidName = "M", DssName = "M", Thickness = 18, Grain = 0 };
+        var plan = new Plan { PlanName = "001", Material = material, SheetLength = 100, SheetWidth = 50 };
+
+        for (int sheetNumber = 1; sheetNumber <= 2; sheetNumber++)
+        {
+            var sheet = new Sheet { Name = "M#0" + sheetNumber, LabelFileName = $"Daan_00{sheetNumber}.csv", CncPath = @"Z:\x.xcs" };
+            for (int part = 0; part < 3; part++)
+            {
+                sheet.Labels.Add(new TsDssConverter.Core.Label());
+            }
+
+            plan.Sheets.Add(sheet);
+        }
+
+        batch.Plans.Add(plan);
+
+        XElement root = XDocument.Parse(BatchXmlWriter.BuildText(batch, @"Z:\Label")).Root!;
+
+        Assert.Equal("1", root.Element("PlanCount")!.Value);
+        Assert.Equal("2", root.Element("BoardCount")!.Value);
+        Assert.Equal("6", root.Element("PartCount")!.Value);
     }
 
     [Fact]

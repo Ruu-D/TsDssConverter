@@ -3,6 +3,27 @@
 The history of TsDssConverter, newest first. `CLAUDE.md` describes the current state; this file says how it got there.
 The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`.
 
+## 1.0.3 — 2026-09-21
+
+- Delivery file: `dist\v1.0.3\TsDssConverter.exe`, 54,664,898 bytes, SHA-256 `e8aa2b95367f69cad3320ef00a16f63bb3522df16a146072ddd55dbe7e19b271`.
+- **Batch XML syntax corrected after the test in DSSClient (2026-09-21).** Daan tried our XML in DSSClient: "almost correct",
+  and he corrected it by hand (`samples/duivestein/DAAN_ROGIERS-P2026.09_corrected file.xml`). The differences, all now in
+  `BatchXmlWriter`:
+  - `<PlanDate>` → `<Date>` (same value, `yyyy-MM-dd`);
+  - `<AutoExpand>False</AutoExpand>` removed;
+  - new header nodes after the date, in this order: `MaxStackHeight`, `EqualStackHeight`, `PlanCount`, `BoardCount`,
+    `PartCount` and `CutCount`. `PlanCount`, `BoardCount` and `PartCount` are counted from the batch (2, 3 and 22 for the sample).
+    The other three are fixed values, confirmed by Daan: `MaxStackHeight` 1 (never more than one panel is machined at a time),
+    `EqualStackHeight` `False`, `CutCount` 0 (not used here);
+  - `<Material>` → `<MaterialName>` in every plan; Daan confirmed `MaterialName` is the correct name. (His corrected file still
+    had `<Material>` in plan 002 by mistake; that tag was corrected in the file too.)
+  - The material NAMES in that file (`standaard_plaat_18mm`, `rugpanelen`) are not a syntax change: they are Daan's real
+    `materials.csv` (`defaults\`), which the program already used.
+- Golden XML regenerated. `Batch` got `BoardCount` and `PartCount`.
+- Tests (406): header nodes and their order, the counts, `MaterialName` in every plan; and a new test that converts the sample with
+  Daan's real materials and compares with the corrected file, byte for byte. The golden test now lists its four files explicitly
+  (the corrected file lives in the same folder).
+
 ## 1.0.2 — 2026-09-20
 
 - Delivery file: `dist\v1.0.2\TsDssConverter.exe`, 54,664,528 bytes, SHA-256 `c4205c9f66cb8ad40f0c61d66a9e6651fbf0d4368762455c5b589573d0385094`.

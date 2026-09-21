@@ -12,7 +12,7 @@
   <Plans>
     <Plan>
       <PlanName>001</PlanName>
-      <MaterialName>Melamine_18</MaterialName>
+      <MaterialName>standaard_plaat_18mm</MaterialName>
       <XDimSize>2850</XDimSize>
       <YDimSize>2100</YDimSize>
       <Grain>0</Grain>
@@ -29,7 +29,7 @@
     </Plan>
     <Plan>
       <PlanName>002</PlanName>
-      <MaterialName>Melamine_08</MaterialName>
+      <MaterialName>rugpanelen</MaterialName>
       <XDimSize>2850</XDimSize>
       <YDimSize>2100</YDimSize>
       <Grain>0</Grain>

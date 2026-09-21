@@ -12,6 +12,9 @@ public static class TestPaths
     public static string MaterialsFile => Path.Combine(SamplesFolder, "materials.sample.csv");
     public static string GoldenFolder => Path.Combine(SamplesFolder, "duivestein");
 
+    /// <summary>The batch XML that Daan corrected by hand after a test in DSSClient (2026-09-21), with his real material names.</summary>
+    public static string AcceptedByDssClientFile => Path.Combine(GoldenFolder, "DAAN_ROGIERS-P2026.09_corrected file.xml");
+
     /// <summary>The PlanDate in the golden XML. The real converter writes today's date; tests use this fixed one.</summary>
     public static DateTime GoldenPlanDate => new DateTime(2026, 9, 20);
 

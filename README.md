@@ -7,7 +7,7 @@ converts them, without any manual work, into a job that the Duivestein automatic
 
 > **Status: under development.** The conversion engine, its input checks, a command line tool, the tray application
 > and the automatic folder watching are finished and tested (stages 1 to 4 of 5), and the delivery file for version
-> 1.0.2 exists (stage 5). The test at the customer and with the real machines is still to come.
+> 1.0.3 exists (stage 5). The test at the customer and with the real machines is still to come.
 > See [Status and roadmap](#status-and-roadmap).
 >
 > **Important fix still to do:** TopSolid must put the project name in front of the file name of every CNC program, so that
@@ -85,7 +85,7 @@ An extract of the batch XML:
 ```xml
 <Plan>
   <PlanName>001</PlanName>
-  <Material>Melamine_18</Material>
+  <MaterialName>Melamine_18</MaterialName>
   <XDimSize>2850</XDimSize>
   <YDimSize>2100</YDimSize>
   <Quantity>2</Quantity>
@@ -160,11 +160,11 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 | 2 | **Validation**: all checks and warnings, one clear report, exit code for errors | **Done (first draft)** |
 | 3 | **Tray application (shell)**: icon with four looks (normal, busy, error, paused), menu, settings window, `settings.json`, start with Windows, log files. No conversion yet | **Done (first draft)** |
 | 4 | **Folder watching and processing**: trigger file, one conversion at a time, `_Verwerkt` / `_Fout` folders with a readable `fout.txt`, notifications, recovery when the network drive is gone | **Done (first draft)** |
-| 5 | **Delivery**: one file `TsDssConverter.exe` (version 1.0.2, 52 MB, no .NET needed), install at the customer, physical test sheet | **File built, customer test next** |
+| 5 | **Delivery**: one file `TsDssConverter.exe` (version 1.0.3, 52 MB, no .NET needed), install at the customer, physical test sheet | **File built, customer test next** |
 
 **What is verified so far**
 
-- 403 automated tests pass.
+- 406 automated tests pass.
 - Converting the sample TopSolid export gives exactly the expected files (compared byte for byte).
 - Every error and warning listed above is covered by a test, including a wrong pair of files and several
   problems at once.
@@ -185,8 +185,9 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 
 **What is *not* verified yet**
 
-- The expected files were derived from the agreed rules and have **not yet been confirmed by Duivestein**
-  with a test import.
+- The batch XML was tried in Duivestein's DSSClient on 2026-09-21: it was **almost correct**, and the syntax was corrected
+  (see the CHANGELOG). The program now writes the corrected syntax; a full run with the label files on the machine is still to
+  come, and the label CSVs are not confirmed by Duivestein yet.
 - Nothing has been tested with the customer's own TopSolid export or on the machine.
 - The label position and rotation still have to be checked with a physical test sheet.
 
