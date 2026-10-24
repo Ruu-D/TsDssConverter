@@ -3,8 +3,94 @@
 The history of TsDssConverter, newest first. `CLAUDE.md` describes the current state; this file says how it got there.
 The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`.
 
-## Not released yet (documentation only)
+## 1.1.0 — 2026-10-24 — first customer release
 
+- Delivery file: `dist\v1.1.0\TsDssConverter.exe`, 54,669,687 bytes, SHA-256
+  `337cb43975f5885c53c229a096da15707a6bce17d5977eba852f133aaa57d3a1`.
+  (Built three times under this number before delivery: `9d69104d...` (first layout, 1276 px wide, broken at 125%/150%),
+  then an unpublished preview with the first scaling fix, then this one. Only the last one counts.)
+- **First customer release** (Daan). From here on we wait for real-world tests at the customer; **1.1.1 will be the bug fixes**
+  found once real customer data flows through. Contains everything of 1.0.4 (reference-corner drop-down, "Gedraaid" /
+  `PlanRotated`, corner schematic), which had not been delivered on its own.
+- **Settings window layout (Daan):**
+  - The window is wider: 940 px at 100% = 1410 px at 150% (was 678). The minimum width is unchanged. On the way there it was
+    1160, then 1276 px; Daan measured 1913 px at 150% and asked for 1410.
+  - The TopSolid export folder (with its two Config rows and Open materiaaltabel) and the two Duivestein folders (with the
+    label Config row) sit side by side, two halves of equal width with a thin vertical pale-blue line between them
+    (`FolderDivider`). The hints under the folders wrap onto two lines when they do not fit next to their button.
+  - Horizontal dividers: below "Start met Windows", above the zero point, and a new one above "Laatste conversies". The one
+    between the TopSolid and Duivestein parts is gone.
+  - `Dev.: Daan Verhoost | App-versie: …` on one line at the top right (`Strings.CreditSeparator`).
+  - Footer at the bottom left: only the ROGIERS logo, a link to rogiers.be (hand cursor, tooltip "ROGIERS NV/SA"). The text
+    `ROGIERS NV/SA` was removed.
+- **Layout fixes at 125% / 150% screen scaling** (found by Daan on his own screens; at 100% everything was fine):
+  - Hints far below their buttons. While Windows scales the window it lays it out for a moment at a much narrower width;
+    the hints wrapped onto many lines and the rows grew. A control stretched to fill a table row (`Dock = Fill`) is sized
+    by its current height, so the vertical line and the two halves then held the folders row that high, and the last row of
+    each half got the extra room. Fixed: the halves are anchored at the top (keep their own height), the line takes its
+    height from the halves (`FitDivider`), and the hints get a size computed by the window (`WrapHintBesideButton` /
+    `FitHints`, width from the whole folders row) instead of letting the table wrap them.
+  - The wide buttons ("Open materiaaltabel", "Herstart mislukte") were scaled twice: the text was measured at the screen's
+    scaling and then scaled again. `WideButtonWidth` now measures at 100%. (Already visible in 1.0.4 at 150%.)
+  - The logo was squeezed to 2 px wide at 150%: it sat in a `Percent` column of an `AutoSize` table (the same WinForms trap
+    as the 1.0.4 drop-down). It now has an `AutoSize` column of its own.
+- **How it was checked:** previews were rendered with `DrawToBitmap` (no screen capture), first from a temporary test, then
+  from a small throw-away program in the scratchpad that opens the real window per-monitor DPI aware like the app, invisibly,
+  on every monitor at its real scaling (see CLAUDE.md §3). It reproduced the 125% and 150% problems and confirmed the fixes in
+  all three languages. A dark "VS Code Dark Modern" look was sketched the same way and not chosen.
+- Tests: footer/version tests rewritten; new tests for the side-by-side halves, every hint beside its button (three
+  languages, at 100% and at a simulated 150%), a window that was narrow for a moment (fails on the broken layout), the wide
+  button widths, the logo width and the third divider. 430 tests (was 420).
+
+## 1.0.4 — 2026-09-23
+
+- Delivery file: `dist\v1.0.4\TsDssConverter.exe`, 54,668,157 bytes, SHA-256 `d4e7c85f14476afbd88664f6da96c2662cfd241e7735faaf4ad9c20fddfd5e3f`.
+  (Built five times under this version number, because it had not been delivered yet: `32923cfb...` (first, no rename/
+  schematic), `132bc168...` (rename + schematic, small + centred across the drop-down/checkbox stack), `25bd1e75...` (bigger
+  schematic, but this is the build with the broken drop-down width, see below), `70b87929...` (the fix), then this one (the
+  selected-corner marker made bigger again, and Daan's own edit to the title text). Only the last one counts, same as 1.0.2.)
+- **Renamed the reference-corner section's title (2026-09-23, Daan):** "Nulpunt nesting plaatpuzzel" / "Point zero panneau
+  nesting" / "Zero point nesting sheet" (was "Oriëntatie van de plaat (zoals in DSSClient)" / ... ; `Strings.LabelZeroPoint`,
+  property name unchanged).
+- **A small schematic next to the reference-corner drop-down (2026-09-23, Daan):** the section is now two columns — the
+  drop-down and the "Gedraaid" checkbox on the left, and a new custom-drawn control, `ReferenceCornerPreview`
+  (`Tray\ReferenceCorner.cs`, control `CornerPreview`), on the right: a filled dark-blue "sheet" rectangle with a light-blue
+  square at each corner, the corner matching the current selection drawn bigger and in the brand colour. It follows the
+  drop-down at once (before Save), via `SelectedIndexChanged`. Purely decorative, nothing is read back from it. 420 tests
+  (was 418): the schematic's value after `LoadFromSettings` and after changing the drop-down, and a layout test for the two
+  columns.
+- **Follow-up (2026-09-23), after Daan's own screenshot of the built exe:** the schematic made a bit bigger (100 x 76, was
+  84 x 64) and asked to line it up with the drop-down's row specifically, instead of centred across the drop-down + checkbox
+  stack. The colours themselves were already correct — checked by sampling the exact rendered pixels of Daan's screenshot,
+  since the selected corner is easy to misjudge by eye at that small size.
+- **Regression, found and fixed the same day (Daan's screenshot):** the first attempt at "line it up with the drop-down"
+  restructured `cornerRow` into a `TableLayoutPanel` with a `Percent(100)` column while `AutoSize = true` — a WinForms trap:
+  under `AutoSize`, a `Percent` column is silently treated as `AutoSize` too, so it fell back to the ComboBox's own computed
+  preferred width instead of the `Width = 260` that was set, shrinking the drop-down to ~75 px (showing "Bas" instead of
+  "Bas gauche", and truncating every item in the open list). Fixed by going back to the original, proven structure — two
+  `AutoSize` columns, the drop-down and checkbox nested in their own sub-panel — and getting the alignment with
+  `CornerPreview.Anchor = Left | Top` instead of restructuring rows. New regression test: `ReferenceCornerBox.Width` must be
+  at least 200 px, which fails under the broken version.
+- Screenshot note: getting a correct screenshot of any of this took two fixes (a multi-monitor DPI mismatch, then finding the
+  right window by PID instead of the unreliable `Process.MainWindowHandle`), still briefly matched an unrelated window on
+  Daan's screen once, and later came back solid black from a negative-coordinate monitor position; see CLAUDE.md §3. All
+  stray/failed captures were deleted unused. Daan's own screenshots were used to verify the colours and to catch the
+  regression, since self-capture was not reliable on his machine.
+- **Last tweak before an on-site visit (2026-09-23, Daan):** the selected-corner marker made 1/3 bigger again (21 px, was
+  16 px). Daan also edited the section title's text himself directly in `Strings.cs`, adding a clarifying parenthetical:
+  "Nulpunt nesting plaatpuzzel (noodzakelijk voor etiket nulpunt)" / "Point zero panneau nesting (nécessaire pour le point
+  zéro de l'étiquette)" / "Zero point nesting sheet (required for label zero point)". 420 tests (the language-window test's
+  expected title text was updated to match).
+- **Reference-corner drop-down + "Gedraaid" checkbox, replacing the FlipX/FlipY checkboxes (2026-09-23, Daan).** The settings
+  window now shows one drop-down with DSSClient's own four "Oriëntatie" corner names (Linksonder / Linksboven / Rechtsonder /
+  Rechtsboven), and next to it a "Gedraaid" checkbox — matching DSSClient's own panel exactly, so the customer picks the same
+  values in both tools without doing any flip math. New Tray class `ReferenceCorner` (+ `ReferenceCornerMapping`) converts the
+  corner to/from `AppSettings.FlipX`/`FlipY`, which are unchanged internally (old `settings.json` files keep working).
+  New `AppSettings`/`ConverterSettings.PlanRotated`, confirmed by Daan to be the batch XML's per-plan `<Rotation>` node (was
+  hardcoded to `0`): 90 when "Gedraaid" is checked, 0 otherwise, the same for every plan (a warehouse-level setting, not
+  computed per job). 418 tests (was 406): a new `ReferenceCornerTests.cs` (pure mapping logic), a `Plan.Rotation` test in
+  `BatchBuilderTests.cs`, and a `<Rotation>` test in `SampleConversionTests.cs`; the window tests were updated for the new
+  controls. Default settings are unchanged (`PlanRotated` off = `<Rotation>0</Rotation>`, byte-identical to the golden XML).
 - README shortened (404 → 239 lines): the section "Getting started (for developers)" is removed completely (developer commands,
   CLI options, trying out the tray app, the customer install guide, material mapping and column names; the old text is in git
   history, the facts are in CLAUDE.md §5, §6, §14), and "Built to be safe", "What is verified so far" and "Decisions taken so far"

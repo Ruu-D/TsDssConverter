@@ -14,6 +14,13 @@ public class ConverterSettings
     /// <summary>Label zero point: Y = sheet width - LABEL_Y.</summary>
     public bool FlipY { get; set; } = false;
 
+    /// <summary>
+    /// The batch XML's per-plan Rotation node: written as 90 when true, 0 when false. Matches DSSClient's "Gedraaid"
+    /// checkbox next to its "Oriëntatie" (reference corner) setting: a fixed, warehouse-level convention (how the
+    /// sheets themselves are loaded), not something that varies per job or per material.
+    /// </summary>
+    public bool PlanRotated { get; set; } = false;
+
     /// <summary>TopSolid export folder, as seen from the Duivestein machine (drive letter, same Z: as the tray settings).</summary>
     public string TopSolidExportPath { get; set; } = @"Z:\TopSolid\Export\";
 

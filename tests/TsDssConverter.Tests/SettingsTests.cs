@@ -14,6 +14,7 @@ public class SettingsTests
         Assert.Equal(@"Z:\Duivestein\Label", settings.LabelFolder);
         Assert.False(settings.FlipX);
         Assert.False(settings.FlipY);
+        Assert.False(settings.PlanRotated);
         Assert.Equal(".xcs", settings.CncExtension);
         Assert.Equal("", settings.CncPathPrefixInXml);
         Assert.Equal("utf-8", settings.CsvEncoding);
@@ -45,6 +46,7 @@ public class SettingsTests
             LabelFolder = @"D:\Label",
             FlipX = true,
             FlipY = true,
+            PlanRotated = true,
             CncExtension = ".pgmx",
             CncPathPrefixInXml = @"\\server\share",
             CsvEncoding = "windows-1252",
@@ -62,6 +64,7 @@ public class SettingsTests
         Assert.Equal(@"D:\Label", result.Settings.LabelFolder);
         Assert.True(result.Settings.FlipX);
         Assert.True(result.Settings.FlipY);
+        Assert.True(result.Settings.PlanRotated);
         Assert.Equal(".pgmx", result.Settings.CncExtension);
         Assert.Equal(@"\\server\share", result.Settings.CncPathPrefixInXml);
         Assert.Equal("windows-1252", result.Settings.CsvEncoding);
@@ -170,6 +173,7 @@ public class SettingsTests
             TopSolidExportPath = @"D:\Export\",
             FlipX = true,
             FlipY = true,
+            PlanRotated = true,
             CncExtension = ".pgmx",
             CncPathPrefixInXml = @"\\server\share",
             CsvEncoding = "windows-1252",
@@ -180,6 +184,7 @@ public class SettingsTests
         Assert.Equal(@"D:\Export\", converterSettings.TopSolidExportPath);
         Assert.True(converterSettings.FlipX);
         Assert.True(converterSettings.FlipY);
+        Assert.True(converterSettings.PlanRotated);
         Assert.Equal(".pgmx", converterSettings.CncExtension);
         Assert.Equal(@"\\server\share", converterSettings.CncPathPrefixInXml);
         Assert.Equal("windows-1252", converterSettings.CsvEncoding);

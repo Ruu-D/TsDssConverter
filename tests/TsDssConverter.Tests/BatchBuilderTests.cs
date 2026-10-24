@@ -55,6 +55,20 @@ public class BatchBuilderTests
         Assert.Empty(batch.Warnings);
     }
 
+    [Fact]
+    public void PlanRotation_FollowsSettings_PlanRotated_DssClientsGedraaid()
+    {
+        List<LabelInfoRow> info = new() { Info("White_18#01", "Part A - 100") };
+        List<LabelPositionRow> positions = new() { Pos("White_18#01", "Part A - 100") };
+
+        Batch notRotated = BatchBuilder.Build("Test-1", info, positions, Materials(), new ConverterSettings(), new DateTime(2026, 1, 1));
+        Assert.Equal(0, notRotated.Plans[0].Rotation);
+
+        Batch rotated = BatchBuilder.Build(
+            "Test-1", info, positions, Materials(), new ConverterSettings { PlanRotated = true }, new DateTime(2026, 1, 1));
+        Assert.Equal(90, rotated.Plans[0].Rotation);
+    }
+
     // ---------------------------------------------------------------- errors
 
     [Fact]

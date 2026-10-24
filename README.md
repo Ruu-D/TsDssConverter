@@ -5,10 +5,10 @@
 TsDssConverter is a small Windows tray application that watches a folder for TopSolid nesting exports and
 converts them, without any manual work, into a job that the Duivestein automatic warehouse understands.
 
-> **Status: under development.** The conversion engine, its input checks, a command line tool, the tray application
-> and the automatic folder watching are finished and tested (stages 1 to 4 of 5), and the delivery file for version
-> 1.0.3 exists (stage 5). The test at the customer and with the real machines is still to come.
-> See [Status and roadmap](#status-and-roadmap).
+> **Status: version 1.1.0 is the first customer release.** The conversion engine, its input checks, the tray application
+> and the automatic folder watching are finished and tested (stages 1 to 4 of 5); the delivery file is built (stage 5).
+> We are now **waiting for real-world tests** at the customer, with real TopSolid exports, the Duivestein warehouse and
+> the machine. Version 1.1.1 will contain the bug fixes that come out of that. See [Status and roadmap](#status-and-roadmap).
 >
 > **Important fix still to do:** TopSolid must put the project name in front of the file name of every CNC program, so that
 > two jobs can never overwrite each other's programs. See [Important fix still to do](#important-fix-still-to-do).
@@ -25,14 +25,15 @@ background. Double-click the icon to open the window to modify settings if neede
 </p>
 
 The settings window (here in English; the whole interface is also available in Dutch and French) holds the folders,
-the label zero point and the list of the last conversions:
+the label zero point and the list of the last conversions. The TopSolid folder (left) and the two Duivestein folders
+(right) sit side by side:
 
 <p align="center">
-  <img src="media/preview/v1.0.2_preview.png" width="620" alt="The TsDssConverter 1.0.2 settings window in English: the TopSolid export folder with the Config buttons and the Open materials table button, the two Duivestein folders, the label zero point, and the list of the last conversions with the Retry failed and Open log buttons.">
+  <img src="media/preview/MainUI-preview.png" width="720" alt="The TsDssConverter 1.1.0 settings window in English. At the top the language and Start with Windows, with the developer credit and app version at the right. Below, side by side: the TopSolid export folder with two Config buttons and the Open materials table button, and the Duivestein batch and label folders with a Config button. Then the zero point of the nesting sheet with its small schematic, and the list of the last conversions with one successful and two failed jobs, the Retry failed and Open log buttons, the ROGIERS logo and Save / Cancel.">
 </p>
 
 <p align="center">
-  <img src="media/preview/TsDssConverter_DEMO.gif" width="620" alt="Animated demo of the TsDssConverter settings window: language, start with Windows, the TopSolid export folder, the two Duivestein folders, the Config buttons, the label zero point and the list of the last conversions.">
+  <img src="media/preview/TsDssConverter_DEMO.gif" width="720" alt="Animated demo of the TsDssConverter 1.1.0 settings window in English: language, start with Windows, the TopSolid export folder and the two Duivestein folders side by side, the Config buttons, the zero point of the nesting sheet and the list of the last conversions.">
 </p>
 
 ## Why this tool exists
@@ -147,12 +148,17 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 | 2 | **Validation**: all checks and warnings, one clear report, exit code for errors | **Done (first draft)** |
 | 3 | **Tray application (shell)**: icon with four looks (normal, busy, error, paused), menu, settings window, `settings.json`, start with Windows, log files. No conversion yet | **Done (first draft)** |
 | 4 | **Folder watching and processing**: trigger file, one conversion at a time, `_Verwerkt` / `_Fout` folders with a readable `fout.txt`, notifications, recovery when the network drive is gone | **Done (first draft)** |
-| 5 | **Delivery**: one file `TsDssConverter.exe` (version 1.0.3, 52 MB, no .NET needed), install at the customer, physical test sheet | **File built, customer test next** |
+| 5 | **Delivery**: one file `TsDssConverter.exe` (version 1.1.0, 52 MB, no .NET needed), install at the customer, physical test sheet | **1.1.0 = first customer release; waiting for real-world tests** |
+
+**Next:** version **1.1.1** = the bug fixes found once real customer data flows through the program. No new features are
+planned until then.
 
 **What is verified so far**
 
-- 406 automated tests pass. They cover the conversion, every error and warning, the settings window, the folder watching (with a
+- 430 automated tests pass. They cover the conversion, every error and warning, the settings window, the folder watching (with a
   fake clock) and all three languages.
+- The settings window lays out correctly at 100%, 125% and 150% screen scaling (checked on a real screen at each scaling,
+  plus automated tests that guard the rules).
 - The sample TopSolid export converts to exactly the expected files (compared byte for byte).
 - The single-file `.exe` (about 52 MB) starts, creates its files and refuses a second copy. An earlier build ran on a PC without
   .NET and converted the sample correctly.
@@ -182,6 +188,16 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 - **CNC programs are moved** after conversion to `Z:\TopSolid\Export\CNC\<project>\`, so jobs never overwrite each other's programs.
 - **Materials:** the TopSolid name is the master name; the warehouse uses the same names and checks the sheet sizes against its stock.
 - **By design:** the list of conversions is not saved between runs, and the app runs only while a user is logged in.
+- **Reference corner, not flip checkboxes (2026-09-23):** the settings window has one drop-down with DSSClient's own four
+  corner names ("Oriëntatie": Linksonder / Linksboven / Rechtsonder / Rechtsboven) instead of two "flip" checkboxes, plus a
+  "Gedraaid" checkbox for the batch XML's per-plan rotation (0° or 90°) — both fixed, warehouse-level settings, matching
+  DSSClient's own panel so nobody has to translate between the two. The section (renamed "Nulpunt nesting plaatpuzzel") is in
+  two columns: the drop-down and checkbox on the left, and a small schematic on the right (a dark blue "sheet" with a light
+  blue marker at each corner, the selected one drawn bigger) that follows the drop-down as it is changed.
+- **Wider settings window (1.1.0):** the TopSolid folder and the two Duivestein folders sit side by side, separated by a thin
+  blue line; the developer credit and app version are at the top right, the ROGIERS logo (a link to rogiers.be) at the bottom
+  left. The light look stays (a dark theme was sketched and not chosen).
+- **1.1.0 is the first customer release.** Further changes wait for real-world tests; 1.1.1 will be bug fixes only.
 
 ## Important fix still to do
 
@@ -210,6 +226,7 @@ the trigger file" check can then be dropped.
 | Duivestein | Restrictions on batch name (length, characters) and what happens when a batch is sent twice |
 | Duivestein | Character encoding for accented characters in the label files (UTF-8 is used for now) |
 | Physical test | Which point of the label the position refers to, the rotation direction, and whether the zero-point settings change the rotation |
+| Physical test | Can the label applicator really only turn to 0°/90°? If so, does Duivestein's print template pre-rotate the printed content for 180°/270° (so a SQUARE label's edge-banding fields still land on the right edge)? And if the label stock is NOT square, does a 90°/270° rotation squeeze the field layout into the shorter dimension for about half the parts, or does Duivestein's engine avoid that? See CLAUDE.md, "Zero-point flips" — square label stock is the recommended default precisely to avoid this |
 
 ## Project layout
 

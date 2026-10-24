@@ -16,6 +16,9 @@ public class AppSettings
     public bool FlipX { get; set; } = false;
     public bool FlipY { get; set; } = false;
 
+    /// <summary>The batch XML's per-plan Rotation node (DSSClient's "Gedraaid"): 90 when true, 0 when false.</summary>
+    public bool PlanRotated { get; set; } = false;
+
     /// <summary>Language of the whole interface: "nl" (Dutch, the default), "fr" or "en".</summary>
     public string Language { get; set; } = "nl";
 
@@ -42,6 +45,7 @@ public class AppSettings
         {
             FlipX = FlipX,
             FlipY = FlipY,
+            PlanRotated = PlanRotated,
             TopSolidExportPath = TopSolidExportPath,
             CncExtension = CncExtension,
             CncPathPrefixInXml = CncPathPrefixInXml,

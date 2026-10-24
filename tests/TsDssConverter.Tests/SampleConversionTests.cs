@@ -262,6 +262,22 @@ public class SampleConversionTests
         Assert.Equal("6", root.Element("PartCount")!.Value);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(90)]
+    public void BatchXml_WritesThePlansOwnRotation_NotAConstant(int rotation)
+    {
+        var batch = new Batch { Name = "Daan", PlanDate = TestPaths.GoldenPlanDate };
+        var material = new Material { TopSolidName = "M", DssName = "M", Thickness = 18, Grain = 0 };
+        var plan = new Plan { PlanName = "001", Material = material, SheetLength = 100, SheetWidth = 50, Rotation = rotation };
+        plan.Sheets.Add(new Sheet { Name = "M#01", LabelFileName = "Daan_001.csv", CncPath = @"Z:\x.xcs" });
+        batch.Plans.Add(plan);
+
+        XElement root = XDocument.Parse(BatchXmlWriter.BuildText(batch, @"Z:\Label")).Root!;
+
+        Assert.Equal(rotation.ToString(), root.Element("Plans")!.Element("Plan")!.Element("Rotation")!.Value);
+    }
+
     [Fact]
     public void LabelCsvs_HaveTheExpectedNumberOfRowsPerSheet()
     {

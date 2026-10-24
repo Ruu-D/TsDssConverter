@@ -16,8 +16,9 @@ internal static class Strings
     public const string DeveloperCredit = "Dev.: Daan Verhoost";
     public const string CompanyName = "ROGIERS NV/SA";
     public const string CompanyUrl = "https://www.rogiers.be/";
+    public const string CreditSeparator = " | ";  // between the credit and the app version, top right
 
-    /// <summary>The line at the bottom left of the settings window, e.g. "App version: 1.0.0".</summary>
+    /// <summary>At the top right of the settings window, after the credit, e.g. "App version: 1.0.0".</summary>
     public static string AppVersion(string version) => T(
         $"App-versie: {version}",
         $"Version de l'application : {version}",
@@ -174,17 +175,24 @@ internal static class Strings
         "Dossier inaccessible. Le paramètre est quand même enregistré.",
         "Folder not reachable. The setting is saved anyway.");
 
-    public static string LabelZeroPoint => T("Nulpunt van het label", "Point zéro de l'étiquette", "Label zero point");
+    public static string LabelZeroPoint => T(
+        "Nulpunt nesting plaatpuzzel (noodzakelijk voor etiket nulpunt)",
+        "Point zero panneau nesting (nécessaire pour le point zéro de l'étiquette)",
+        "Zero point nesting sheet (required for label zero point)");
 
-    public static string FlipX => T(
-        "Spiegelen in X (X = plaatlengte − X)",
-        "Inverser en X (X = longueur du panneau − X)",
-        "Flip in X (X = sheet length − X)");
+    // The four items of the reference-corner box, matching DSSClient's own "Oriëntatie" drop-down (Dutch names
+    // are theirs exactly, so the customer recognises them). Choosing a corner sets FlipX / FlipY together.
+    public static string ReferenceCornerBottomLeft => T("Linksonder", "Bas gauche", "Bottom-left");
+    public static string ReferenceCornerTopLeft => T("Linksboven", "Haut gauche", "Top-left");
+    public static string ReferenceCornerBottomRight => T("Rechtsonder", "Bas droite", "Bottom-right");
+    public static string ReferenceCornerTopRight => T("Rechtsboven", "Haut droite", "Top-right");
 
-    public static string FlipY => T(
-        "Spiegelen in Y (Y = plaatbreedte − Y)",
-        "Inverser en Y (Y = largeur du panneau − Y)",
-        "Flip in Y (Y = sheet width − Y)");
+    // The checkbox next to the reference corner, matching DSSClient's own "Gedraaid" checkbox: the batch XML's
+    // per-plan Rotation node (0 or 90).
+    public static string PlanRotated => T(
+        "Gedraaid (plan-rotatie = 90°)",
+        "Tourné (rotation du plan = 90°)",
+        "Rotated (plan rotation = 90°)");
 
     public static string Save => T("Opslaan", "Enregistrer", "Save");
     public static string Cancel => T("Annuleren", "Annuler", "Cancel");

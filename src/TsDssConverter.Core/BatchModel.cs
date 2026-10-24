@@ -59,6 +59,10 @@ public class Plan
     public Material Material { get; set; } = new();
     public double SheetLength { get; set; }
     public double SheetWidth { get; set; }
+
+    /// <summary>The XML's per-plan Rotation node: 0 or 90, from ConverterSettings.PlanRotated (DSSClient's "Gedraaid").</summary>
+    public int Rotation { get; set; }
+
     public List<Sheet> Sheets { get; } = new();
 }
 

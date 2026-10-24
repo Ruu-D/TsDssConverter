@@ -69,6 +69,7 @@ public static class BatchBuilder
                 Material = materials.Find(materialName),
                 SheetLength = materialParts[0].Position.SheetLength,
                 SheetWidth = materialParts[0].Position.SheetWidth,
+                Rotation = settings.PlanRotated ? 90 : 0,
             };
 
             // Sheets by sheet number (#01, #02, ...). Parts inside a sheet keep the LP order.

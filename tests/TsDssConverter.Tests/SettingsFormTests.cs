@@ -127,14 +127,31 @@ public class SettingsFormTests
         RunOnStaThread(() =>
         {
             using var window = new TestWindow();
-            window.Current = new AppSettings { TopSolidExportPath = @"D:\Export\", BatchFolder = @"D:\Batch", LabelFolder = @"D:\Label", FlipX = true };
+            window.Current = new AppSettings { TopSolidExportPath = @"D:\Export\", BatchFolder = @"D:\Batch", LabelFolder = @"D:\Label", FlipX = true, PlanRotated = true };
             window.Form.LoadFromSettings();
 
             Assert.Equal(@"D:\Export\", window.Form.ExportFolderBox.Text);
             Assert.Equal(@"D:\Batch", window.Form.BatchFolderBox.Text);
             Assert.Equal(@"D:\Label", window.Form.LabelFolderBox.Text);
-            Assert.True(window.Form.FlipXBox.Checked);
-            Assert.False(window.Form.FlipYBox.Checked);
+            // FlipX = true, FlipY = false -> the bottom-right corner (see ReferenceCornerMapping).
+            Assert.Equal(ReferenceCorner.BottomRight, ((SettingsForm.ReferenceCornerItem)window.Form.ReferenceCornerBox.SelectedItem!).Corner);
+            Assert.Equal(ReferenceCorner.BottomRight, window.Form.CornerPreview.SelectedCorner); // the schematic follows it
+            Assert.True(window.Form.PlanRotatedBox.Checked);
+        });
+    }
+
+    [Fact]
+    public void ChangingTheReferenceCornerBox_UpdatesTheSchematic_AtOnce_BeforeSave()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            var form = window.Form;
+            Assert.Equal(ReferenceCorner.BottomLeft, form.CornerPreview.SelectedCorner); // the default
+
+            form.ReferenceCornerBox.SelectedIndex = (int)ReferenceCorner.TopRight;
+
+            Assert.Equal(ReferenceCorner.TopRight, form.CornerPreview.SelectedCorner);
         });
     }
 
@@ -165,7 +182,9 @@ public class SettingsFormTests
             window.Form.ExportFolderBox.Text = @"E:\Export";
             window.Form.BatchFolderBox.Text = @"E:\Batch";
             window.Form.LabelFolderBox.Text = @"E:\Label";
-            window.Form.FlipYBox.Checked = true;
+            // Top-left = FlipX false, FlipY true (see ReferenceCornerMapping).
+            window.Form.ReferenceCornerBox.SelectedIndex = (int)ReferenceCorner.TopLeft;
+            window.Form.PlanRotatedBox.Checked = true;
             window.Form.StartWithWindowsBox.Checked = true;
 
             ((Button)window.Form.AcceptButton!).PerformClick(); // the Save button
@@ -178,6 +197,7 @@ public class SettingsFormTests
             Assert.Equal(@"E:\Label", saved.LabelFolder);
             Assert.False(saved.FlipX);
             Assert.True(saved.FlipY);
+            Assert.True(saved.PlanRotated);
             Assert.Equal(".pgmx", saved.CncExtension);                       // not in the window: unchanged
             Assert.Equal(60, saved.RescanSeconds);
             Assert.False(saved.RequireTriggerFile);
@@ -341,13 +361,13 @@ public class SettingsFormTests
             Assert.True(window.Form.ZeroPointTitle.Font.Bold);
 
             Assert.False(window.Form.StartWithWindowsBox.Font.Bold);
-            Assert.False(window.Form.FlipXBox.Font.Bold);
-            Assert.False(window.Form.FlipYBox.Font.Bold);
+            Assert.False(window.Form.ReferenceCornerBox.Font.Bold);
+            Assert.False(window.Form.PlanRotatedBox.Font.Bold);
         });
     }
 
     [Fact]
-    public void DividerLines_SitBelowStartWithWindows_AboveTheDuivesteinFolders_AndAboveTheLabelZeroPoint()
+    public void DividerLines_SitBelowStartWithWindows_AboveTheLabelZeroPoint_AndAboveTheLastConversions()
     {
         RunOnStaThread(() =>
         {
@@ -355,24 +375,30 @@ public class SettingsFormTests
             window.Form.Show();
             window.Form.PerformLayout();
             var form = window.Form;
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+            int Bottom(Control control) => Place(control).Y + control.Height;
 
+            // The horizontal lines (the vertical one between the two halves of folders is FolderDivider).
             Assert.Equal(3, form.Dividers.Count);
             var first = form.Dividers[0];
             var second = form.Dividers[1];
             var third = form.Dividers[2];
 
-            // First line: right below the "Start met Windows" checkbox and above the first folder title.
-            Assert.True(first.Top >= form.StartWithWindowsBox.Bottom);
-            Assert.True(first.Bottom <= form.ExportCaption.Top);
+            // First line: right below the "Start met Windows" checkbox and the credit line, and above the folder titles.
+            Assert.True(Place(first).Y >= Bottom(form.StartWithWindowsBox));
+            Assert.True(Place(first).Y >= Bottom(form.CreditLabel));
+            Assert.True(Bottom(first) <= Place(form.ExportCaption).Y);
 
-            // Second line: below the two Config rows (the TopSolid part) and above "Duivestein-batchmap".
-            Assert.True(second.Top >= form.ConfigPositionButton.Bottom);
-            Assert.True(second.Bottom <= form.BatchCaption.Top);
+            // Second line: below both halves of folders and above "Nulpunt nesting plaatpuzzel".
+            Assert.True(Place(second).Y >= Bottom(form.OpenMaterialsButton));
+            Assert.True(Place(second).Y >= Bottom(form.ConfigLabelButton));
+            Assert.True(Bottom(second) <= Place(form.ZeroPointTitle).Y);
 
-            // Third line: below the last folder box and above "Nulpunt van het label".
-            Assert.True(third.Top >= form.LabelFolderBox.Parent!.Bottom); // the text box sits in its rounded frame
-            Assert.True(third.Top >= form.ConfigLabelButton.Bottom);       // and so does the Config row under it
-            Assert.True(third.Bottom <= form.ZeroPointTitle.Top);
+            // Third line: below the zero point (checkbox and schematic) and above the title and buttons of the list.
+            Assert.True(Place(third).Y >= Bottom(form.PlanRotatedBox));
+            Assert.True(Place(third).Y >= Bottom(form.CornerPreview));
+            Assert.True(Bottom(third) <= Place(form.OpenLogButton).Y);
+            Assert.True(Bottom(third) <= Place(form.RetryFailedButton).Y);
 
             // Thin, spanning the width of the window, and all in the same colour.
             Assert.All(form.Dividers, line => Assert.InRange(line.Height, 1, 3));

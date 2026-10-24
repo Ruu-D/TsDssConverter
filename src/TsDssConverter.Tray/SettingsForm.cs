@@ -28,8 +28,9 @@ internal class SettingsForm : Form
     internal readonly TextBox ExportFolderBox = new();
     internal readonly TextBox BatchFolderBox = new();
     internal readonly TextBox LabelFolderBox = new();
-    internal readonly CheckBox FlipXBox = new FluentCheckBox();
-    internal readonly CheckBox FlipYBox = new FluentCheckBox();
+    internal readonly ComboBox ReferenceCornerBox = new();       // "Oriëntatie" in DSSClient: sets FlipX / FlipY together
+    internal readonly CheckBox PlanRotatedBox = new FluentCheckBox(); // "Gedraaid" in DSSClient: the batch XML's Plan Rotation
+    internal readonly ReferenceCornerPreview CornerPreview = new(); // small schematic that follows ReferenceCornerBox
     internal readonly ListView HistoryList = new();
     private readonly Label _exportWarning = new();
     private readonly Label _batchWarning = new();
@@ -43,6 +44,9 @@ internal class SettingsForm : Form
     // The banner picture is 540 x 84 pixels. It is shown 1.2 times as big.
     private const int BannerWidth = 648;
     private const int BannerHeight = 101;
+
+    // The window is wider than the banner: the TopSolid and Duivestein folders sit side by side (at 100%).
+    private const int WindowWidth = 940;
 
     // Parts of the layout that the tests look at
     internal readonly RoundedButton ConfigInfoButton = new();      // opens columns-li.txt (below the export folder)
@@ -59,10 +63,12 @@ internal class SettingsForm : Form
     internal readonly List<Panel> Dividers = new();
     internal readonly Label LanguageCaption = new();
     internal readonly ComboBox LanguageBox = new();
-    internal readonly Label CreditLabel = new();     // footer line 1: "Dev.: Daan Verhoost"
-    internal readonly LinkLabel CompanyLink = new(); // footer line 2: "ROGIERS NV/SA" (a link to the website)
-    internal readonly Label VersionLabel = new();    // "App version: 1.0.1", at the top right below the banner
-    internal readonly PictureBox LogoPicture = new(); // the small ROGIERS logo at the left of the two footer lines
+    internal readonly Label CreditLabel = new();     // "Dev.: Daan Verhoost", at the top right below the banner
+    internal readonly Label VersionLabel = new();    // "App version: 1.0.1", right of the credit on the same line
+    internal readonly PictureBox LogoPicture = new(); // the small ROGIERS logo at the bottom left (a link to the website)
+    internal readonly Panel FolderDivider = new();   // the vertical line between the TopSolid and the Duivestein folders
+    private TableLayoutPanel? _folders;              // the row with the two halves of folders (see FitHints)
+    private readonly List<(Label Hint, Control Button)> _wrappedHints = new(); // the hints that wrap beside a button
     internal readonly Panel Scroller = new();        // holds all the settings; scrolls if the window is too small
 
     // The list of conversions is never smaller than this (in pixels at 100% scaling): it must always be visible.
@@ -91,6 +97,21 @@ internal class SettingsForm : Form
         public LanguageItem(AppLanguage language, string text)
         {
             Language = language;
+            Text = text;
+        }
+
+        public override string ToString() => Text; // what the ComboBox shows
+    }
+
+    /// <summary>One item of the reference-corner box: the corner and the text shown for it.</summary>
+    internal class ReferenceCornerItem
+    {
+        public ReferenceCorner Corner { get; }
+        public string Text { get; }
+
+        public ReferenceCornerItem(ReferenceCorner corner, string text)
+        {
+            Corner = corner;
             Text = text;
         }
 
@@ -150,7 +171,7 @@ internal class SettingsForm : Form
         BackColor = Theme.White;
         ForeColor = Theme.Navy;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(BannerWidth + 30, 780); // the window is a little wider than the banner
+        ClientSize = new Size(WindowWidth, 780);
         MinimumSize = new Size(BannerWidth + 30, 500); // smaller than the content needs: then the settings scroll
         MaximizeBox = false;
 
@@ -176,63 +197,64 @@ internal class SettingsForm : Form
 
         int row = 0;
 
-        // 0. Language: right above "Start with Windows". The title has all three languages.
-        // The app version is on the same line, at the top right, just below the banner.
-        LanguageCaption.Text = Strings.LanguageTitle;
-        LanguageCaption.AutoSize = true;
-        LanguageCaption.Font = new Font(Font, FontStyle.Bold);
-        LanguageCaption.Margin = new Padding(0, 6, 0, 2);
-
-        VersionLabel.Text = Strings.AppVersion(AppInfo.Version);
-        VersionLabel.AutoSize = true;
-        VersionLabel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-        VersionLabel.Margin = new Padding(0, 6, 0, 2); // the same as the title, so the two texts sit on one line
-        VersionLabel.ForeColor = Theme.Navy;
-
-        // A small table of its own: the title takes the free width, the version only what it needs. (The version
-        // is not put in the main table, because that would make the column of the Browse buttons wider.)
-        var languageRow = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
-        languageRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        languageRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        languageRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        languageRow.Controls.Add(LanguageCaption, 0, 0);
-        languageRow.Controls.Add(VersionLabel, 1, 0);
-        AddFullRow(body, ref row, languageRow);
-
-        LanguageBox.DropDownStyle = ComboBoxStyle.DropDownList; // choose from the list, no typing
-        LanguageBox.Items.Add(new LanguageItem(AppLanguage.Dutch, Strings.LanguageDutch));
-        LanguageBox.Items.Add(new LanguageItem(AppLanguage.French, Strings.LanguageFrench));
-        LanguageBox.Items.Add(new LanguageItem(AppLanguage.English, Strings.LanguageEnglish));
-        LanguageBox.Width = 260;
-        LanguageBox.Anchor = AnchorStyles.Left;
-        LanguageBox.ForeColor = Theme.Navy;
-        LanguageBox.Margin = new Padding(0, 0, 0, 6);
-        AddFullRow(body, ref row, LanguageBox);
-
-        // 1. Start with Windows
-        StartWithWindowsBox.Text = Strings.StartWithWindows;
-        StartWithWindowsBox.AutoSize = true;
-        StartWithWindowsBox.Margin = new Padding(0, 4, 0, 8);
-        AddFullRow(body, ref row, StartWithWindowsBox);
+        // 0, 1. The top row: language and "Start with Windows" on the left, the credit, the app version and the
+        // company logo on the right.
+        var topRow = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
+        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        topRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        topRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        topRow.Controls.Add(BuildLanguageColumn(), 0, 0);
+        topRow.Controls.Add(BuildCredits(), 1, 0);
+        AddFullRow(body, ref row, topRow);
         // The divider lines have room above and below them. The neighbouring controls already have 8 pixels of
-        // margin on this side, so the first line gets 12 + 8 = 20 above and below; the other two lines follow a row
-        // without a bottom margin and are followed by a title with 8, so they get 20 above and 12 + 8 = 20 below.
+        // margin on this side, so the first line gets 12 + 8 = 20 above and below; the other line follows a row
+        // without a bottom margin and is followed by a title with 8, so it gets 20 above and 12 + 8 = 20 below.
         AddDivider(body, ref row, new Padding(0, 12, 0, 12)); // a line below "Start met Windows"
 
-        // 2, 3, 4. The three folders (the titles are bold)
-        // Below the export folder: the column names of the LI file and, right under it, those of the LP file
-        // and then the materials table (all three are about TopSolid). A line separates this from the two Duivestein folders.
-        AddFolderRow(body, ref row, ExportCaption, Strings.ExportFolder, ExportFolderBox, _exportWarning);
-        AddConfigRow(body, ref row, ConfigInfoHint, Strings.ColumnsInfoHint, ConfigInfoButton, () => _openFile(_dataFolder.InfoColumnsFile));
-        AddConfigRow(body, ref row, ConfigPositionHint, Strings.ColumnsPositionHint, ConfigPositionButton, () => _openFile(_dataFolder.PositionColumnsFile));
-        AddMaterialsRow(body, ref row);
-        AddDivider(body, ref row, new Padding(0, 20, 0, 12));
-        AddFolderRow(body, ref row, BatchCaption, Strings.BatchFolder, BatchFolderBox, _batchWarning);
-        // Below the label folder: the names of the ten extra description columns (DESC1 .. DESC10) in the label CSV.
-        AddFolderRow(body, ref row, LabelCaption, Strings.LabelFolder, LabelFolderBox, _labelWarning);
-        AddConfigRow(body, ref row, ConfigLabelHint, Strings.ColumnsLabelHint, ConfigLabelButton, () => _openFile(_dataFolder.LabelColumnsFile));
+        // 2, 3, 4. The three folders (the titles are bold), in two halves side by side with a vertical line between.
+        // Left, TopSolid: below the export folder the column names of the LI file, those of the LP file and the
+        // materials table. Right, Duivestein: the batch folder, the label folder and, below it, the names of the ten
+        // extra description columns (DESC1 .. DESC10) in the label CSV.
+        TableLayoutPanel topSolidSide = NewHalf();
+        int left = 0;
+        AddFolderRow(topSolidSide, ref left, ExportCaption, Strings.ExportFolder, ExportFolderBox, _exportWarning);
+        AddConfigRow(topSolidSide, ref left, ConfigInfoHint, Strings.ColumnsInfoHint, ConfigInfoButton, () => _openFile(_dataFolder.InfoColumnsFile));
+        AddConfigRow(topSolidSide, ref left, ConfigPositionHint, Strings.ColumnsPositionHint, ConfigPositionButton, () => _openFile(_dataFolder.PositionColumnsFile));
+        AddMaterialsRow(topSolidSide, ref left);
 
-        // 5, 6. Label zero point, with a line above it
+        TableLayoutPanel duivesteinSide = NewHalf();
+        int right = 0;
+        AddFolderRow(duivesteinSide, ref right, BatchCaption, Strings.BatchFolder, BatchFolderBox, _batchWarning);
+        AddFolderRow(duivesteinSide, ref right, LabelCaption, Strings.LabelFolder, LabelFolderBox, _labelWarning);
+        AddConfigRow(duivesteinSide, ref right, ConfigLabelHint, Strings.ColumnsLabelHint, ConfigLabelButton, () => _openFile(_dataFolder.LabelColumnsFile));
+
+        // The line is as high as the higher half. It is NOT stretched to the row (Dock = Fill): a table sizes a row by the
+        // current height of such a control, so a stretched line kept the row as high as it ever was (at 125% / 150%:
+        // ten lines high for a moment while Windows scales the window, see WrapHintBesideButton). Its height is set
+        // from the two halves instead, which always have the height of their content.
+        FolderDivider.Width = 1;
+        FolderDivider.Height = 1;
+        FolderDivider.Anchor = AnchorStyles.Left | AnchorStyles.Top;
+        FolderDivider.BackColor = Theme.PaleBlue;
+        FolderDivider.Margin = new Padding(20, 8, 20, 0);
+        void FitDivider() => FolderDivider.Height = Math.Max(1, Math.Max(topSolidSide.Height, duivesteinSide.Height) - FolderDivider.Margin.Top);
+        topSolidSide.SizeChanged += (sender, e) => FitDivider();
+        duivesteinSide.SizeChanged += (sender, e) => FitDivider();
+
+        // Two halves of equal width; the line only takes its own width and margins.
+        var folders = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
+        folders.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        folders.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        folders.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        folders.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        folders.Controls.Add(topSolidSide, 0, 0);
+        folders.Controls.Add(FolderDivider, 1, 0);
+        folders.Controls.Add(duivesteinSide, 2, 0);
+        AddFullRow(body, ref row, folders);
+        _folders = folders;
+        folders.SizeChanged += (sender, e) => FitHints();
+
+        // 5, 6. Reference corner + rotated (DSSClient's "Oriëntatie" / "Gedraaid"), with a line above it
         AddDivider(body, ref row, new Padding(0, 20, 0, 12));
         ZeroPointTitle.Text = Strings.LabelZeroPoint;
         ZeroPointTitle.AutoSize = true;
@@ -240,17 +262,53 @@ internal class SettingsForm : Form
         ZeroPointTitle.Font = new Font(Font, FontStyle.Bold);
         AddFullRow(body, ref row, ZeroPointTitle);
 
-        FlipXBox.Text = Strings.FlipX;
-        FlipXBox.AutoSize = true;
-        AddFullRow(body, ref row, FlipXBox);
-        FlipYBox.Text = Strings.FlipY;
-        FlipYBox.AutoSize = true;
-        AddFullRow(body, ref row, FlipYBox);
+        ReferenceCornerBox.DropDownStyle = ComboBoxStyle.DropDownList; // choose from the list, no typing
+        ReferenceCornerBox.Items.Add(new ReferenceCornerItem(ReferenceCorner.BottomLeft, Strings.ReferenceCornerBottomLeft));
+        ReferenceCornerBox.Items.Add(new ReferenceCornerItem(ReferenceCorner.TopLeft, Strings.ReferenceCornerTopLeft));
+        ReferenceCornerBox.Items.Add(new ReferenceCornerItem(ReferenceCorner.BottomRight, Strings.ReferenceCornerBottomRight));
+        ReferenceCornerBox.Items.Add(new ReferenceCornerItem(ReferenceCorner.TopRight, Strings.ReferenceCornerTopRight));
+        ReferenceCornerBox.Width = 260;
+        ReferenceCornerBox.Anchor = AnchorStyles.Left;
+        ReferenceCornerBox.ForeColor = Theme.Navy;
+        ReferenceCornerBox.Margin = new Padding(0, 0, 0, 6);
+        // The little schematic follows the drop-down at once, even before Save (LoadFromSettings sets the first value).
+        ReferenceCornerBox.SelectedIndexChanged += (sender, e) =>
+            CornerPreview.SelectedCorner = ((ReferenceCornerItem)ReferenceCornerBox.SelectedItem!).Corner;
+
+        PlanRotatedBox.Text = Strings.PlanRotated;
+        PlanRotatedBox.AutoSize = true;
+        PlanRotatedBox.Margin = new Padding(0);
+
+        // Left column: the drop-down above the checkbox, in its own AutoSize panel (this is what keeps the drop-down at
+        // its real 260 width: a Percent column in an AutoSize TableLayoutPanel is treated as AutoSize too and would
+        // shrink it to the ComboBox's own — much narrower — computed preferred width, cutting the corner names off).
+        var cornerColumn = new TableLayoutPanel { ColumnCount = 1, RowCount = 2, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
+        cornerColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        cornerColumn.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        cornerColumn.Controls.Add(ReferenceCornerBox, 0, 0);
+        cornerColumn.Controls.Add(PlanRotatedBox, 0, 1);
+
+        CornerPreview.Size = new Size(100, 76); // a bit bigger than the first version (was 84 x 64)
+        CornerPreview.Margin = new Padding(20, 0, 0, 0);
+        CornerPreview.Anchor = AnchorStyles.Left | AnchorStyles.Top; // top-anchored: lines up with the drop-down's row,
+                                                                      // not centred across the drop-down + checkbox stack
+
+        // Right column: the schematic, both AutoSize (no Percent column: see the note above).
+        var cornerRow = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
+        cornerRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        cornerRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        cornerRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        cornerRow.Controls.Add(cornerColumn, 0, 0);
+        cornerRow.Controls.Add(CornerPreview, 1, 0);
+        AddFullRow(body, ref row, cornerRow);
 
         // Save / Cancel
         // Save / Cancel are not here: they sit at the bottom right of the window, see BuildBottomRow.
 
-        // History: the title on the left and, on the right, the buttons that retry the failed projects and open the
+        // History, with a line above it (the title below has 10 of margin, so 10 + 10 = 20 below the line, like the others).
+        AddDivider(body, ref row, new Padding(0, 20, 0, 10));
+
+        // The title on the left and, on the right, the buttons that retry the failed projects and open the
         // log folder (the last one in line with the Browse buttons). The list itself takes all the remaining height.
         var historyTitle = new Label { Text = Strings.HistoryTitle, AutoSize = true, Margin = new Padding(0, 10, 0, 4) };
         historyTitle.Font = new Font(Font, FontStyle.Bold);
@@ -303,7 +361,107 @@ internal class SettingsForm : Form
     }
 
     /// <summary>
-    /// The bottom line of the window, below the list of conversions: the footer at the left (credit and version)
+    /// The left part of the top row: the language title (in all three languages), the language box and, below them,
+    /// "Start with Windows".
+    /// </summary>
+    private Control BuildLanguageColumn()
+    {
+        LanguageCaption.Text = Strings.LanguageTitle;
+        LanguageCaption.AutoSize = true;
+        LanguageCaption.Font = new Font(Font, FontStyle.Bold);
+        LanguageCaption.Margin = new Padding(0, 6, 0, 2);
+
+        LanguageBox.DropDownStyle = ComboBoxStyle.DropDownList; // choose from the list, no typing
+        LanguageBox.Items.Add(new LanguageItem(AppLanguage.Dutch, Strings.LanguageDutch));
+        LanguageBox.Items.Add(new LanguageItem(AppLanguage.French, Strings.LanguageFrench));
+        LanguageBox.Items.Add(new LanguageItem(AppLanguage.English, Strings.LanguageEnglish));
+        LanguageBox.Width = 260;
+        LanguageBox.Anchor = AnchorStyles.Left;
+        LanguageBox.ForeColor = Theme.Navy;
+        LanguageBox.Margin = new Padding(0, 0, 0, 6);
+
+        StartWithWindowsBox.Text = Strings.StartWithWindows;
+        StartWithWindowsBox.AutoSize = true;
+        StartWithWindowsBox.Margin = new Padding(0, 4, 0, 8);
+
+        // One AutoSize column (no Percent column: that would shrink the drop-down, see the reference corner below).
+        var column = new TableLayoutPanel { ColumnCount = 1, RowCount = 3, AutoSize = true, Anchor = AnchorStyles.Left | AnchorStyles.Top, Margin = new Padding(0) };
+        column.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        column.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        column.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        column.Controls.Add(LanguageCaption, 0, 0);
+        column.Controls.Add(LanguageBox, 0, 1);
+        column.Controls.Add(StartWithWindowsBox, 0, 2);
+        return column;
+    }
+
+    /// <summary>
+    /// The right part of the top row, against the right edge: "Dev.: Daan Verhoost | App version: 1.0.4".
+    /// (The company logo is in the footer at the bottom left, see BuildFooter.)
+    /// </summary>
+    private Control BuildCredits()
+    {
+        CreditLabel.Text = Strings.DeveloperCredit;
+        CreditLabel.AutoSize = true;
+        CreditLabel.Margin = new Padding(0);
+        CreditLabel.ForeColor = Theme.Navy;
+
+        var separator = new Label { Text = Strings.CreditSeparator, AutoSize = true, Margin = new Padding(0), ForeColor = Theme.PaleBlue };
+
+        VersionLabel.Text = Strings.AppVersion(AppInfo.Version);
+        VersionLabel.AutoSize = true;
+        VersionLabel.Margin = new Padding(0);
+        VersionLabel.ForeColor = Theme.Navy;
+
+        // The one line of text, left to right.
+        var line = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            AutoSize = true,
+            Anchor = AnchorStyles.Right | AnchorStyles.Top,
+            Margin = new Padding(0, 6, 0, 8), // the same top margin as the language title, so both sit on one line
+        };
+        line.Controls.Add(CreditLabel);
+        line.Controls.Add(separator);
+        line.Controls.Add(VersionLabel);
+        return line;
+    }
+
+    /// <summary>
+    /// The footer at the bottom left of the window: only the small logo of the company, a link to its website
+    /// (the company name is in the tooltip).
+    /// </summary>
+    private Control BuildFooter()
+    {
+        LogoPicture.Image = AppIcons.CompanyLogo();
+        LogoPicture.SizeMode = PictureBoxSizeMode.Zoom; // keeps the proportions of the logo
+        LogoPicture.Size = LogoSize;
+        LogoPicture.BackColor = Theme.White;
+        LogoPicture.Anchor = AnchorStyles.Left | AnchorStyles.Bottom; // bottom LEFT
+        LogoPicture.Margin = new Padding(0);
+        LogoPicture.Cursor = Cursors.Hand;
+        new ToolTip().SetToolTip(LogoPicture, Strings.CompanyName);
+        LogoPicture.Click += (sender, e) => OpenWebsite(Strings.CompanyUrl);
+        return LogoPicture;
+    }
+
+    /// <summary>
+    /// One half of the folders row (TopSolid or Duivestein): like the main table, a wide column for the text boxes and
+    /// hints and a column for the buttons.
+    /// </summary>
+    private static TableLayoutPanel NewHalf()
+    {
+        // Anchored at the top, not Dock = Fill: the lower half keeps its own height. Stretched to the height of the row,
+        // its last row got all the extra room and the last hint sat lower than its button.
+        var half = new TableLayoutPanel { ColumnCount = 2, AutoSize = true, Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top, Margin = new Padding(0) };
+        half.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        half.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        return half;
+    }
+
+    /// <summary>
+    /// The bottom line of the window, below the list of conversions: the footer (company logo and link) at the left
     /// and the buttons Save and Cancel at the right, so the buttons are the last thing the user reaches.
     /// </summary>
     private Control BuildBottomRow()
@@ -323,86 +481,21 @@ internal class SettingsForm : Form
             FlowDirection = FlowDirection.RightToLeft,
             WrapContents = false,
             AutoSize = true,
-            Anchor = AnchorStyles.Right | AnchorStyles.Bottom, // bottom RIGHT, in line with the last line of the footer
+            Anchor = AnchorStyles.Right | AnchorStyles.Bottom, // bottom RIGHT, in line with the bottom of the logo
             Margin = new Padding(0),
         };
         buttons.Controls.Add(cancel); // right to left: Cancel is the right-most button
         buttons.Controls.Add(save);
 
-        // Two cells: the footer takes the free width, the buttons only what they need.
-        var bottom = new TableLayoutPanel
-        {
-            ColumnCount = 2,
-            RowCount = 1,
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            Margin = new Padding(0, 6, 0, 0),
-        };
-        bottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        // Two cells: the logo only what it needs, the buttons the rest (anchored at its right edge). Not the other way
+        // round: a Percent column in an AutoSize table shrank the logo, which is not AutoSize, to 2 pixels wide at 150%.
+        var bottom = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 10, 0, 0) };
         bottom.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        bottom.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         bottom.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         bottom.Controls.Add(BuildFooter(), 0, 0);
         bottom.Controls.Add(buttons, 1, 0);
         return bottom;
-    }
-
-    /// <summary>
-    /// The footer at the bottom left of the window: the small logo of the company and, at its right, two lines:
-    ///   Dev.: Daan Verhoost
-    ///   ROGIERS NV/SA      (a link to the website of the company)
-    /// The app version is not here: it is at the top right of the window (see BuildWindow).
-    /// </summary>
-    private Control BuildFooter()
-    {
-        CreditLabel.Text = Strings.DeveloperCredit;
-        CreditLabel.AutoSize = true;
-        CreditLabel.Margin = new Padding(0, 8, 0, 0);
-        CreditLabel.ForeColor = Theme.Navy;
-
-        CompanyLink.Text = Strings.CompanyName;
-        CompanyLink.AutoSize = true;
-        CompanyLink.Margin = new Padding(0, 2, 0, 0);
-        CompanyLink.ForeColor = Theme.Navy;
-        CompanyLink.LinkColor = Theme.DarkBlue;
-        CompanyLink.ActiveLinkColor = Theme.Navy;
-        CompanyLink.VisitedLinkColor = Theme.DarkBlue;
-        CompanyLink.Links.Add(0, CompanyLink.Text.Length, Strings.CompanyUrl); // the whole text is the link
-        CompanyLink.LinkClicked += (sender, e) => OpenWebsite(Strings.CompanyUrl);
-
-        // The two text lines under each other ...
-        var lines = new FlowLayoutPanel
-        {
-            FlowDirection = FlowDirection.TopDown,
-            WrapContents = false,
-            AutoSize = true,
-            Anchor = AnchorStyles.Left, // in the middle of the height of the logo
-            Margin = new Padding(0),
-        };
-        lines.Controls.Add(CreditLabel);
-        lines.Controls.Add(CompanyLink);
-
-        // ... and the small logo of the company at their left.
-        LogoPicture.Image = AppIcons.CompanyLogo();
-        LogoPicture.SizeMode = PictureBoxSizeMode.Zoom; // keeps the proportions of the logo
-        LogoPicture.Size = LogoSize;
-        LogoPicture.BackColor = Theme.White;
-        LogoPicture.Anchor = AnchorStyles.Left;
-        LogoPicture.Margin = new Padding(0, 6, 12, 0);
-
-        var footer = new TableLayoutPanel
-        {
-            ColumnCount = 2,
-            RowCount = 1,
-            AutoSize = true,
-            Anchor = AnchorStyles.Left, // bottom LEFT
-            Margin = new Padding(0),
-        };
-        footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        footer.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        footer.Controls.Add(LogoPicture, 0, 0);
-        footer.Controls.Add(lines, 1, 0);
-        return footer;
     }
 
     private void OpenWebsite(string url)
@@ -461,8 +554,6 @@ internal class SettingsForm : Form
     private void AddConfigRow(TableLayoutPanel table, ref int row, Label hint, string hintText, RoundedButton button, Action open)
     {
         hint.Text = hintText;
-        hint.AutoSize = true;
-        hint.Anchor = AnchorStyles.Left; // in the middle of the button's height
         hint.Margin = new Padding(0, 4, 8, 0);
 
         button.Text = Strings.ConfigButton;
@@ -475,6 +566,54 @@ internal class SettingsForm : Form
         table.Controls.Add(hint, 0, row);
         table.Controls.Add(button, 1, row);
         row++;
+        WrapHintBesideButton(hint, button);
+    }
+
+    /// <summary>
+    /// A hint at the left of a button wraps onto more lines when it does not fit. The window computes the hint's size
+    /// itself (FitHints), every time the folders row changes width: width = what is left in its half next to the button,
+    /// height = what the text needs at that width.
+    /// Why not let the table wrap it (AutoSize label anchored Left | Right)? While Windows scales the window to 125% or
+    /// 150%, the window is laid out for a moment at a much narrower width; the table measured the hints there and kept
+    /// rows of ten lines high: the hints ended far below their buttons (Daan's screenshots of 1.1.0).
+    /// </summary>
+    private void WrapHintBesideButton(Label hint, Control button)
+    {
+        hint.AutoSize = false;
+        hint.Anchor = AnchorStyles.Left; // in the middle of the row's height
+        _wrappedHints.Add((hint, button));
+
+        hint.FontChanged += (sender, e) => FitHints(); // the window moved to a screen with another scaling
+        button.SizeChanged += (sender, e) => FitHints();
+    }
+
+    /// <summary>
+    /// Gives every hint of <see cref="WrapHintBesideButton"/> its size. The width of a half is taken from the whole
+    /// folders row (which gets its width from the window), never from the half itself: a half is as wide as its widest
+    /// hint, so measuring the half would keep a hint that was wide once wide forever.
+    /// </summary>
+    private void FitHints()
+    {
+        if (_folders == null)
+        {
+            return; // still building the window: fitted when the folders row gets its width
+        }
+
+        int half = (_folders.ClientSize.Width - FolderDivider.Width - FolderDivider.Margin.Horizontal) / 2;
+        foreach (var (hint, button) in _wrappedHints)
+        {
+            int width = half - button.Width - button.Margin.Horizontal - hint.Margin.Horizontal;
+            if (width <= 0)
+            {
+                continue; // no width yet: fitted again when the row gets one
+            }
+
+            var size = new Size(width, hint.GetPreferredSize(new Size(width, 0)).Height);
+            if (hint.Size != size) // also stops the loop: a new height resizes the row, which calls this again
+            {
+                hint.Size = size;
+            }
+        }
     }
 
     /// <summary>
@@ -486,8 +625,6 @@ internal class SettingsForm : Form
     private void AddMaterialsRow(TableLayoutPanel table, ref int row)
     {
         MaterialsHint.Text = Strings.MaterialsHint;
-        MaterialsHint.AutoSize = true;
-        MaterialsHint.Anchor = AnchorStyles.Left; // in the middle of the button's height
         MaterialsHint.Margin = new Padding(0, 4, 8, 0);
 
         OpenMaterialsButton.Text = Strings.MenuOpenMaterials;
@@ -503,6 +640,7 @@ internal class SettingsForm : Form
         materialsRow.Controls.Add(MaterialsHint, 0, 0);
         materialsRow.Controls.Add(OpenMaterialsButton, 1, 0);
         AddFullRow(table, ref row, materialsRow);
+        WrapHintBesideButton(MaterialsHint, OpenMaterialsButton);
     }
 
     /// <summary>
@@ -510,10 +648,14 @@ internal class SettingsForm : Form
     /// as wide as the text needs, never narrower than a normal button. Measured here at 100%; the window scaling makes it
     /// bigger later, like every other size. The height stays the same as all buttons. (AutoSize was not used: it made the
     /// height different.)
+    /// MeasureText measures on the screen, so on a 150% screen the text comes back 1.5 times as wide; it is brought back
+    /// to 100% here, otherwise the window scaling made these buttons 1.5 times too wide (seen up to 1.1.0).
     /// </summary>
     private int WideButtonWidth(string text)
     {
-        return Math.Max(ButtonSize.Width, TextRenderer.MeasureText(text, Font).Width + 24);
+        using Graphics screen = Graphics.FromHwnd(IntPtr.Zero);
+        int textWidth = (int)Math.Ceiling(TextRenderer.MeasureText(screen, text, Font).Width * 96f / screen.DpiX);
+        return Math.Max(ButtonSize.Width, textWidth + 24);
     }
 
     /// <summary>A thin horizontal line over the full width, in the pale blue of the theme.</summary>
@@ -569,8 +711,10 @@ internal class SettingsForm : Form
         ExportFolderBox.Text = settings.TopSolidExportPath;
         BatchFolderBox.Text = settings.BatchFolder;
         LabelFolderBox.Text = settings.LabelFolder;
-        FlipXBox.Checked = settings.FlipX;
-        FlipYBox.Checked = settings.FlipY;
+        ReferenceCorner corner = ReferenceCornerMapping.FromFlips(settings.FlipX, settings.FlipY);
+        ReferenceCornerBox.SelectedIndex = (int)corner; // items added in enum order
+        CornerPreview.SelectedCorner = corner; // set directly: SelectedIndexChanged only fires when the index actually moves
+        PlanRotatedBox.Checked = settings.PlanRotated;
 
         RefreshHistory();
         CheckAllFolders();
@@ -587,8 +731,9 @@ internal class SettingsForm : Form
         settings.TopSolidExportPath = ExportFolderBox.Text.Trim();
         settings.BatchFolder = BatchFolderBox.Text.Trim();
         settings.LabelFolder = LabelFolderBox.Text.Trim();
-        settings.FlipX = FlipXBox.Checked;
-        settings.FlipY = FlipYBox.Checked;
+        ReferenceCorner corner = ((ReferenceCornerItem)ReferenceCornerBox.SelectedItem!).Corner;
+        (settings.FlipX, settings.FlipY) = ReferenceCornerMapping.ToFlips(corner);
+        settings.PlanRotated = PlanRotatedBox.Checked;
         settings.Language = Localizer.ToCode(((LanguageItem)LanguageBox.SelectedItem!).Language);
         return settings;
     }

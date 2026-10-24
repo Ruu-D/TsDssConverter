@@ -46,9 +46,15 @@ public static class LabelPositionCalculator
         }
 
         // ------------------------------------------------------------------------------------------
-        // ROTATION AND FLIPS - decided after the physical test sheet (open point 11).
-        // For now a flip does NOT change the rotation. If it must change (for example 90 <-> 270
-        // when flipping in X), this is the ONE place to do it.
+        // ROTATION AND FLIPS - decided after the physical test sheet (CLAUDE.md, "Open points",
+        // Physical test sheet). For now a flip does NOT change the rotation. If it must change
+        // (for example 90 <-> 270 when flipping in X), this is the ONE place to do it.
+        //
+        // Also see CLAUDE.md, "Zero-point flips": the label applicator may only be able to turn
+        // physically to 0 / 90 degrees, relying on Duivestein's print template to pre-rotate the
+        // PRINTED content for 180 / 270 (their $ROTATION$ variable). If the physical test shows the
+        // EDGE_L1 / EDGE_L2 / EDGE_B1 / EDGE_B2 fields end up on the wrong physical edge of a square
+        // panel at 180 or 270, remapping those four fields by rotation is also done HERE.
         // ------------------------------------------------------------------------------------------
 
         return position;

@@ -86,7 +86,7 @@ public static class BatchXmlWriter
             new XElement("YDimSize", NumberFormat.ToInvariantText(plan.SheetWidth)),
             new XElement("Grain", plan.Material.Grain),
             new XElement("Quantity", plan.Sheets.Count),
-            new XElement("Rotation", 0), // constant 0 for now (open point 11)
+            new XElement("Rotation", plan.Rotation), // 0 or 90, from ConverterSettings.PlanRotated (DSSClient's "Gedraaid")
             labelFileNames,
             cncFileNames);
     }

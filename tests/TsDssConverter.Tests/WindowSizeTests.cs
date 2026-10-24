@@ -95,9 +95,9 @@ public class WindowSizeTests
             window.Form.PerformLayout();
             var form = window.Form;
 
-            // The list of conversions is fully visible, and so is the footer below it.
+            // The list of conversions is fully visible, and so are Save / Cancel below it.
             Assert.True(form.HistoryList.Height >= form.LogicalToDeviceUnits(120));
-            Control footer = form.CreditLabel.Parent!;
+            Control footer = ((Button)form.AcceptButton!).Parent!; // the last row: Save / Cancel
             Assert.True(form.Scroller.PointToClient(footer.PointToScreen(new Point(0, footer.Height))).Y <= form.Scroller.ClientSize.Height);
 
             // Nothing to scroll: all content fits in the window.
@@ -116,8 +116,8 @@ public class WindowSizeTests
             window.Form.SizeToContent(BigScreen);
             var form = window.Form;
 
-            // The footer is the last thing in the window: the room below it is only the margin.
-            Control footer = form.CreditLabel.Parent!;
+            // Save / Cancel are the last thing in the window: the room below them is only the margin.
+            Control footer = ((Button)form.AcceptButton!).Parent!; // the last row: Save / Cancel
             int spaceBelowFooter = form.Scroller.ClientSize.Height - form.Scroller.PointToClient(footer.PointToScreen(new Point(0, footer.Height))).Y;
             Assert.InRange(spaceBelowFooter, 0, form.LogicalToDeviceUnits(60));
         });
@@ -165,7 +165,7 @@ public class WindowSizeTests
 
             form.PerformLayout();
 
-            Control footer = form.CreditLabel.Parent!;
+            Control footer = ((Button)form.AcceptButton!).Parent!; // the last row: Save / Cancel
             Assert.True(form.Scroller.PointToClient(footer.PointToScreen(new Point(0, footer.Height))).Y <= form.Scroller.ClientSize.Height);
             Assert.False(form.Scroller.VerticalScroll.Visible);
         });
@@ -192,10 +192,8 @@ public class WindowSizeTests
             Assert.Equal(Place(save).Y, Place(cancel).Y);          // one line
             Assert.True(Place(save).X + save.Width < Place(cancel).X); // Save left of Cancel, not on top of it
 
-            // At the bottom of the window: below the list of conversions, on the same line as the footer.
+            // At the bottom of the window: below the list of conversions.
             Assert.True(Place(save).Y >= Place(form.HistoryList).Y + form.HistoryList.Height);
-            Assert.True(cancel.Bottom == cancel.Parent!.Height); // the buttons end where the footer ends
-            Assert.True(Place(cancel).Y + cancel.Height >= Place(form.CompanyLink).Y);
 
             // The right edge of the buttons is the right edge of the list and of the divider lines.
             int buttonsRight = Place(cancel).X + cancel.Width;
@@ -230,7 +228,43 @@ public class WindowSizeTests
     }
 
     [Fact]
-    public void BothConfigButtons_SitUnderTheExportFolder_OneUnderTheOther_AndOpenLogSitsAboveTheList_InLineWithTheBrowseButtons()
+    public void TheTopSolidAndDuivesteinFolders_SitSideBySide_WithAVerticalLineBetween()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new Window();
+            window.Form.Show();
+            window.Form.SizeToContent(BigScreen);
+            window.Form.PerformLayout();
+            var form = window.Form;
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+            int Right(Control control) => Place(control).X + control.Width;
+
+            // The two halves start on the same line.
+            Assert.Equal(Place(form.ExportCaption).Y, Place(form.BatchCaption).Y);
+
+            // TopSolid left of the line, Duivestein right of it.
+            Point line = Place(form.FolderDivider);
+            Assert.True(Right(form.OpenMaterialsButton) < line.X);
+            Assert.True(Right(form.ConfigPositionButton) < line.X);
+            Assert.True(Place(form.BatchCaption).X > line.X);
+            Assert.True(Place(form.ConfigLabelButton).X > line.X);
+
+            // Thin, pale blue, and from the folder titles to the end of the taller half.
+            Assert.InRange(form.FolderDivider.Width, 1, 3);
+            Assert.Equal(Theme.PaleBlue, form.FolderDivider.BackColor);
+            Assert.True(line.Y <= Place(form.ExportCaption).Y);
+            Assert.True(line.Y + form.FolderDivider.Height >= Place(form.OpenMaterialsButton).Y + form.OpenMaterialsButton.Height);
+
+            // The two halves are about equally wide (the folder boxes sit in rounded frames).
+            int left = Right(form.ExportFolderBox.Parent!) - Place(form.ExportFolderBox.Parent!).X;
+            int right = Right(form.BatchFolderBox.Parent!) - Place(form.BatchFolderBox.Parent!).X;
+            Assert.InRange(left - right, -2, 2);
+        });
+    }
+
+    [Fact]
+    public void TheConfigButtons_SitUnderTheirFolder_OneUnderTheOther_AndOpenLogSitsAboveTheList_InLineWithTheBrowseButtons()
     {
         RunOnStaThread(() =>
         {
@@ -243,13 +277,14 @@ public class WindowSizeTests
             Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
             int Bottom(Control control) => Place(control).Y + control.Height;
 
-            // First Config button (LI): just below the export folder. The second one (LP) comes right under it,
-            // and both are above the title of the batch folder.
+            // First Config button (LI): just below the export folder. The second one (LP) comes right under it.
             Assert.True(Place(form.ConfigInfoButton).Y >= Bottom(form.ExportFolderBox));
             Assert.True(Place(form.ConfigPositionButton).Y >= Bottom(form.ConfigInfoButton));
-            Assert.True(Place(form.ConfigPositionButton).Y - Bottom(form.ConfigInfoButton) < form.LogicalToDeviceUnits(12)); // close under it
+            // Close under it: a row is as high as its hint when that wraps onto two lines.
+            Assert.True(Place(form.ConfigPositionButton).Y - Bottom(form.ConfigInfoButton)
+                < Math.Max(0, form.ConfigInfoHint.Height - form.ConfigInfoButton.Height) + form.LogicalToDeviceUnits(12));
             Assert.True(Place(form.ConfigPositionHint).Y >= Bottom(form.ConfigInfoHint));
-            Assert.True(Bottom(form.ConfigPositionButton) <= Place(form.BatchCaption).Y);
+            Assert.True(Bottom(form.ConfigPositionButton) <= Place(form.ZeroPointTitle).Y);
 
             // Third Config button (label CSV): just below the Duivestein label folder, above the line and the zero-point title.
             Assert.True(Place(form.ConfigLabelButton).Y >= Bottom(form.LabelFolderBox));
@@ -258,13 +293,45 @@ public class WindowSizeTests
 
             // "Open log": above the list of conversions (on the line of its title).
             Assert.True(Bottom(form.OpenLogButton) <= Place(form.HistoryList).Y);
-            Assert.True(Place(form.OpenLogButton).Y >= Bottom(form.FlipYBox));
+            Assert.True(Place(form.OpenLogButton).Y >= Bottom(form.PlanRotatedBox));
 
-            // The three buttons at the right sit exactly in the column of the Browse buttons.
-            var browse = AllControls(form).OfType<Button>().Where(b => b.Text == Strings.Browse).ToList();
+            // The buttons sit exactly in the column of the Browse buttons of their half: the export one (left half),
+            // and the batch one (right half, the right edge of the window, like Open log).
+            var browse = AllControls(form).OfType<Button>().Where(b => b.Text == Strings.Browse).OrderBy(b => Place(b).X).ToList();
             Assert.Equal(3, browse.Count);
-            Assert.All(new[] { form.ConfigInfoButton, form.ConfigPositionButton, form.ConfigLabelButton, form.OpenLogButton },
+            Assert.All(new[] { form.ConfigInfoButton, form.ConfigPositionButton },
                 button => Assert.Equal(Place(browse[0]).X, Place(button).X));
+            Assert.All(new[] { form.ConfigLabelButton, form.OpenLogButton },
+                button => Assert.Equal(Place(browse[2]).X, Place(button).X));
+        });
+    }
+
+    [Fact]
+    public void ReferenceCornerSection_IsTwoColumns_DropDownAndCheckboxLeft_SchematicRight()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new Window();
+            window.Form.Show();
+            window.Form.SizeToContent(BigScreen);
+            window.Form.PerformLayout();
+            var form = window.Form;
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+
+            // The drop-down keeps its real width: a regression guard for a real bug (a Percent column in an AutoSize
+            // TableLayoutPanel silently shrank it to ~75 px, cutting every corner name off to two or three letters).
+            Assert.True(form.ReferenceCornerBox.Width >= form.LogicalToDeviceUnits(200), $"ReferenceCornerBox is only {form.ReferenceCornerBox.Width} px wide");
+
+            // The schematic sits to the right of the drop-down and the checkbox (two columns).
+            Assert.True(Place(form.CornerPreview).X > Place(form.ReferenceCornerBox).X + form.ReferenceCornerBox.Width);
+            Assert.True(Place(form.CornerPreview).X > Place(form.PlanRotatedBox).X + form.PlanRotatedBox.Width);
+
+            // It lines up with the drop-down specifically (top-aligned to the same row), not centred across the
+            // drop-down + checkbox stack.
+            Assert.InRange(Place(form.CornerPreview).Y - Place(form.ReferenceCornerBox).Y, -2, 2);
+
+            // The checkbox sits right under the drop-down (a vertical stack in the left column), below the schematic's row.
+            Assert.True(Place(form.PlanRotatedBox).Y >= Place(form.ReferenceCornerBox).Y + form.ReferenceCornerBox.Height);
         });
     }
 
@@ -286,7 +353,7 @@ public class WindowSizeTests
             Assert.Equal(log.Y, retry.Y);                                            // one line
             Assert.InRange(gap, 1, form.LogicalToDeviceUnits(20));                    // left of it, not touching, not far away
             Assert.True(retry.Y + form.RetryFailedButton.Height <= Place(form.HistoryList).Y);
-            Assert.True(retry.Y >= Place(form.FlipYBox).Y + form.FlipYBox.Height);    // on the line of the title of the list
+            Assert.True(retry.Y >= Place(form.PlanRotatedBox).Y + form.PlanRotatedBox.Height); // on the line of the title of the list
         });
     }
 
@@ -303,11 +370,12 @@ public class WindowSizeTests
             Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
             int Bottom(Control control) => Place(control).Y + control.Height;
 
-            // Right under the LP Config button, and still above the Duivestein batch folder (so in the TopSolid section).
+            // Right under the LP Config button, in the TopSolid half (left of the line).
             Assert.True(Place(form.OpenMaterialsButton).Y >= Bottom(form.ConfigPositionButton));
-            Assert.True(Place(form.OpenMaterialsButton).Y - Bottom(form.ConfigPositionButton) < form.LogicalToDeviceUnits(12));
+            Assert.True(Place(form.OpenMaterialsButton).Y - Bottom(form.ConfigPositionButton)
+                < Math.Max(0, form.ConfigPositionHint.Height - form.ConfigPositionButton.Height) + form.LogicalToDeviceUnits(12));
             Assert.True(Place(form.MaterialsHint).Y >= Bottom(form.ConfigPositionHint));
-            Assert.True(Bottom(form.OpenMaterialsButton) <= Place(form.BatchCaption).Y);
+            Assert.True(Place(form.OpenMaterialsButton).X + form.OpenMaterialsButton.Width < Place(form.FolderDivider).X);
 
             // It is wider than a Browse button, but ends at the same right edge (and does not make the Browse column wider).
             var browse = AllControls(form).OfType<Button>().First(b => b.Text == Strings.Browse);
@@ -343,6 +411,133 @@ public class WindowSizeTests
             Assert.True(form.ConfigPositionHint.Right <= form.ConfigPositionButton.Left, $"The LP hint runs into its button in {language}");
             Assert.True(form.ConfigLabelHint.Right <= form.ConfigLabelButton.Left, $"The label hint runs into its button in {language}");
             Assert.True(form.MaterialsHint.Right <= form.OpenMaterialsButton.Left, $"The materials hint runs into its button in {language}");
+        });
+    }
+
+    /// <summary>
+    /// Makes the window as it would be at 150%: every size AND every font 1.5 times as big (Form.Scale alone does not
+    /// change the fonts). Only fonts set on a control itself are changed; the others follow their parent.
+    /// </summary>
+    private static void SimulateScaling(Form form, float factor)
+    {
+        form.Scale(new SizeF(factor, factor));
+        var ownFont = AllControls(form).Prepend(form).Where(c => c.Parent == null || !ReferenceEquals(c.Font, c.Parent.Font)).ToList();
+        foreach (Control control in ownFont)
+        {
+            control.Font = new Font(control.Font.FontFamily, control.Font.Size * factor, control.Font.Style);
+        }
+    }
+
+    [Theory]
+    [InlineData(AppLanguage.Dutch, 1.0f)]
+    [InlineData(AppLanguage.French, 1.0f)]
+    [InlineData(AppLanguage.English, 1.0f)]
+    [InlineData(AppLanguage.Dutch, 1.5f)]
+    [InlineData(AppLanguage.French, 1.5f)]
+    [InlineData(AppLanguage.English, 1.5f)]
+    public void EveryHint_SitsBesideItsButton_AndWrapsOnAFewLinesAtMost(AppLanguage language, float scaling)
+    {
+        // Regression guard: in 1.1.0 the hints of "Open materiaaltabel" and of the label Config button ended up far below
+        // their buttons on Daan's 150% screens (rows of ten lines high).
+        RunOnStaThread(() =>
+        {
+            using var scope = new LanguageScope(language);
+            using var window = new Window();
+            var form = window.Form;
+            if (scaling != 1.0f)
+            {
+                SimulateScaling(form, scaling);
+            }
+            form.Show();
+            form.SizeToContent(BigScreen);
+            form.PerformLayout();
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+
+            var pairs = new (System.Windows.Forms.Label Hint, Button Button)[]
+            {
+                (form.ConfigInfoHint, form.ConfigInfoButton),
+                (form.ConfigPositionHint, form.ConfigPositionButton),
+                (form.MaterialsHint, form.OpenMaterialsButton),
+                (form.ConfigLabelHint, form.ConfigLabelButton),
+            };
+
+            foreach (var (hint, button) in pairs)
+            {
+                // Beside its button: a two-line hint is centred in a row a little higher than the button, so a few pixels
+                // of room (the broken 1.1.0 was off by about 190 pixels).
+                int hintMiddle = Place(hint).Y + hint.Height / 2;
+                int room = form.LogicalToDeviceUnits(8);
+                Assert.InRange(hintMiddle, Place(button).Y - room, Place(button).Y + button.Height + room);
+                Assert.True(hint.Height <= hint.Font.Height * 3 + 4, $"'{hint.Text}' is {hint.Height} px high"); // three lines at most
+                Assert.True(Place(hint).X + hint.Width <= Place(button).X);                                  // not into the button
+                Assert.True(hint.GetPreferredSize(new Size(hint.Width, 0)).Height <= hint.Height, $"'{hint.Text}' is cut off"); // all visible
+            }
+        });
+    }
+
+    [Theory]
+    [InlineData(AppLanguage.Dutch)]
+    [InlineData(AppLanguage.French)]
+    public void AfterTheWindowWasNarrowForAMoment_TheRowsShrinkBack_AndTheHintsAreBesideTheirButtonsAgain(AppLanguage language)
+    {
+        // Regression guard for 1.1.0 at 125% / 150%: while Windows scales the window, it is laid out for a moment at a
+        // much narrower width, so the hints wrap onto many lines and the rows grow. The folders row stayed that high
+        // afterwards (the vertical line and the two halves stretched to it and then held it), and the last hint of each
+        // half ended far below its button. Here the narrow moment is made on purpose.
+        RunOnStaThread(() =>
+        {
+            using var scope = new LanguageScope(language);
+            using var window = new Window();
+            var form = window.Form;
+            form.Show();
+            form.SizeToContent(BigScreen);
+            Size normal = form.ClientSize;
+
+            form.ClientSize = new Size(form.LogicalToDeviceUnits(400), normal.Height); // narrower than allowed: the minimum width wins
+            form.MinimumSize = Size.Empty;
+            form.ClientSize = new Size(form.LogicalToDeviceUnits(400), normal.Height);
+            form.PerformLayout();
+            form.ClientSize = normal;
+            form.PerformLayout();
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+
+            foreach (var (hint, button) in new (Control Hint, Control Button)[]
+            {
+                (form.ConfigInfoHint, form.ConfigInfoButton),
+                (form.ConfigPositionHint, form.ConfigPositionButton),
+                (form.MaterialsHint, form.OpenMaterialsButton),
+                (form.ConfigLabelHint, form.ConfigLabelButton),
+            })
+            {
+                int hintMiddle = Place(hint).Y + hint.Height / 2;
+                int room = form.LogicalToDeviceUnits(8);
+                Assert.InRange(hintMiddle, Place(button).Y - room, Place(button).Y + button.Height + room);
+            }
+
+            // The vertical line is only as high as the higher half, not higher.
+            int highestHalf = Math.Max(
+                Place(form.OpenMaterialsButton).Y + form.OpenMaterialsButton.Height,
+                Place(form.ConfigLabelButton).Y + form.ConfigLabelButton.Height);
+            Assert.InRange(Place(form.FolderDivider).Y + form.FolderDivider.Height - highestHalf, -form.LogicalToDeviceUnits(30), form.LogicalToDeviceUnits(30));
+        });
+    }
+
+    [Fact]
+    public void TheWideButtons_AreNoWiderThanTheirTextNeeds()
+    {
+        // Regression guard: up to 1.1.0 the text was measured at the screen's scaling and then scaled once more, so on a
+        // 150% screen "Open materiaaltabel" and "Herstart mislukte" were half as wide again as needed.
+        RunOnStaThread(() =>
+        {
+            using var window = new Window();
+            var form = window.Form;
+            form.Show();
+
+            foreach (Button button in new[] { form.OpenMaterialsButton, form.RetryFailedButton })
+            {
+                int needed = Math.Max(form.LogicalToDeviceUnits(100), TextRenderer.MeasureText(button.Text, button.Font).Width + form.LogicalToDeviceUnits(24));
+                Assert.InRange(button.Width, needed - form.LogicalToDeviceUnits(4), needed + form.LogicalToDeviceUnits(4));
+            }
         });
     }
 
