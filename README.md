@@ -57,9 +57,9 @@ flowchart LR
     D --> E["Duivestein warehouse<br/>picks sheets, prints labels"]
     E --> F["SCM Morbidelli X200"]
 ```
-## What it does
+## What this tool does
 
-For every finished TopSolid project it:
+For every finished TopSolid drawing, this tool:
 
 - reads the TopSolid XLSX exports (label information '-LI' and label positions '-LP') and joins them per part,
 - translates the TopSolid material names to the warehouse material names,
@@ -71,7 +71,7 @@ For every finished TopSolid project it:
 Excel or Office is **not** needed on the PC.
 
 **What it does not do:** it does not print labels, does not talk to the machine and does not talk to
-TopSolid. It only reads and writes files.
+TopSolid. It only reads and converts files.
 
 ### Example
 
@@ -104,7 +104,7 @@ The complete expected output is in [`samples/duivestein/`](samples/duivestein/).
 
 ## Built to be safe
 
-A wrong job means a wrong board on the machine, so the tool is strict:
+A wrong job means a wrong boards on the machine, so the tool is strict:
 
 - **Never guesses a material.** A material missing from `materials.csv` stops the conversion and is named in the message.
 - **Never overwrites a job.** If the batch already exists in the warehouse folder, nothing is written. This means that
@@ -116,7 +116,6 @@ A wrong job means a wrong board on the machine, so the tool is strict:
   dimensions and labels outside their sheet are errors; nothing is written.
 - **Every problem is reported at once,** in plain language (Dutch, French or English), naming the part or column. Non-blocking
   issues (a CNC program not there yet, a duplicate part number) are warnings only.
-- **Independent of regional settings.** Numbers are read and written the same way on every PC.
 
 ## How the automatic processing works
 
@@ -144,11 +143,11 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 
 | Stage | Content | Status |
 |---|---|---|
-| 1 | **Core + command line tool**: read, join, map, write XML and CSVs; automated tests | **Done (first draft)** |
-| 2 | **Validation**: all checks and warnings, one clear report, exit code for errors | **Done (first draft)** |
-| 3 | **Tray application (shell)**: icon with four looks (normal, busy, error, paused), menu, settings window, `settings.json`, start with Windows, log files. No conversion yet | **Done (first draft)** |
-| 4 | **Folder watching and processing**: trigger file, one conversion at a time, `_Verwerkt` / `_Fout` folders with a readable `fout.txt`, notifications, recovery when the network drive is gone | **Done (first draft)** |
-| 5 | **Delivery**: one file `TsDssConverter.exe` (version 1.1.0, 52 MB, no .NET needed), install at the customer, physical test sheet | **1.1.0 = first customer release; waiting for real-world tests** |
+| 1 | **Core + command line tool**: read, join, map, write XML and CSVs; automated tests | **Done** |
+| 2 | **Validation**: all checks and warnings, one clear report, exit code for errors | **Done** |
+| 3 | **Tray application (shell)**: icon with four looks (normal, busy, error, paused), menu, settings window, `settings.json`, start with Windows, log files. | **Done** |
+| 4 | **Folder watching and processing**: trigger file, one conversion at a time, `_Verwerkt` / `_Fout` folders with a readable `fout.txt`, notifications, recovery when the network drive is gone | **Done** |
+| 5 | **Delivery**: one 'installation' file `TsDssConverter.exe` (version 1.1.0, 52 MB, no .NET needed), install at the customer, physical test sheet | **1.1.0 = first customer release; waiting for real-world tests** |
 
 **Next:** version **1.1.1** = the bug fixes found once real customer data flows through the program. No new features are
 planned until then.
@@ -163,14 +162,6 @@ planned until then.
 - The single-file `.exe` (about 52 MB) starts, creates its files and refuses a second copy. An earlier build ran on a PC without
   .NET and converted the sample correctly.
 - A renamed TopSolid column can be followed by editing a text file (the *Config* buttons); this is tested too.
-
-**What is *not* verified yet**
-
-- The batch XML was tried in Duivestein's DSSClient on 2026-09-21: it was **almost correct**, and the syntax was corrected
-  (see the CHANGELOG). The program now writes the corrected syntax; a full run with the label files on the machine is still to
-  come, and the label CSVs are not confirmed by Duivestein yet.
-- Nothing has been tested with the customer's own TopSolid export or on the machine.
-- The label position and rotation still have to be checked with a physical test sheet.
 
 ## Decisions taken so far
 
@@ -188,17 +179,6 @@ planned until then.
 - **CNC programs are moved** after conversion to `Z:\TopSolid\Export\CNC\<project>\`, so jobs never overwrite each other's programs.
 - **Materials:** the TopSolid name is the master name; the warehouse uses the same names and checks the sheet sizes against its stock.
 - **By design:** the list of conversions is not saved between runs, and the app runs only while a user is logged in.
-- **Reference corner, not flip checkboxes (2026-09-23):** the settings window has one drop-down with DSSClient's own four
-  corner names ("Oriëntatie": Linksonder / Linksboven / Rechtsonder / Rechtsboven) instead of two "flip" checkboxes, plus a
-  "Gedraaid" checkbox for the batch XML's per-plan rotation (0° or 90°) — both fixed, warehouse-level settings, matching
-  DSSClient's own panel so nobody has to translate between the two. The section (renamed "Nulpunt nesting plaatpuzzel") is in
-  two columns: the drop-down and checkbox on the left, and a small schematic on the right (a dark blue "sheet" with a light
-  blue marker at each corner, the selected one drawn bigger) that follows the drop-down as it is changed.
-- **Wider settings window (1.1.0):** the TopSolid folder and the two Duivestein folders sit side by side, separated by a thin
-  blue line; the developer credit and app version are at the top right, followed by a small user-guide icon that opens this
-  GitHub page; the ROGIERS logo (a link to rogiers.be) is at the bottom
-  left. The light look stays (a dark theme was sketched and not chosen).
-- **1.1.0 is the first customer release.** Further changes wait for real-world tests; 1.1.1 will be bug fixes only.
 
 ## Important fix still to do
 
@@ -225,27 +205,9 @@ the trigger file" check can then be dropped.
 | TopSolid | **Important:** put the project name in front of the CNC file name (see [Important fix still to do](#important-fix-still-to-do)). Also confirm the naming and folder of the CNC program per sheet. Until then the program assumes `{sheet name}.xcs` in the export folder (for example `Melamine_18#01.xcs`), which is how all the exports we have look |
 | TopSolid | The sheet thickness column in the export is always 18; fix in the export (the tool takes the thickness from `materials.csv`) |
 | Duivestein | Restrictions on batch name (length, characters) and what happens when a batch is sent twice |
-| Duivestein | Character encoding for accented characters in the label files (UTF-8 is used for now) |
 | Physical test | Which point of the label the position refers to, the rotation direction, and whether the zero-point settings change the rotation |
-| Physical test | Can the label applicator really only turn to 0°/90°? If so, does Duivestein's print template pre-rotate the printed content for 180°/270° (so a SQUARE label's edge-banding fields still land on the right edge)? And if the label stock is NOT square, does a 90°/270° rotation squeeze the field layout into the shorter dimension for about half the parts, or does Duivestein's engine avoid that? See CLAUDE.md, "Zero-point flips" — square label stock is the recommended default precisely to avoid this |
+| Physical test | Does Duivestein's print template pre-rotate the printed content for 180°/270° (so a SQUARE label's edge-banding fields still land on the right edge)? And if the label stock is NOT square, does a 90°/270° rotation squeeze the field layout into the shorter dimension for about half the parts, or does Duivestein's engine avoid that? |
 
-## Project layout
-
-```
-samples/
-  topsolid/       Example TopSolid export (input)
-  duivestein/     Expected output for the example + the format description from Duivestein
-  materials.sample.csv
-src/
-  TsDssConverter.Core/   All conversion logic (no Windows or user interface dependencies)
-  TsDssConverter.Cli/    Command line tool for manual testing
-  TsDssConverter.Tray/   The tray application (Windows Forms): icon, menu, settings window
-tests/
-  TsDssConverter.Tests/  Automated tests, using the files in samples/
-media/                   Application icon, banner and the colour theme used by the whole project
-docs/                    Background documentation
-publish.cmd              Builds the delivery file (runs the tests, then makes dist\v<version>\TsDssConverter.exe)
-```
 
 ## Technology
 
