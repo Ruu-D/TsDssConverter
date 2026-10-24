@@ -17,12 +17,19 @@ internal static class Strings
     public const string CompanyName = "ROGIERS NV/SA";
     public const string CompanyUrl = "https://www.rogiers.be/";
     public const string CreditSeparator = " | ";  // between the credit and the app version, top right
+    public const string UserGuideUrl = "https://github.com/Ruu-D/TsDssConverter"; // opened by the user-guide icon
 
     /// <summary>At the top right of the settings window, after the credit, e.g. "App version: 1.0.0".</summary>
     public static string AppVersion(string version) => T(
         $"App-versie: {version}",
         $"Version de l'application : {version}",
         $"App version: {version}");
+
+    /// <summary>The tooltip of the user-guide icon right after the app version.</summary>
+    public static string UserGuideTooltip => T(
+        "Gebruikershandleiding (opent de website)",
+        "Guide d'utilisation (ouvre le site web)",
+        "User guide (opens the website)");
 
     // ---- Language box: its title has all three languages, so it can be found in any language ----
     public const string LanguageTitle = "Taal / Langue / Language";

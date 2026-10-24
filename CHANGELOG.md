@@ -5,10 +5,15 @@ The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tra
 
 ## 1.1.0 — 2026-10-24 — first customer release
 
-- Delivery file: `dist\v1.1.0\TsDssConverter.exe`, 54,669,687 bytes, SHA-256
-  `337cb43975f5885c53c229a096da15707a6bce17d5977eba852f133aaa57d3a1`.
-  (Built three times under this number before delivery: `9d69104d...` (first layout, 1276 px wide, broken at 125%/150%),
-  then an unpublished preview with the first scaling fix, then this one. Only the last one counts.)
+- Delivery file: `dist\v1.1.0\TsDssConverter.exe`, 54,678,390 bytes, SHA-256
+  `1170f116d8c54c41e1ee2500bd6a6818a2bd3af0a3471394199f5b9947e4e2f6`.
+  (Built several times under this number before delivery: `9d69104d...` (first layout, 1276 px wide, broken at 125%/150%),
+  an unpublished preview with the first scaling fix, `337cb439...` (final layout, without the user-guide icon), then this
+  one. Only the last one counts.)
+- **User-guide icon (Daan):** a small navy book with a question mark (`media/user-guide.png`, built into the exe,
+  `AppIcons.UserGuide`) right after the app version at the top right, 16 x 16 at 100%. Clicking it opens
+  https://github.com/Ruu-D/TsDssConverter (`Strings.UserGuideUrl`); hand cursor, tooltip "Gebruikershandleiding (opent de
+  website)" in three languages. `AppIcons.CompanyLogo` and `UserGuide` share one helper (`TrimmedAndScaled`).
 - **First customer release** (Daan). From here on we wait for real-world tests at the customer; **1.1.1 will be the bug fixes**
   found once real customer data flows through. Contains everything of 1.0.4 (reference-corner drop-down, "Gedraaid" /
   `PlanRotated`, corner schematic), which had not been delivered on its own.
@@ -40,7 +45,7 @@ The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tra
   all three languages. A dark "VS Code Dark Modern" look was sketched the same way and not chosen.
 - Tests: footer/version tests rewritten; new tests for the side-by-side halves, every hint beside its button (three
   languages, at 100% and at a simulated 150%), a window that was narrow for a moment (fails on the broken layout), the wide
-  button widths, the logo width and the third divider. 430 tests (was 420).
+  button widths, the logo width, the third divider and the user-guide icon. 431 tests (was 420).
 
 ## 1.0.4 — 2026-09-23
 

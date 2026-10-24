@@ -220,7 +220,10 @@ public class LanguageWindowTests
             Assert.True(version.Y - bannerBottom < form.LogicalToDeviceUnits(30));    // ... and close to it
             Assert.Equal(caption.Y, version.Y);                                        // on the line of "Taal / Langue / Language"
             Assert.True(version.X > form.ClientSize.Width / 2);                        // on the right side
-            Assert.InRange(buttonsRight - (version.X + form.VersionLabel.Width), 0, form.LogicalToDeviceUnits(2)); // ends at the right edge of the buttons
+            // The user-guide icon right after it ends at the right edge of the buttons.
+            Point guide = Place(form.UserGuidePicture);
+            Assert.True(version.X + form.VersionLabel.Width <= guide.X);
+            Assert.InRange(buttonsRight - (guide.X + form.UserGuidePicture.Width), 0, form.LogicalToDeviceUnits(2));
         });
     }
 
@@ -272,6 +275,36 @@ public class LanguageWindowTests
                 yield return grandChild;
             }
         }
+    }
+
+    [Fact]
+    public void TheUserGuideIcon_SitsRightAfterTheVersion_OnItsLine_AndIsALinkToGitHub()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new Window();
+            window.Form.Show();
+            window.Form.SizeToContent(new Rectangle(0, 0, 4000, 3000));
+            window.Form.PerformLayout();
+            var form = window.Form;
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+
+            Assert.NotNull(form.UserGuidePicture.Image);
+            Assert.Same(form.VersionLabel.Parent, form.UserGuidePicture.Parent);            // on the line of the version
+            Point version = Place(form.VersionLabel), guide = Place(form.UserGuidePicture);
+            int gap = guide.X - (version.X + form.VersionLabel.Width);
+            Assert.InRange(gap, 1, form.LogicalToDeviceUnits(16));                           // right after it, not touching
+
+            // Not higher than the text, so the line does not get higher (and stays in line with the language title) ...
+            Assert.True(form.UserGuidePicture.Height + form.UserGuidePicture.Margin.Vertical <= form.VersionLabel.Height);
+            // ... and its middle on the middle of the text.
+            int iconMiddle = guide.Y + form.UserGuidePicture.Height / 2, textMiddle = version.Y + form.VersionLabel.Height / 2;
+            Assert.InRange(iconMiddle - textMiddle, -form.LogicalToDeviceUnits(2), form.LogicalToDeviceUnits(2));
+
+            // Clicking would open a browser, so only what the user sees is checked: the hand cursor. And the address.
+            Assert.Equal(Cursors.Hand, form.UserGuidePicture.Cursor);
+            Assert.Equal("https://github.com/Ruu-D/TsDssConverter", Strings.UserGuideUrl);
+        });
     }
 
     [Fact]

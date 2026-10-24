@@ -66,6 +66,7 @@ internal class SettingsForm : Form
     internal readonly Label CreditLabel = new();     // "Dev.: Daan Verhoost", at the top right below the banner
     internal readonly Label VersionLabel = new();    // "App version: 1.0.1", right of the credit on the same line
     internal readonly PictureBox LogoPicture = new(); // the small ROGIERS logo at the bottom left (a link to the website)
+    internal readonly PictureBox UserGuidePicture = new(); // the user-guide icon right after the app version (opens GitHub)
     internal readonly Panel FolderDivider = new();   // the vertical line between the TopSolid and the Duivestein folders
     private TableLayoutPanel? _folders;              // the row with the two halves of folders (see FitHints)
     private readonly List<(Label Hint, Control Button)> _wrappedHints = new(); // the hints that wrap beside a button
@@ -83,6 +84,9 @@ internal class SettingsForm : Form
 
     // The company logo in the footer (at 100%). The logo is a little wider than high; the picture keeps its proportions.
     private static readonly Size LogoSize = new(35, 32);
+
+    // The user-guide icon next to the app version (at 100%): about as high as the text of that line.
+    private static readonly Size UserGuideIconSize = new(16, 16);
 
     // Widths of the columns Time, Project and Result at 100%. The Message column takes the rest.
     // (A ListView does not scale its columns by itself, so they are scaled in ScaleHistoryColumns.)
@@ -422,9 +426,22 @@ internal class SettingsForm : Form
             Anchor = AnchorStyles.Right | AnchorStyles.Top,
             Margin = new Padding(0, 6, 0, 8), // the same top margin as the language title, so both sit on one line
         };
+        // Right after the version: a small "user guide" icon (a book with a question mark) that opens the GitHub page.
+        // Not higher than the text line, so the line keeps its height and stays in line with the language title; the top
+        // margin puts its middle on the middle of the letters (checked at a real 150%: with 2 it sat 2 pixels too low).
+        UserGuidePicture.Image = AppIcons.UserGuide();
+        UserGuidePicture.SizeMode = PictureBoxSizeMode.Zoom; // keeps the proportions of the icon
+        UserGuidePicture.Size = UserGuideIconSize;
+        UserGuidePicture.BackColor = Theme.White;
+        UserGuidePicture.Margin = new Padding(10, 1, 0, 0);
+        UserGuidePicture.Cursor = Cursors.Hand;
+        new ToolTip().SetToolTip(UserGuidePicture, Strings.UserGuideTooltip);
+        UserGuidePicture.Click += (sender, e) => OpenWebsite(Strings.UserGuideUrl);
+
         line.Controls.Add(CreditLabel);
         line.Controls.Add(separator);
         line.Controls.Add(VersionLabel);
+        line.Controls.Add(UserGuidePicture);
         return line;
     }
 

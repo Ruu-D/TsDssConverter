@@ -155,7 +155,7 @@ planned until then.
 
 **What is verified so far**
 
-- 430 automated tests pass. They cover the conversion, every error and warning, the settings window, the folder watching (with a
+- 431 automated tests pass. They cover the conversion, every error and warning, the settings window, the folder watching (with a
   fake clock) and all three languages.
 - The settings window lays out correctly at 100%, 125% and 150% screen scaling (checked on a real screen at each scaling,
   plus automated tests that guard the rules).
@@ -195,7 +195,8 @@ planned until then.
   two columns: the drop-down and checkbox on the left, and a small schematic on the right (a dark blue "sheet" with a light
   blue marker at each corner, the selected one drawn bigger) that follows the drop-down as it is changed.
 - **Wider settings window (1.1.0):** the TopSolid folder and the two Duivestein folders sit side by side, separated by a thin
-  blue line; the developer credit and app version are at the top right, the ROGIERS logo (a link to rogiers.be) at the bottom
+  blue line; the developer credit and app version are at the top right, followed by a small user-guide icon that opens this
+  GitHub page; the ROGIERS logo (a link to rogiers.be) is at the bottom
   left. The light look stays (a dark theme was sketched and not chosen).
 - **1.1.0 is the first customer release.** Further changes wait for real-world tests; 1.1.1 will be bug fixes only.
 

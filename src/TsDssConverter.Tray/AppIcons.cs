@@ -42,13 +42,26 @@ internal static class AppIcons
     /// </summary>
     public static Image CompanyLogo()
     {
-        const int LongSide = 128; // enough for a screen at 250%: the logo is shown about 44 pixels wide at 100%
+        return TrimmedAndScaled("rogiers-logo.png", 128); // enough for a screen at 250%: shown about 44 pixels wide at 100%
+    }
 
-        using var stream = OpenResource("rogiers-logo.png");
+    /// <summary>
+    /// The small "user guide" icon (a book with a question mark) next to the app version. Made smaller once like the
+    /// company logo: shown 16 pixels high at 100%, so 64 is enough for a screen at 400%.
+    /// </summary>
+    public static Image UserGuide()
+    {
+        return TrimmedAndScaled("user-guide.png", 64);
+    }
+
+    /// <summary>A built-in picture without its transparent margin, made smaller once (high quality) to the given long side.</summary>
+    private static Image TrimmedAndScaled(string resourceName, int longSide)
+    {
+        using var stream = OpenResource(resourceName);
         using var original = new Bitmap(stream);
         Rectangle visible = FindVisibleArea(original);
 
-        double scale = (double)LongSide / Math.Max(visible.Width, visible.Height);
+        double scale = (double)longSide / Math.Max(visible.Width, visible.Height);
         var logo = new Bitmap((int)Math.Round(visible.Width * scale), (int)Math.Round(visible.Height * scale));
 
         using var graphics = Graphics.FromImage(logo);
