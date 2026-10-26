@@ -3,7 +3,13 @@
 The history of TsDssConverter, newest first. `CLAUDE.md` describes the current state; this file says how it got there.
 The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`.
 
-## Not released yet (for 1.1.1)
+## 1.1.0 rebuild — 2026-10-26 (same version number, Daan)
+
+- Delivery file: `dist\v1.1.0\TsDssConverter.exe`, 54,678,900 bytes, file version 1.1.0.0, SHA-256
+  `b4ec11f21c9e50f5d107dc571529061d6dc8fc912747b078ba46e8f775f97816`. Built by `publish.cmd` after all 432 tests passed;
+  the exe itself was not started. Rebuilt under the SAME number on Daan's request, so two different exes say 1.1.0: tell
+  them apart by this checksum. The first 1.1.0 build (`1170f116...`) and Daan's `TsDssConverter_v1.1.0.zip` were copied
+  to `dist\_previous-builds\2026-10-26\v1.1.0\` first (publish.cmd empties `dist\v1.1.0`).
 
 - **Zero-point dot in the corner schematic (2026-10-26, Daan):** a round navy dot with a thin white ring sits exactly on the
   selected corner of the sheet (on top of the bigger brand-blue square), so the user sees where the X / Y of the label CSV
