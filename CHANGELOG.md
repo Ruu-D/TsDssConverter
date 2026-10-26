@@ -3,6 +3,14 @@
 The history of TsDssConverter, newest first. `CLAUDE.md` describes the current state; this file says how it got there.
 The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`.
 
+## Not released yet (for 1.1.1)
+
+- **Zero-point dot in the corner schematic (2026-10-26, Daan):** a round navy dot with a thin white ring sits exactly on the
+  selected corner of the sheet (on top of the bigger brand-blue square), so the user sees where the X / Y of the label CSV
+  are measured from. It follows the drop-down live, like the square (`ReferenceCornerPreview`, `OriginDot` 9 px +
+  `OriginRing` 2 px at 100%). Rendered at a real 150%. New test: the navy dot is on the selected corner and on no other
+  corner, for all four corners. 432 tests (was 431).
+
 ## 1.1.0 — 2026-10-24 — first customer release
 
 - Delivery file: `dist\v1.1.0\TsDssConverter.exe`, 54,678,390 bytes, SHA-256

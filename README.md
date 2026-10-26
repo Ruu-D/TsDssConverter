@@ -154,7 +154,7 @@ planned until then.
 
 **What is verified so far**
 
-- 431 automated tests pass. They cover the conversion, every error and warning, the settings window, the folder watching (with a
+- 432 automated tests pass. They cover the conversion, every error and warning, the settings window, the folder watching (with a
   fake clock) and all three languages.
 - The settings window lays out correctly at 100%, 125% and 150% screen scaling (checked on a real screen at each scaling,
   plus automated tests that guard the rules).

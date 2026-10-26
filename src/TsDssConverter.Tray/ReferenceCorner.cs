@@ -54,6 +54,8 @@ internal class ReferenceCornerPreview : Control
     private const int PanelMargin = 14;  // room around the "sheet" rectangle, for the corner markers to sit in
     private const int SmallMarker = 9;   // the three corners that are not selected
     private const int BigMarker = 21;    // the selected corner: 1/3 bigger than the first version (was 16, Daan 2026-09-23)
+    private const int OriginDot = 9;     // the round "zero point" dot on the selected corner
+    private const int OriginRing = 2;    // white ring around that dot
 
     private ReferenceCorner _selectedCorner = ReferenceCorner.BottomLeft;
 
@@ -115,6 +117,18 @@ internal class ReferenceCornerPreview : Control
             int size = LogicalToDeviceUnits(selected ? BigMarker : SmallMarker);
             var marker = new RectangleF(point.X - size / 2f, point.Y - size / 2f, size, size);
             g.FillRectangle(selected ? selectedBrush : markerBrush, marker);
+        }
+
+        // A round dot exactly ON the selected corner: the zero point the label X/Y in the CSV are measured from.
+        // Navy with a white ring, so it stands out on the brand-blue marker and on the dark-blue sheet.
+        PointF origin = corners.First(c => c.Corner == _selectedCorner).Point;
+        float dot = LogicalToDeviceUnits(OriginDot);
+        float ring = LogicalToDeviceUnits(OriginDot + 2 * OriginRing);
+        using (var ringBrush = new SolidBrush(Theme.White))
+        using (var dotBrush = new SolidBrush(Theme.Navy))
+        {
+            g.FillEllipse(ringBrush, origin.X - ring / 2f, origin.Y - ring / 2f, ring, ring);
+            g.FillEllipse(dotBrush, origin.X - dot / 2f, origin.Y - dot / 2f, dot, dot);
         }
     }
 }

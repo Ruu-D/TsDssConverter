@@ -156,6 +156,36 @@ public class SettingsFormTests
     }
 
     [Fact]
+    public void TheSchematic_DrawsTheNavyZeroPointDot_OnTheSelectedCorner_AndOnNoOtherCorner()
+    {
+        RunOnStaThread(() =>
+        {
+            using var preview = new ReferenceCornerPreview { Size = new Size(100, 76) };
+            const int margin = 14; // ReferenceCornerPreview.PanelMargin: the sheet's corners are this far in (100% scaling)
+            var cornerPoints = new Dictionary<ReferenceCorner, Point>
+            {
+                [ReferenceCorner.BottomLeft] = new(margin, preview.Height - margin),
+                [ReferenceCorner.TopLeft] = new(margin, margin),
+                [ReferenceCorner.BottomRight] = new(preview.Width - margin, preview.Height - margin),
+                [ReferenceCorner.TopRight] = new(preview.Width - margin, margin),
+            };
+
+            foreach (ReferenceCorner selected in Enum.GetValues<ReferenceCorner>())
+            {
+                preview.SelectedCorner = selected;
+                using var bitmap = new Bitmap(preview.Width, preview.Height);
+                preview.DrawToBitmap(bitmap, new Rectangle(Point.Empty, preview.Size));
+
+                foreach (var (corner, point) in cornerPoints)
+                {
+                    bool isNavy = bitmap.GetPixel(point.X, point.Y).ToArgb() == Theme.Navy.ToArgb();
+                    Assert.True(isNavy == (corner == selected), $"selected {selected}, corner {corner}: navy dot = {isNavy}");
+                }
+            }
+        });
+    }
+
+    [Fact]
     public void StartWithWindowsCheckbox_ShowsTheRealRegistryState_EachTimeTheWindowIsFilled()
     {
         RunOnStaThread(() =>
