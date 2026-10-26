@@ -141,9 +141,9 @@ public class LanguageWindowTests
     // ---------------------------------------------------------------- the window in each language
 
     [Theory]
-    [InlineData(AppLanguage.Dutch, "TsDssConverter - Instellingen", "Start met Windows", "Nulpunt nesting plaatpuzzel (noodzakelijk voor etiket nulpunt)")]
-    [InlineData(AppLanguage.French, "TsDssConverter - Paramètres", "Démarrer avec Windows", "Point zero panneau nesting (nécessaire pour le point zéro de l'étiquette)")]
-    [InlineData(AppLanguage.English, "TsDssConverter - Settings", "Start with Windows", "Zero point nesting sheet (required for label zero point)")]
+    [InlineData(AppLanguage.Dutch, "TsDssConverter - Instellingen", "Start met Windows", "Nulpunt etiket nesting (vanuit welke hoek Duivestein meet)")]
+    [InlineData(AppLanguage.French, "TsDssConverter - Paramètres", "Démarrer avec Windows", "Point zéro étiquette nesting (le coin à partir duquel Duivestein mesure)")]
+    [InlineData(AppLanguage.English, "TsDssConverter - Settings", "Start with Windows", "Nesting label zero point (which corner Duivestein measures from)")]
     public void TheWholeWindow_IsBuiltInTheSelectedLanguage(AppLanguage language, string title, string startWithWindows, string zeroPoint)
     {
         RunOnStaThread(() =>

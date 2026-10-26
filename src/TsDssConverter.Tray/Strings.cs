@@ -183,9 +183,9 @@ internal static class Strings
         "Folder not reachable. The setting is saved anyway.");
 
     public static string LabelZeroPoint => T(
-        "Nulpunt nesting plaatpuzzel (noodzakelijk voor etiket nulpunt)",
-        "Point zero panneau nesting (nécessaire pour le point zéro de l'étiquette)",
-        "Zero point nesting sheet (required for label zero point)");
+        "Nulpunt etiket nesting (vanuit welke hoek Duivestein meet)",
+        "Point zéro étiquette nesting (le coin à partir duquel Duivestein mesure)",
+        "Nesting label zero point (which corner Duivestein measures from)");
 
     // The four items of the reference-corner box, matching DSSClient's own "Oriëntatie" drop-down (Dutch names
     // are theirs exactly, so the customer recognises them). Choosing a corner sets FlipX / FlipY together.

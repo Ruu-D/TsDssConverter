@@ -10,6 +10,11 @@ The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tra
   are measured from. It follows the drop-down live, like the square (`ReferenceCornerPreview`, `OriginDot` 9 px +
   `OriginRing` 2 px at 100%). Rendered at a real 150%. New test: the navy dot is on the selected corner and on no other
   corner, for all four corners. 432 tests (was 431).
+- **Zero-point section renamed (2026-10-26, Daan):** "Nulpunt etiket nesting (vanuit welke hoek Duivestein meet)" /
+  "Point zéro étiquette nesting (le coin à partir duquel Duivestein mesure)" / "Nesting label zero point (which corner
+  Duivestein measures from)" (was "Nulpunt nesting plaatpuzzel (noodzakelijk voor etiket nulpunt)" / ...). The old title
+  read as if it were the CAD software's zero point; the drop-down is the corner DSSClient measures from (TopSolid is always
+  bottom-left). DssLabelTemplate got the matching setting `SheetReferenceCorner`.
 
 ## 1.1.0 — 2026-10-24 — first customer release
 

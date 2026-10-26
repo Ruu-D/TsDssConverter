@@ -419,7 +419,7 @@ public class SettingsFormTests
             Assert.True(Place(first).Y >= Bottom(form.CreditLabel));
             Assert.True(Bottom(first) <= Place(form.ExportCaption).Y);
 
-            // Second line: below both halves of folders and above "Nulpunt nesting plaatpuzzel".
+            // Second line: below both halves of folders and above "Nulpunt etiket nesting".
             Assert.True(Place(second).Y >= Bottom(form.OpenMaterialsButton));
             Assert.True(Place(second).Y >= Bottom(form.ConfigLabelButton));
             Assert.True(Bottom(second) <= Place(form.ZeroPointTitle).Y);
