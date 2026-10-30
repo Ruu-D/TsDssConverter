@@ -165,9 +165,9 @@ public static class Messages
         $"No part number at the end of the description: '{description}'.");
 
     public static string BadSheetName(string sheetName) => T(
-        $"Plaatnaam heeft niet de vorm 'materiaal#nummer' (bv. White_18#01): '{sheetName}'.",
-        $"Le nom du panneau n'a pas la forme 'matériau#numéro' (p. ex. White_18#01) : '{sheetName}'.",
-        $"Sheet name does not have the form 'material#number' (e.g. White_18#01): '{sheetName}'.");
+        $"Plaatnaam eindigt niet op '#nummer' (bv. White_18#01): '{sheetName}'.",
+        $"Le nom du panneau ne se termine pas par '#numéro' (p. ex. White_18#01) : '{sheetName}'.",
+        $"Sheet name does not end in '#number' (e.g. White_18#01): '{sheetName}'.");
 
     public static string AngleNotMultipleOf90(double angle, string part)
     {
@@ -216,6 +216,20 @@ public static class Messages
         $"Material '{material}' has sheets with different sizes (SUP_L / SUP_B).");
 
     // ---- Materials ----
+    public static string MaterialMissing(string sheetName, string description) => T(
+        $"Onderdeel heeft geen materiaal (Matériau is leeg in LI): {sheetName} / {description}",
+        $"La pièce n'a pas de matériau (Matériau est vide dans LI) : {sheetName} / {description}",
+        $"Part has no material (Matériau is empty in LI): {sheetName} / {description}");
+
+    public static string DifferentMaterialsOnSheet(string sheetName, IEnumerable<string> materials)
+    {
+        string list = string.Join(", ", materials.Select(material => "'" + material + "'"));
+        return T(
+            $"Plaat {sheetName} heeft onderdelen met verschillende materialen (Matériau in LI): {list}. Eén plaat is één materiaal: controleer de export.",
+            $"Le panneau {sheetName} a des pièces de matériaux différents (Matériau dans LI) : {list}. Un panneau est un seul matériau : vérifiez l'export.",
+            $"Sheet {sheetName} has parts with different materials (Matériau in LI): {list}. One sheet is one material: check the export.");
+    }
+
     public static string UnknownMaterial(string material) => T(
         $"Materiaal '{material}' staat niet in materials.csv.",
         $"Le matériau '{material}' ne figure pas dans materials.csv.",

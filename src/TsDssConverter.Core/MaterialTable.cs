@@ -3,7 +3,7 @@ namespace TsDssConverter.Core;
 /// <summary>One line of materials.csv: how a TopSolid material is known in the Duivestein warehouse.</summary>
 public class Material
 {
-    /// <summary>Name as used by TopSolid (part of the sheet name before '#'), e.g. "White_18".</summary>
+    /// <summary>Name as used by TopSolid (the Matériau column of the LI file), e.g. "White_18" or "18 MELA BLANC".</summary>
     public string TopSolidName { get; set; } = "";
 
     /// <summary>Material name for Duivestein. For now identical to the TopSolid name.</summary>

@@ -53,6 +53,7 @@ internal class SettingsForm : Form
     internal readonly RoundedButton ConfigPositionButton = new();  // opens columns-lp.txt (below the LI one)
     internal readonly RoundedButton ConfigLabelButton = new();     // opens columns-label.txt (below the label folder)
     internal readonly RoundedButton OpenMaterialsButton = new();   // opens materials.csv (below the two Config buttons of the export folder)
+    internal readonly RoundedButton ClearHistoryButton = new();    // empties the list of conversions, only in the window (left of Retry failed)
     internal readonly RoundedButton RetryFailedButton = new();     // puts the failed projects back in the export folder (left of the Open log button)
     internal readonly RoundedButton OpenLogButton = new();         // opens the log folder (next to "Last conversions")
     internal readonly PictureBox BannerPicture = new();
@@ -312,11 +313,18 @@ internal class SettingsForm : Form
         // History, with a line above it (the title below has 10 of margin, so 10 + 10 = 20 below the line, like the others).
         AddDivider(body, ref row, new Padding(0, 20, 0, 10));
 
-        // The title on the left and, on the right, the buttons that retry the failed projects and open the
-        // log folder (the last one in line with the Browse buttons). The list itself takes all the remaining height.
+        // The title on the left and, on the right, the buttons that clear the list, retry the failed projects and open
+        // the log folder (the last one in line with the Browse buttons). The list itself takes all the remaining height.
         var historyTitle = new Label { Text = Strings.HistoryTitle, AutoSize = true, Margin = new Padding(0, 10, 0, 4) };
         historyTitle.Font = new Font(Font, FontStyle.Bold);
         historyTitle.Anchor = AnchorStyles.Left; // in the middle of the buttons' height
+
+        // Only empties the list in this window: the log files are written by the tray and are not touched.
+        ClearHistoryButton.Text = Strings.ClearHistoryButton;
+        ClearHistoryButton.Size = new Size(WideButtonWidth(ClearHistoryButton.Text), ButtonSize.Height);
+        ClearHistoryButton.Margin = new Padding(0, 10, 8, 4);
+        Theme.StyleSecondaryButton(ClearHistoryButton);
+        ClearHistoryButton.Click += (sender, e) => _history.Clear();
 
         RetryFailedButton.Text = Strings.RetryFailedButton;
         RetryFailedButton.Size = new Size(WideButtonWidth(RetryFailedButton.Text), ButtonSize.Height);
@@ -331,14 +339,16 @@ internal class SettingsForm : Form
         OpenLogButton.Click += (sender, e) => _openFolder(_dataFolder.LogFolder);
 
         // A small table of its own over the full width, so the log button ends exactly at the right edge.
-        var historyRow = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
+        var historyRow = new TableLayoutPanel { ColumnCount = 4, RowCount = 1, AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0) };
         historyRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        historyRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         historyRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         historyRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         historyRow.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         historyRow.Controls.Add(historyTitle, 0, 0);
-        historyRow.Controls.Add(RetryFailedButton, 1, 0);
-        historyRow.Controls.Add(OpenLogButton, 2, 0);
+        historyRow.Controls.Add(ClearHistoryButton, 1, 0);
+        historyRow.Controls.Add(RetryFailedButton, 2, 0);
+        historyRow.Controls.Add(OpenLogButton, 3, 0);
         AddFullRow(body, ref row, historyRow);
 
         BuildHistoryList();

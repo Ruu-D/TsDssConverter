@@ -10,12 +10,12 @@ namespace TsDssConverter.Core;
 /// </summary>
 public static class BatchBuilder
 {
-    // A part after the LI/LP join, with the sheet name already split up.
+    // A part after the LI/LP join, with its material and sheet number already looked up.
     private class MatchedPart
     {
         public LabelPositionRow Position { get; set; } = new();
         public LabelInfoRow Info { get; set; } = new();
-        public string MaterialName { get; set; } = "";
+        public string MaterialName { get; set; } = ""; // Matériau (LI), trimmed: the key in materials.csv
         public int SheetNumber { get; set; }
         public int N { get; set; }
 
@@ -35,6 +35,7 @@ public static class BatchBuilder
         var problems = new List<string>();
 
         List<MatchedPart> parts = JoinRows(infoRows, positionRows, problems);
+        CheckOneMaterialPerSheet(parts, problems);
         List<string> materialNames = GetMaterialNamesInLpOrder(parts);
         CheckMaterialsAndSheetSizes(parts, materialNames, materials, problems);
 
@@ -61,7 +62,7 @@ public static class BatchBuilder
 
         foreach (string materialName in materialNames)
         {
-            var materialParts = parts.Where(p => p.MaterialName == materialName).ToList();
+            var materialParts = parts.Where(p => SameMaterial(p.MaterialName, materialName)).ToList();
 
             var plan = new Plan
             {
@@ -141,9 +142,18 @@ public static class BatchBuilder
                 continue;
             }
 
-            if (!TopSolidText.TryParseSheetName(position.SheetName, out string materialName, out int sheetNumber))
+            if (!TopSolidText.TryGetSheetNumber(position.SheetName, out int sheetNumber))
             {
                 problems.Add(Messages.BadSheetName(position.SheetName));
+                continue;
+            }
+
+            // The material comes from the Matériau column of LI, NOT from the sheet name: TopSolid may put the
+            // project in front of the sheet name. Never guess a material: an empty one is an error.
+            string materialName = info.MaterialText.Trim();
+            if (materialName == "")
+            {
+                problems.Add(Messages.MaterialMissing(position.SheetName, position.Description));
                 continue;
             }
 
@@ -171,19 +181,49 @@ public static class BatchBuilder
         return parts;
     }
 
+    /// <summary>
+    /// The warehouse picks ONE board per sheet, so all parts on one sheet must have the same material (Matériau).
+    /// If they do not, the export is wrong: name the sheet and all its materials, never pick one of them.
+    /// </summary>
+    private static void CheckOneMaterialPerSheet(List<MatchedPart> parts, List<string> problems)
+    {
+        foreach (var sheetParts in parts.GroupBy(p => p.Position.SheetName))
+        {
+            var materialNames = new List<string>();
+            foreach (var part in sheetParts)
+            {
+                if (!materialNames.Contains(part.MaterialName, StringComparer.OrdinalIgnoreCase))
+                {
+                    materialNames.Add(part.MaterialName);
+                }
+            }
+
+            if (materialNames.Count > 1)
+            {
+                problems.Add(Messages.DifferentMaterialsOnSheet(sheetParts.Key, materialNames));
+            }
+        }
+    }
+
     /// <summary>Materials in order of first appearance in the LP file: this is the plan order.</summary>
     private static List<string> GetMaterialNamesInLpOrder(List<MatchedPart> parts)
     {
         var names = new List<string>();
         foreach (var part in parts)
         {
-            if (!names.Contains(part.MaterialName))
+            if (!names.Contains(part.MaterialName, StringComparer.OrdinalIgnoreCase))
             {
                 names.Add(part.MaterialName);
             }
         }
 
         return names;
+    }
+
+    /// <summary>Material names are compared like materials.csv does it: case-insensitive ("18 MELA BLANC" = "18 Mela Blanc").</summary>
+    private static bool SameMaterial(string a, string b)
+    {
+        return string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Every material must be in materials.csv, and all sheets of one material must have the same size.</summary>
@@ -198,7 +238,7 @@ public static class BatchBuilder
             }
 
             var sizes = parts
-                .Where(p => p.MaterialName == materialName)
+                .Where(p => SameMaterial(p.MaterialName, materialName))
                 .Select(p => (p.Position.SheetLength, p.Position.SheetWidth))
                 .Distinct();
 
@@ -275,7 +315,7 @@ public static class BatchBuilder
             Material material = materials.Find(materialName);
             var alreadyWarned = new HashSet<double>();
 
-            foreach (var part in parts.Where(p => p.MaterialName == materialName))
+            foreach (var part in parts.Where(p => SameMaterial(p.MaterialName, materialName)))
             {
                 bool hasNumber = TopSolidText.TryGetLeadingNumber(part.Position.Designation, out double thickness);
                 if (!hasNumber || !alreadyWarned.Add(thickness))

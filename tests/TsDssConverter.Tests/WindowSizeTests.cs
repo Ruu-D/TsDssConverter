@@ -216,12 +216,13 @@ public class WindowSizeTests
             Size expected = new(form.LogicalToDeviceUnits(100), form.LogicalToDeviceUnits(28));
             var buttons = AllControls(form).OfType<Button>().ToList();
 
-            Assert.Equal(11, buttons.Count); // 3 x Browse, 3 x Config, Open materials table, Retry failed, Open log, Save, Cancel
+            Assert.Equal(12, buttons.Count); // 3 x Browse, 3 x Config, Open materials table, Clear list, Retry failed, Open log, Save, Cancel
 
-            var wideButtons = new Button[] { form.OpenMaterialsButton, form.RetryFailedButton };
+            var wideButtons = new Button[] { form.OpenMaterialsButton, form.ClearHistoryButton, form.RetryFailedButton };
             Assert.All(buttons.Where(button => !wideButtons.Contains(button)), button => Assert.Equal(expected, button.Size));
 
-            // "Open materiaaltabel" and "Herstart mislukte" are too long for 100 pixels: those buttons may be wider, never smaller.
+            // "Open materiaaltabel", "Conversielijst wissen" and "Herstart mislukte" are too long for 100 pixels: those buttons
+            // may be wider, never smaller.
             Assert.All(wideButtons, button => Assert.Equal(expected.Height, button.Height));
             Assert.All(wideButtons, button => Assert.True(button.Width >= expected.Width));
         });
@@ -357,6 +358,37 @@ public class WindowSizeTests
         });
     }
 
+    [Theory]
+    [InlineData(AppLanguage.Dutch)]
+    [InlineData(AppLanguage.French)]
+    [InlineData(AppLanguage.English)]
+    public void ClearList_SitsLeftOfRetryFailed_OnTheSameLine_WithTheSameRoomBetween(AppLanguage language)
+    {
+        RunOnStaThread(() =>
+        {
+            using var scope = new LanguageScope(language);
+            using var window = new Window();
+            window.Form.Show();
+            window.Form.SizeToContent(BigScreen);
+            window.Form.PerformLayout();
+            var form = window.Form;
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+
+            Point clear = Place(form.ClearHistoryButton), retry = Place(form.RetryFailedButton), log = Place(form.OpenLogButton);
+
+            Assert.Equal(retry.Y, clear.Y);                                                   // one line
+            Assert.Equal(form.RetryFailedButton.Height, form.ClearHistoryButton.Height);
+            int gapClearRetry = retry.X - (clear.X + form.ClearHistoryButton.Width);
+            int gapRetryLog = log.X - (retry.X + form.RetryFailedButton.Width);
+            Assert.InRange(gapClearRetry, 1, form.LogicalToDeviceUnits(20));                  // left of it, not touching
+            Assert.InRange(gapClearRetry - gapRetryLog, -1, 1);                                // the same room as between the other two
+
+            // The title of the list is not covered by the buttons.
+            var title = form.ClearHistoryButton.Parent!.Controls.OfType<System.Windows.Forms.Label>().Single();
+            Assert.True(Place(title).X + title.Width <= clear.X, $"The title of the list runs into the buttons in {language}");
+        });
+    }
+
     [Fact]
     public void OpenMaterialsTable_SitsUnderTheTwoConfigButtons_InTheExportSection_AndEndsAtTheRightEdgeOfTheBrowseButtons()
     {
@@ -401,7 +433,7 @@ public class WindowSizeTests
             window.Form.PerformLayout();
             var form = window.Form;
 
-            foreach (Button button in new[] { form.ConfigInfoButton, form.ConfigPositionButton, form.ConfigLabelButton, form.OpenMaterialsButton, form.RetryFailedButton, form.OpenLogButton })
+            foreach (Button button in new[] { form.ConfigInfoButton, form.ConfigPositionButton, form.ConfigLabelButton, form.OpenMaterialsButton, form.ClearHistoryButton, form.RetryFailedButton, form.OpenLogButton })
             {
                 int textWidth = TextRenderer.MeasureText(button.Text, button.Font).Width;
                 Assert.True(textWidth + form.LogicalToDeviceUnits(16) <= button.Width, $"'{button.Text}' does not fit in its button in {language}");
@@ -533,7 +565,7 @@ public class WindowSizeTests
             var form = window.Form;
             form.Show();
 
-            foreach (Button button in new[] { form.OpenMaterialsButton, form.RetryFailedButton })
+            foreach (Button button in new[] { form.OpenMaterialsButton, form.ClearHistoryButton, form.RetryFailedButton })
             {
                 int needed = Math.Max(form.LogicalToDeviceUnits(100), TextRenderer.MeasureText(button.Text, button.Font).Width + form.LogicalToDeviceUnits(24));
                 Assert.InRange(button.Width, needed - form.LogicalToDeviceUnits(4), needed + form.LogicalToDeviceUnits(4));

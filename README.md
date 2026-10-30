@@ -5,13 +5,13 @@
 TsDssConverter is a small Windows tray application that watches a folder for TopSolid nesting exports and
 converts them, without any manual work, into a job that the Duivestein automatic warehouse understands.
 
-> **Status: version 1.1.0 is the first customer release.** The conversion engine, its input checks, the tray application
-> and the automatic folder watching are finished and tested (stages 1 to 4 of 5); the delivery file is built (stage 5).
-> We are now **waiting for real-world tests** at the customer, with real TopSolid exports, the Duivestein warehouse and
-> the machine. Version 1.1.1 will contain the bug fixes that come out of that. See [Status and roadmap](#status-and-roadmap).
+> **Status: version 1.1.1 is built (2026-10-30).** Version 1.1.0 was the first customer release; 1.1.1 contains the first
+> fixes from real TopSolid exports of the customer, plus a button to clear the list of conversions. Real-world tests with
+> the Duivestein warehouse and the machine are still going on. See [Status and roadmap](#status-and-roadmap).
 >
-> **Important fix still to do:** TopSolid must put the project name in front of the file name of every CNC program, so that
-> two jobs can never overwrite each other's programs. See [Important fix still to do](#important-fix-still-to-do).
+> **Important fix, agreed with TopSolid (2026-10-30):** TopSolid puts the project name in front of the sheet name, and so in
+> front of the file name of every CNC program, so that two jobs can never overwrite each other's programs. Version 1.1.1 is
+> ready for it (1.1.0 is not: install 1.1.1 first). See [Important fix still to do](#important-fix-still-to-do).
 
 ---
 
@@ -106,11 +106,13 @@ The complete expected output is in [`samples/duivestein/`](samples/duivestein/).
 
 A wrong job means a wrong boards on the machine, so the tool is strict:
 
-- **Never guesses a material.** A material missing from `materials.csv` stops the conversion and is named in the message.
+- **Never guesses a material.** The material of a part is the TopSolid *Matériau* column. A material missing from
+  `materials.csv` stops the conversion and is named in the message, and so do parts of different materials on one sheet or
+  a part without a material.
 - **Never overwrites a job.** If the batch already exists in the warehouse folder, nothing is written. This means that
-- **Jobs cannot overwrite each other's CNC programs.** TopSolid names them after the sheet only, so each job's programs are moved
+- **Jobs cannot overwrite each other's CNC programs.** TopSolid names them after the sheet, so each job's programs are moved
   to `CNC\<project>\` after conversion, and a program newer than the job's trigger file is refused. This is a safety net; the
-  real cure is still to be done in TopSolid (see [Important fix still to do](#important-fix-still-to-do)).
+  real cure is the project name in the sheet name, agreed with TopSolid (see [Important fix still to do](#important-fix-still-to-do)).
 - **The warehouse never sees half a job.** Label files first, batch XML last; every file is renamed into place when complete.
 - **Bad input is refused, not repaired.** Missing columns, unmatched or duplicate parts, unknown materials, unreadable
   dimensions and labels outside their sheet are errors; nothing is written.
@@ -147,14 +149,15 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 | 2 | **Validation**: all checks and warnings, one clear report, exit code for errors | **Done** |
 | 3 | **Tray application (shell)**: icon with four looks (normal, busy, error, paused), menu, settings window, `settings.json`, start with Windows, log files. | **Done** |
 | 4 | **Folder watching and processing**: trigger file, one conversion at a time, `_Verwerkt` / `_Fout` folders with a readable `fout.txt`, notifications, recovery when the network drive is gone | **Done** |
-| 5 | **Delivery**: one 'installation' file `TsDssConverter.exe` (version 1.1.0, 52 MB, no .NET needed), install at the customer, physical test sheet | **1.1.0 = first customer release; waiting for real-world tests** |
+| 5 | **Delivery**: one 'installation' file `TsDssConverter.exe` (version 1.1.1, 52 MB, no .NET needed), install at the customer, physical test sheet | **1.1.0 = first customer release; 1.1.1 built; real-world tests going on** |
 
-**Next:** version **1.1.1** = the bug fixes found once real customer data flows through the program. No new features are
-planned until then.
+**1.1.1 (2026-10-30):** the material is read from the TopSolid *Matériau* column (so the project name can go in front of the
+sheet name), parts of different materials on one sheet are refused, and a **Clear conversion list** button empties the list in
+the window (the log files keep everything). **Next:** bug fixes from practice; no new features are planned.
 
 **What is verified so far**
 
-- 432 automated tests pass. They cover the conversion, every error and warning, the settings window, the folder watching (with a
+- 442 automated tests pass. They cover the conversion, every error and warning, the settings window, the folder watching (with a
   fake clock) and all three languages.
 - The settings window lays out correctly at 100%, 125% and 150% screen scaling (checked on a real screen at each scaling,
   plus automated tests that guard the rules).
@@ -162,6 +165,8 @@ planned until then.
 - The single-file `.exe` (about 52 MB) starts, creates its files and refuses a second copy. An earlier build ran on a PC without
   .NET and converted the sample correctly.
 - A renamed TopSolid column can be followed by editing a text file (the *Config* buttons); this is tested too.
+- A real export of the customer (2026-10-30), in the format agreed with TopSolid, was converted correctly by the 1.1.1 `.exe`
+  by itself (folder watching, CNC programs moved, files put away).
 
 ## Decisions taken so far
 
@@ -178,12 +183,19 @@ planned until then.
   drive-letter paths (`Z:`) in the batch XML.
 - **CNC programs are moved** after conversion to `Z:\TopSolid\Export\CNC\<project>\`, so jobs never overwrite each other's programs.
 - **Materials:** the TopSolid name is the master name; the warehouse uses the same names and checks the sheet sizes against its stock.
+  The material is read from the *Matériau* column of the label-info export, not from the sheet name (since 1.1.1), so TopSolid may
+  put anything in front of the sheet name. Keeping `materials.csv` up to date is the customer's responsibility.
 - **By design:** the list of conversions is not saved between runs, and the app runs only while a user is logged in.
 
 ## Important fix still to do
 
-**Every CNC program file must get the project name as a prefix, to be set up in TopSolid** (for example
-`DAAN_ROGIERS-P2026.09_Melamine_18#01.xcs` instead of `Melamine_18#01.xcs`; the exact format is to be agreed with TopSolid).
+**Every CNC program file must get the project name as a prefix, to be set up in TopSolid.**
+
+**Agreed with TopSolid (2026-10-30):** TopSolid puts the project in front of the sheet name, the SAME name in the label-info
+export (`Nom_panneau`), the label-position export (`SP`) and the CNC file name: `{project}_{material}#{sheet number}`, for
+example sheet `P2026-Cuisine-ROGIERS_18 MELA BLANC#01` and program `P2026-Cuisine-ROGIERS_18 MELA BLANC#01.xcs`. The program is
+ready for this since 1.1.1 (the material now comes from the *Matériau* column, so the prefix does not disturb it; checked with a
+real export of 2026-10-30). Waiting for TopSolid to deliver it.
 
 Why this matters: TopSolid writes the programs of **all** jobs in one shared folder and names them after the sheet only. A
 second job with the same material and sheet number overwrites the program of the first job before the first job has been
@@ -194,16 +206,15 @@ folder, `CNC\<project>\`, and it refuses a program that is more than 5 seconds n
 check compares file times on a network drive, so it is a good safety net but it cannot be proven complete (for example two
 exports within a few seconds of each other, or clocks that differ between the PCs).
 
-With the project name in the file name the collision **cannot happen at all**. When TopSolid delivers it, the change in this
-program is small and in one place (`CncPathBuilder`: the name it looks for and writes in the batch XML), and the "newer than
-the trigger file" check can then be dropped.
+With the project name in the file name the collision **cannot happen at all**. Once TopSolid delivers it and every export has
+the prefix, the "newer than the trigger file" check can be dropped (a separate, small step).
 
 ## Still to be confirmed by others
 
 | From | Question |
 |---|---|
-| TopSolid | **Important:** put the project name in front of the CNC file name (see [Important fix still to do](#important-fix-still-to-do)). Also confirm the naming and folder of the CNC program per sheet. Until then the program assumes `{sheet name}.xcs` in the export folder (for example `Melamine_18#01.xcs`), which is how all the exports we have look |
-| TopSolid | The sheet thickness column in the export is always 18; fix in the export (the tool takes the thickness from `materials.csv`) |
+| TopSolid | **Important:** deliver the agreed project prefix in the sheet name and the CNC file name (see [Important fix still to do](#important-fix-still-to-do)). The program looks for `{sheet name}.xcs` in the export folder |
+| TopSolid | The sheet thickness column in the export was always 18; the export of 2026-10-30 shows the real thickness (8 and 18): to confirm (the tool takes the thickness from `materials.csv` anyway) |
 | Duivestein | Restrictions on batch name (length, characters) and what happens when a batch is sent twice |
 | Physical test | Which point of the label the position refers to, the rotation direction, and whether the zero-point settings change the rotation |
 | Physical test | Does Duivestein's print template pre-rotate the printed content for 180°/270° (so a SQUARE label's edge-banding fields still land on the right edge)? And if the label stock is NOT square, does a 90°/270° rotation squeeze the field layout into the shorter dimension for about half the parts, or does Duivestein's engine avoid that? |

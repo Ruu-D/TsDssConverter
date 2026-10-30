@@ -236,6 +236,25 @@ public class AppFilesTests
     }
 
     [Fact]
+    public void History_Clear_EmptiesTheList_RaisesChanged_AndNewEntriesComeInAgain()
+    {
+        var history = new ConversionHistory();
+        history.Add(Entry(1));
+        history.Add(Entry(2));
+        int changes = 0;
+        history.Changed += () => changes++;
+
+        history.Clear();
+
+        Assert.Empty(history.GetEntries());
+        Assert.Null(history.Latest);
+        Assert.Equal(1, changes); // the window is told, so it empties its list too
+
+        history.Add(Entry(3));
+        Assert.Equal(new[] { "P-3" }, history.GetEntries().Select(e => e.Project));
+    }
+
+    [Fact]
     public void History_CanBeFilledFromSeveralThreads()
     {
         var history = new ConversionHistory();

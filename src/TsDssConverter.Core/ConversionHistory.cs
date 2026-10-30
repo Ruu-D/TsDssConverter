@@ -38,6 +38,20 @@ public class ConversionHistory
         Changed?.Invoke();
     }
 
+    /// <summary>
+    /// The "Clear conversion list" button: empties this list (what the window shows) and nothing else.
+    /// The log files are written elsewhere (TrayApp) and keep everything.
+    /// </summary>
+    public void Clear()
+    {
+        lock (_lock)
+        {
+            _entries.Clear();
+        }
+
+        Changed?.Invoke();
+    }
+
     /// <summary>A copy of the entries, newest first. Safe to loop over while another thread adds.</summary>
     public List<HistoryEntry> GetEntries()
     {

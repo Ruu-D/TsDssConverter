@@ -3,6 +3,35 @@
 The history of TsDssConverter, newest first. `CLAUDE.md` describes the current state; this file says how it got there.
 The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`.
 
+## 1.1.1 — 2026-10-30 — first fixes from the customer tests
+
+- Delivery file: `dist\v1.1.1\TsDssConverter.exe`, 54,680,189 bytes, file version 1.1.1.0, SHA-256
+  `837e6d04d404c6d85cc1dcdded428d3de147fd96f1328d59614d5abf1e1025f5`. Built by `publish.cmd` after all 442 tests passed.
+  The exe was started once with a scratch data folder (all folders in a scratch folder, never `Z:`): it converted the
+  customer's hand-corrected `P2026-Cuisine-ROGIERS` export by itself (2 sheets, 6 labels, CNC programs moved, files to
+  `_Converted`). The customer's 1.1.0 REFUSES TopSolid's new prefixed sheet names: install 1.1.1 before TopSolid switches.
+- **"Clear conversion list" button (2026-10-30, Daan):** `Conversielijst wissen` / `Effacer la liste` / `Clear conversion
+  list`, left of "Retry failed", as wide as its text (`WideButtonWidth`), same style and spacing. It empties ONLY the list
+  in the window (`ConversionHistory.Clear`); the log files are written separately and keep everything. The tray tooltip
+  keeps the last result (`TrayApp._lastResult`, no longer read from the list). No confirmation question: the list is in
+  memory only anyway. Checked with the render program at a real 150%, 125% and 100%, in all three languages. 442 tests.
+
+- **Material from `Matériau`, not from the sheet name (2026-10-30, Daan).** Found with a real customer export
+  (`P2026-Keuken`): TopSolid put the project in front of the sheet name in LI (`P2026_Keuken_MELA_BLANC_18#01`) but not in LP
+  (`MELA_BLANC_18#01`), so no part matched. Agreed with TopSolid: the project goes in front of the sheet name, the SAME name
+  in LI `Nom_panneau`, LP `SP` and the CNC file name (`{sheet name}.xcs`), so two jobs can never overwrite each other's
+  programs (open point 1). With the old rule (material = sheet name before `#`) every project would have had a new material
+  name, so the material is now the trimmed `Matériau` of the LI file (`BatchBuilder`); the sheet name only gives the sheet
+  number after the last `#` (`TopSolidText.TryGetSheetNumber`, was `TryParseSheetName`). `CncPathBuilder` needed no change.
+  New errors (three languages): parts of different materials on one sheet (`Messages.DifferentMaterialsOnSheet`, names the
+  sheet and every material) and a part with an empty `Matériau` (`Messages.MaterialMissing`). Materials are compared
+  case-insensitively everywhere, like `materials.csv`. `BadSheetName` now says "does not end in '#number'". The output for
+  the sample is unchanged (its `Matériau` equals the material in its sheet names). For the customer's export the warehouse
+  name now comes from the `Matériau` line in `materials.csv` (`18 MELA BLANC` instead of `MELA_BLANC_18`): maintaining
+  `materials.csv` is the customer's responsibility. Checked with the real `P2026-Keuken` export, rewritten with the agreed
+  prefix (`P2026_(Keuken)_MELA_BLANC_18#01` in LI, LP and the CNC names): converted without warnings, programs moved.
+  437 tests (was 432).
+
 ## 1.1.0 rebuild — 2026-10-26 (same version number, Daan)
 
 - Delivery file: `dist\v1.1.0\TsDssConverter.exe`, 54,678,900 bytes, file version 1.1.0.0, SHA-256

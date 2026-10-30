@@ -340,6 +340,33 @@ public class SettingsFormTests
     }
 
     [Fact]
+    public void ClearHistoryButton_EmptiesTheList_AndDoesNothingElse()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            var form = window.Form;
+            form.Show();
+            window.History.Add(new HistoryEntry { Time = DateTime.Now, Project = "P-1", Success = true, Message = "OK" });
+            window.History.Add(new HistoryEntry { Time = DateTime.Now, Project = "P-2", Success = false, Message = "Fout" });
+            Application.DoEvents(); // the list is refreshed through BeginInvoke
+            Assert.Equal(2, form.HistoryList.Items.Count);
+
+            Assert.Equal("Conversielijst wissen", form.ClearHistoryButton.Text);   // Dutch is the default language
+            form.ClearHistoryButton.PerformClick();
+            Application.DoEvents();
+
+            Assert.Empty(window.History.GetEntries());
+            Assert.Empty(form.HistoryList.Items);
+            Assert.True(form.HistoryList.Controls.OfType<System.Windows.Forms.Label>().Single().Visible); // "no conversions yet" is shown again
+            Assert.Equal(0, window.RetryClicks);                                       // no retry, nothing opened, nothing saved
+            Assert.Empty(window.OpenedFiles);
+            Assert.Empty(window.OpenedFolders);
+            Assert.Null(window.Saved);
+        });
+    }
+
+    [Fact]
     public void HistoryList_HoldsAtMostTwentyRows()
     {
         RunOnStaThread(() =>

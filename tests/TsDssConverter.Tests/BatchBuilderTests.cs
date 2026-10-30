@@ -8,9 +8,14 @@ namespace TsDssConverter.Tests;
 /// </summary>
 public class BatchBuilderTests
 {
-    private static LabelInfoRow Info(string sheet, string description, string dimensions = "L: 500.0mm X B: 300.0mm")
+    /// <param name="material">
+    /// The Matériau column. Null = the part of the sheet name before '#' ("White_18#01" gives "White_18"), which is what
+    /// a real export has when TopSolid puts no project in front of the sheet name.
+    /// </param>
+    private static LabelInfoRow Info(string sheet, string description, string dimensions = "L: 500.0mm X B: 300.0mm", string? material = null)
     {
-        return new LabelInfoRow { SheetName = sheet, Description = description, Dimensions = dimensions, MaterialText = "White", Project = "P-1" };
+        material ??= sheet.Contains('#') ? sheet.Substring(0, sheet.LastIndexOf('#')) : sheet;
+        return new LabelInfoRow { SheetName = sheet, Description = description, Dimensions = dimensions, MaterialText = material, Project = "P-1" };
     }
 
     private static LabelPositionRow Pos(
@@ -102,7 +107,64 @@ public class BatchBuilderTests
             new() { Pos("White_18", "Part A - 100") });
 
         Assert.Single(problems);
-        Assert.Contains("materiaal#nummer", problems[0]);
+        Assert.Contains("'#nummer'", problems[0]);
+    }
+
+    // ---------------------------------------------------------------- the material comes from Matériau (LI)
+
+    [Fact]
+    public void Material_ComesFromMateriau_NotFromTheSheetName_SoAProjectPrefixIsFine()
+    {
+        // TopSolid puts the project in front of the sheet name (and of the CNC program). The material is Matériau.
+        var batch = Build(
+            new() { Info("P2026_(Keuken)_White_18#01", "Part A - 100", material: "White_18"), Info("P2026_(Keuken)_White_18#02", "Part B - 101", material: "White_18") },
+            new() { Pos("P2026_(Keuken)_White_18#01", "Part A - 100"), Pos("P2026_(Keuken)_White_18#02", "Part B - 101") });
+
+        Plan plan = Assert.Single(batch.Plans);
+        Assert.Equal("White_18", plan.Material.TopSolidName);
+        Assert.Equal(new[] { 1, 2 }, plan.Sheets.Select(s => s.Number));
+        Assert.Equal("P2026_(Keuken)_White_18#01", plan.Sheets[0].Name);
+        Assert.EndsWith(@"\P2026_(Keuken)_White_18#01.xcs", plan.Sheets[0].CncPath); // the CNC program has the prefix too
+    }
+
+    [Fact]
+    public void Material_IsTrimmed_AndComparedCaseInsensitive_LikeMaterialsCsv()
+    {
+        var batch = Build(
+            new() { Info("S#01", "Part A - 100", material: " White_18 "), Info("S#01", "Part B - 101", material: "WHITE_18"), Info("S#02", "Part C - 102", material: "white_18") },
+            new() { Pos("S#01", "Part A - 100"), Pos("S#01", "Part B - 101"), Pos("S#02", "Part C - 102") });
+
+        Plan plan = Assert.Single(batch.Plans);
+        Assert.Equal(2, plan.Sheets.Count);
+    }
+
+    [Fact]
+    public void DifferentMaterialsOnOneSheet_IsAnError_ThatNamesTheSheetAndTheMaterials()
+    {
+        var problems = BuildAndGetProblems(
+            new()
+            {
+                Info("S#01", "Part A - 100", material: "White_18"),
+                Info("S#01", "Part B - 101", material: "White_9"),
+                Info("S#01", "Part C - 102", material: "White_18"),
+            },
+            new() { Pos("S#01", "Part A - 100"), Pos("S#01", "Part B - 101"), Pos("S#01", "Part C - 102") });
+
+        string problem = Assert.Single(problems);
+        Assert.Contains("S#01", problem);
+        Assert.Contains("'White_18', 'White_9'", problem); // each material once, in LP order
+    }
+
+    [Fact]
+    public void EmptyMateriau_IsAnError_ThatNamesThePart()
+    {
+        var problems = BuildAndGetProblems(
+            new() { Info("White_18#01", "Part A - 100"), Info("White_18#01", "Part B - 101", material: "  ") },
+            new() { Pos("White_18#01", "Part A - 100"), Pos("White_18#01", "Part B - 101") });
+
+        string problem = Assert.Single(problems);
+        Assert.Contains("Matériau", problem);
+        Assert.Contains("White_18#01 / Part B - 101", problem);
     }
 
     [Fact]

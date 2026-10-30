@@ -59,21 +59,20 @@ public static class TopSolidText
     }
 
     /// <summary>
-    /// Splits a sheet name "White_18#01" into the material ("White_18") and the sheet number (1).
-    /// Returns false when the name does not have this form.
+    /// The sheet number at the end of a sheet name: "White_18#01" gives 1, "P2026_(Keuken)_MELA_BLANC_18#02" gives 2.
+    /// Whatever is in front of the '#' (material, project prefix, ...) does not matter here: the material comes from
+    /// the Matériau column of the LI file, not from the sheet name. Returns false when the name does not end in '#number'.
     /// </summary>
-    public static bool TryParseSheetName(string sheetName, out string material, out int sheetNumber)
+    public static bool TryGetSheetNumber(string sheetName, out int sheetNumber)
     {
-        material = "";
         sheetNumber = 0;
 
         int hashPosition = sheetName.LastIndexOf('#');
         if (hashPosition <= 0)
         {
-            return false;
+            return false; // no '#', or nothing in front of it
         }
 
-        material = sheetName.Substring(0, hashPosition).Trim();
         return int.TryParse(sheetName.Substring(hashPosition + 1), out sheetNumber);
     }
 }

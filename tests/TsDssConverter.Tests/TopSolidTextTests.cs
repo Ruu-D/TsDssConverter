@@ -79,23 +79,23 @@ public class TopSolidTextTests
     }
 
     [Theory]
-    [InlineData("White_18#01", "White_18", 1)]
-    [InlineData("White_18#12", "White_18", 12)]
-    [InlineData("H1145_-_ST10_-_Chêne_Bardolino_naturel_Zijdewit_19#02", "H1145_-_ST10_-_Chêne_Bardolino_naturel_Zijdewit_19", 2)]
-    public void TryParseSheetName_SplitsMaterialAndNumber(string sheetName, string material, int number)
+    [InlineData("White_18#01", 1)]
+    [InlineData("White_18#12", 12)]
+    [InlineData("H1145_-_ST10_-_Chêne_Bardolino_naturel_Zijdewit_19#02", 2)]
+    [InlineData("P2026_(Keuken)_MELA_BLANC_18#03", 3)]   // project in front of the sheet name
+    public void TryGetSheetNumber_ReadsTheNumberAfterTheLastHash(string sheetName, int number)
     {
-        Assert.True(TopSolidText.TryParseSheetName(sheetName, out string actualMaterial, out int actualNumber));
-        Assert.Equal(material, actualMaterial);
+        Assert.True(TopSolidText.TryGetSheetNumber(sheetName, out int actualNumber));
         Assert.Equal(number, actualNumber);
     }
 
     [Theory]
     [InlineData("White_18")]     // no sheet number
-    [InlineData("#01")]          // no material
+    [InlineData("#01")]          // nothing in front of the '#'
     [InlineData("White_18#x")]   // number is not a number
     [InlineData("")]
-    public void TryParseSheetName_WrongForm_ReturnsFalse(string sheetName)
+    public void TryGetSheetNumber_WrongForm_ReturnsFalse(string sheetName)
     {
-        Assert.False(TopSolidText.TryParseSheetName(sheetName, out _, out _));
+        Assert.False(TopSolidText.TryGetSheetNumber(sheetName, out _));
     }
 }

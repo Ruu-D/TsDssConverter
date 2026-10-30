@@ -143,6 +143,9 @@ internal static class Strings
     /// <summary>The button left of "Open log": puts the failed projects back in the export folder to convert them again.</summary>
     public static string RetryFailedButton => T("Herstart mislukte", "Réessayez échoué", "Retry failed");
 
+    /// <summary>The button left of "Retry failed": empties the list of conversions in the window (the log files keep everything).</summary>
+    public static string ClearHistoryButton => T("Conversielijst wissen", "Effacer la liste", "Clear conversion list");
+
     // ---- Retry failed: what the user is told (only when there is something to say; a success is silent) ----
     public static string RetryNothingFound => T(
         "Er zijn geen mislukte projecten om opnieuw te proberen.",

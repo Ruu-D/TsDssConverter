@@ -18,6 +18,7 @@ internal class TrayApp : ApplicationContext
     private readonly AppDataFolder _dataFolder;
     private readonly LogWriter _log;
     private readonly ConversionHistory _history = new();
+    private HistoryEntry? _lastResult; // for the tooltip: stays when the user clears the list in the window
     private readonly StartWithWindows _startWithWindows = new();
     private readonly NotifyIcon _notifyIcon = new();
     private readonly Dictionary<TrayState, Icon> _icons = new();
@@ -117,7 +118,7 @@ internal class TrayApp : ApplicationContext
     {
         OnTrayThread(() =>
         {
-            _history.Add(new HistoryEntry { Time = DateTime.Now, Project = project, Success = success, Message = message });
+            AddToHistory(new HistoryEntry { Time = DateTime.Now, Project = project, Success = success, Message = message });
 
             if (success)
             {
@@ -157,12 +158,19 @@ internal class TrayApp : ApplicationContext
     {
         OnTrayThread(() =>
         {
-            _history.Add(new HistoryEntry { Time = DateTime.Now, Project = Strings.NoProject, Success = false, Message = message });
+            AddToHistory(new HistoryEntry { Time = DateTime.Now, Project = Strings.NoProject, Success = false, Message = message });
             _log.Error(message);
             _state = TrayState.Error;
             ShowBalloon(Strings.BalloonFolderTitle, message);
             UpdateIconAndTooltip();
         });
+    }
+
+    /// <summary>A line for the list in the window. The tooltip keeps its own copy, because the user can clear the list.</summary>
+    private void AddToHistory(HistoryEntry entry)
+    {
+        _lastResult = entry;
+        _history.Add(entry);
     }
 
     private void ScanNow()
@@ -284,7 +292,7 @@ internal class TrayApp : ApplicationContext
         // _state is what the program is doing; the icon also depends on whether the user paused it.
         _notifyIcon.Icon = _icons[TrayStateRules.Displayed(_state, _paused)];
 
-        HistoryEntry? last = _history.Latest;
+        HistoryEntry? last = _lastResult;
         string text = last == null
             ? Strings.TooltipNothingYet
             : Strings.TooltipLast(last.Project, last.Success, last.Time);
