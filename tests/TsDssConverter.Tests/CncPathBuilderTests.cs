@@ -4,8 +4,9 @@ namespace TsDssConverter.Tests;
 
 /// <summary>
 /// TopSolid names the CNC program of a sheet after the sheet only (SP_M_030_18#01.xcs, Melamine_18#01.xcs) and writes it in
-/// the shared export folder. After the conversion the programs of a job are MOVED to {export}\CNC\{project}\, so two jobs with
-/// the same material never overwrite each other's files, and the export folder only holds what is not converted yet.
+/// a folder named after the project, {export}\{project}\ (since 1.1.2; older exports: directly in the shared export folder).
+/// After the conversion the programs of a job are MOVED to {export}\CNC\{project}\, so two jobs with the same material never
+/// overwrite each other's files, and the export folder only holds what is not converted yet.
 /// </summary>
 public class CncPathBuilderTests
 {
@@ -24,11 +25,21 @@ public class CncPathBuilderTests
     }
 
     [Fact]
-    public void TopSolidWritesTheProgram_DirectlyInTheExportFolder_NamedAfterTheSheet()
+    public void TopSolidWritesTheProgram_InAFolderNamedAfterTheProject_NamedAfterTheSheet()
     {
         var settings = new ConverterSettings { TopSolidExportPath = @"Z:\TopSolid\Export\" };
 
-        Assert.Equal(@"Z:\TopSolid\Export\Melamine_18#01.xcs", CncPathBuilder.BuildSourcePath(settings, "Melamine_18#01"));
+        Assert.Equal(@"Z:\TopSolid\Export\P2026-Cuisine-ROGIERS", CncPathBuilder.BuildSourceFolder(settings, "P2026-Cuisine-ROGIERS"));
+        Assert.Equal(@"Z:\TopSolid\Export\P2026-Cuisine-ROGIERS\MELA_BLANC_18#01.xcs",
+            CncPathBuilder.BuildSourcePath(settings, "P2026-Cuisine-ROGIERS", "MELA_BLANC_18#01"));
+    }
+
+    [Fact]
+    public void OlderExports_WroteTheProgram_DirectlyInTheExportFolder()
+    {
+        var settings = new ConverterSettings { TopSolidExportPath = @"Z:\TopSolid\Export\" };
+
+        Assert.Equal(@"Z:\TopSolid\Export\Melamine_18#01.xcs", CncPathBuilder.BuildOldSourcePath(settings, "Melamine_18#01"));
     }
 
     [Fact]
@@ -42,7 +53,8 @@ public class CncPathBuilderTests
 
         Assert.Equal(@"\\server\topsolid\Export\CNC\P-20\Melamine_18#01.xcs", CncPathBuilder.Build(settings, "P-20", "Melamine_18#01"));
         Assert.Equal(@"Z:\TopSolid\Export\CNC\P-20\Melamine_18#01.xcs", CncPathBuilder.BuildLocalPath(settings, "P-20", "Melamine_18#01"));
-        Assert.Equal(@"Z:\TopSolid\Export\Melamine_18#01.xcs", CncPathBuilder.BuildSourcePath(settings, "Melamine_18#01"));
+        Assert.Equal(@"Z:\TopSolid\Export\P-20\Melamine_18#01.xcs", CncPathBuilder.BuildSourcePath(settings, "P-20", "Melamine_18#01"));
+        Assert.Equal(@"Z:\TopSolid\Export\Melamine_18#01.xcs", CncPathBuilder.BuildOldSourcePath(settings, "Melamine_18#01"));
     }
 
     [Fact]
@@ -51,7 +63,8 @@ public class CncPathBuilderTests
         var settings = new ConverterSettings { TopSolidExportPath = @"Z:\Export", CncExtension = ".cnc" };
 
         Assert.Equal(@"Z:\Export\CNC\Job\White_9#01.cnc", CncPathBuilder.Build(settings, "Job", "White_9#01"));
-        Assert.Equal(@"Z:\Export\White_9#01.cnc", CncPathBuilder.BuildSourcePath(settings, "White_9#01"));
+        Assert.Equal(@"Z:\Export\Job\White_9#01.cnc", CncPathBuilder.BuildSourcePath(settings, "Job", "White_9#01"));
+        Assert.Equal(@"Z:\Export\White_9#01.cnc", CncPathBuilder.BuildOldSourcePath(settings, "White_9#01"));
     }
 
     // ---------------------------------------------------------------- moving the programs
@@ -138,7 +151,7 @@ public class CncPathBuilderTests
 
         string warning = Assert.Single(warnings);
         Assert.Contains("CNC-programma niet gevonden", warning);
-        Assert.Contains(Path.Combine(export, "Melamine_18#02.xcs"), warning);   // the place where TopSolid should have written it
+        Assert.Contains(Path.Combine(export, Project, "Melamine_18#02.xcs"), warning);   // where TopSolid writes it now: the folder of the project
         Assert.Equal(2, Directory.GetFiles(ProjectFolder(export), "*.xcs").Length);
     }
 
@@ -224,7 +237,160 @@ public class CncPathBuilderTests
         Assert.Equal(3, Directory.GetFiles(ProjectFolder(export), "*.xcs").Length);
     }
 
+    // ---------------------------------------------------------------- the folder of the project (since 1.1.2)
+
+    private static string ExportWithAllProgramsInTheProjectFolder(TempFolder folder)
+    {
+        string export = Directory.CreateDirectory(folder.File("export")).FullName;
+        string source = Directory.CreateDirectory(Path.Combine(export, Project)).FullName;
+        foreach (string sheet in Sheets)
+        {
+            File.WriteAllText(Path.Combine(source, sheet + ".xcs"), "cnc of " + sheet);
+        }
+
+        return export;
+    }
+
+    [Fact]
+    public void ProgramsInTheFolderOfTheProject_AreMoved_AndThatFolderIsRemovedWhenEmpty()
+    {
+        using var folder = new TempFolder();
+        string export = ExportWithAllProgramsInTheProjectFolder(folder);
+        var settings = new ConverterSettings { TopSolidExportPath = export };
+
+        var warnings = CncMover.MoveToProjectFolder(BatchWithTheThreeSheets(), settings, exportFinishedAt: null);
+
+        Assert.Empty(warnings);
+        Assert.False(Directory.Exists(Path.Combine(export, Project)));          // the export folder only holds what is not converted
+        Assert.Equal(3, Directory.GetFiles(ProjectFolder(export), "*.xcs").Length);
+        Assert.Equal("cnc of Melamine_18#02", File.ReadAllText(Path.Combine(ProjectFolder(export), "Melamine_18#02.xcs")));
+    }
+
+    [Fact]
+    public void TheFolderOfTheProject_StaysWhenSomethingElseIsInIt()
+    {
+        using var folder = new TempFolder();
+        string export = ExportWithAllProgramsInTheProjectFolder(folder);
+        string other = Path.Combine(export, Project, "Old_18#09.xcs");          // not a sheet of this batch
+        File.WriteAllText(other, "left over from an earlier export");
+        var settings = new ConverterSettings { TopSolidExportPath = export };
+
+        CncMover.MoveToProjectFolder(BatchWithTheThreeSheets(), settings, null);
+
+        Assert.True(File.Exists(other));
+        Assert.Equal(3, Directory.GetFiles(ProjectFolder(export), "*.xcs").Length);
+    }
+
+    [Fact]
+    public void AProgramInTheFolderOfTheProject_WinsOverOneWithTheSameNameDirectlyInTheExportFolder()
+    {
+        using var folder = new TempFolder();
+        string export = ExportWithAllProgramsInTheProjectFolder(folder);
+        string loose = Path.Combine(export, "Melamine_18#01.xcs");
+        File.WriteAllText(loose, "an older export of another job");
+        var settings = new ConverterSettings { TopSolidExportPath = export };
+
+        CncMover.MoveToProjectFolder(BatchWithTheThreeSheets(), settings, null);
+
+        Assert.Equal("cnc of Melamine_18#01", File.ReadAllText(Path.Combine(ProjectFolder(export), "Melamine_18#01.xcs")));
+        Assert.True(File.Exists(loose));                                         // not ours: not touched
+    }
+
+    [Fact]
+    public void AProgramInTheFolderOfTheProject_IsNeverCheckedAgainstTheTriggerTime()
+    {
+        // No other job writes in this folder, so a program newer than TR cannot belong to another job.
+        using var folder = new TempFolder();
+        string export = ExportWithAllProgramsInTheProjectFolder(folder);
+        var settings = new ConverterSettings { TopSolidExportPath = export };
+        DateTime triggerTime = DateTime.UtcNow;
+        File.SetLastWriteTimeUtc(Path.Combine(export, Project, "Melamine_08#01.xcs"), triggerTime.AddMinutes(30));
+
+        var warnings = CncMover.MoveToProjectFolder(BatchWithTheThreeSheets(), settings, triggerTime);
+
+        Assert.Empty(warnings);
+        Assert.Equal(3, Directory.GetFiles(ProjectFolder(export), "*.xcs").Length);
+    }
+
+    [Fact]
+    public void SomeProgramsInTheFolderOfTheProject_AndSomeDirectlyInTheExportFolder_AreAllMoved()
+    {
+        using var folder = new TempFolder();
+        string export = ExportWithAllProgramsInTheProjectFolder(folder);
+        File.Move(Path.Combine(export, Project, "Melamine_08#01.xcs"), Path.Combine(export, "Melamine_08#01.xcs"));
+        var settings = new ConverterSettings { TopSolidExportPath = export };
+
+        var warnings = CncMover.MoveToProjectFolder(BatchWithTheThreeSheets(), settings, null);
+
+        Assert.Empty(warnings);
+        Assert.Empty(Directory.GetFiles(export));
+        Assert.False(Directory.Exists(Path.Combine(export, Project)));
+        Assert.Equal(3, Directory.GetFiles(ProjectFolder(export), "*.xcs").Length);
+    }
+
+    [Fact]
+    public void TwoJobsWithTheSameSheetNames_InTheirOwnExportFolders_NeverMeet()
+    {
+        using var folder = new TempFolder();
+        string export = Directory.CreateDirectory(folder.File("export")).FullName;
+        var settings = new ConverterSettings { TopSolidExportPath = export };
+        var batchOne = new Batch { Name = "Customer-One" };
+        var batchTwo = new Batch { Name = "Customer-Two" };
+        foreach (var batch in new[] { batchOne, batchTwo })
+        {
+            var plan = new Plan { PlanName = "001" };
+            plan.Sheets.Add(new Sheet { Name = "MELA_BLANC_18#01" });
+            batch.Plans.Add(plan);
+            Directory.CreateDirectory(Path.Combine(export, batch.Name));
+            File.WriteAllText(Path.Combine(export, batch.Name, "MELA_BLANC_18#01.xcs"), "program of " + batch.Name);
+        }
+
+        // Both are exported before either is converted: with the old place the second would have overwritten the first.
+        CncMover.MoveToProjectFolder(batchTwo, settings, null);
+        CncMover.MoveToProjectFolder(batchOne, settings, null);
+
+        Assert.Equal("program of Customer-One", File.ReadAllText(Path.Combine(ProjectFolder(export, "Customer-One"), "MELA_BLANC_18#01.xcs")));
+        Assert.Equal("program of Customer-Two", File.ReadAllText(Path.Combine(ProjectFolder(export, "Customer-Two"), "MELA_BLANC_18#01.xcs")));
+    }
+
     // ---------------------------------------------------------------- the whole conversion
+
+    [Fact]
+    public void TheConversion_MovesTheProgramsFromTheFolderOfTheProject_AndTheXmlPointsToThem()
+    {
+        using var folder = new TempFolder();
+        string export = ExportWithAllProgramsInTheProjectFolder(folder);
+        string outFolder = Directory.CreateDirectory(folder.File("out")).FullName;
+        var settings = new ConverterSettings { TopSolidExportPath = export };
+
+        var result = new Converter().Convert(
+            TestPaths.InfoFile, TestPaths.PositionFile, TestPaths.MaterialsFile, outFolder, outFolder, settings, TestPaths.GoldenPlanDate);
+
+        Assert.Empty(result.Warnings);
+        Assert.False(Directory.Exists(Path.Combine(export, Project)));
+
+        var xml = System.Xml.Linq.XDocument.Load(Path.Combine(outFolder, Project + ".xml"));
+        string[] cncPaths = xml.Descendants("CNCFilename").Select(e => e.Value).ToArray();
+        Assert.Equal(3, cncPaths.Length);
+        Assert.All(cncPaths, path => Assert.True(File.Exists(path), "the XML points to a file that is not there: " + path));
+        Assert.All(cncPaths, path => Assert.Equal(ProjectFolder(export), Path.GetDirectoryName(path)));
+    }
+
+    [Fact]
+    public void ARefusedBatch_LeavesTheFolderOfTheProject_AsItWas()
+    {
+        using var folder = new TempFolder();
+        string export = ExportWithAllProgramsInTheProjectFolder(folder);
+        string outFolder = Directory.CreateDirectory(folder.File("out")).FullName;
+        File.WriteAllText(Path.Combine(outFolder, Project + ".xml"), "an earlier job");
+        var settings = new ConverterSettings { TopSolidExportPath = export };
+
+        Assert.Throws<ConversionException>(() => new Converter().Convert(
+            TestPaths.InfoFile, TestPaths.PositionFile, TestPaths.MaterialsFile, outFolder, outFolder, settings, TestPaths.GoldenPlanDate));
+
+        Assert.Equal(3, Directory.GetFiles(Path.Combine(export, Project)).Length);
+        Assert.False(Directory.Exists(Path.Combine(export, "CNC")));
+    }
 
     [Fact]
     public void TheConversion_MovesThePrograms_AndTheXmlPointsToThem()

@@ -304,6 +304,28 @@ public class WatcherTests
     }
 
     [Fact]
+    public void Processor_ProgramsInTheFolderOfTheProject_AreFound_AndThatFolderIsGoneAfterwards()
+    {
+        // Since 1.1.2 TopSolid writes the programs in {export}\{project}\. The scanner must not mind that folder.
+        using var world = new ExportFixture();
+        world.AddProject();
+        string source = Directory.CreateDirectory(Path.Combine(world.Export, "DAAN_ROGIERS-P2026.09")).FullName;
+        foreach (string sheet in new[] { "Melamine_18#01", "Melamine_18#02", "Melamine_08#01" })
+        {
+            File.WriteAllText(Path.Combine(source, sheet + ".xcs"), "cnc");
+        }
+
+        ScanResult scan = new ExportScanner().Scan(world.Export, requireTriggerFile: true);
+        ProcessOutcome outcome = new ProjectProcessor(world.MaterialsFile).Process(world.Files(), world.Settings, world.Clock.Now);
+
+        Assert.Single(scan.Ready);
+        Assert.True(outcome.Success, outcome.Message);
+        Assert.Empty(outcome.Warnings);
+        Assert.False(Directory.Exists(source));
+        Assert.Equal(3, Directory.GetFiles(Path.Combine(world.Export, "CNC", "DAAN_ROGIERS-P2026.09"), "*.xcs").Length);
+    }
+
+    [Fact]
     public void Processor_ACncProgramOverwrittenByALaterExport_SendsTheJobToFout_AndLeavesThePrograms()
     {
         using var world = new ExportFixture();

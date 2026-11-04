@@ -5,13 +5,13 @@
 TsDssConverter is a small Windows tray application that watches a folder for TopSolid nesting exports and
 converts them, without any manual work, into a job that the Duivestein automatic warehouse understands.
 
-> **Status: version 1.1.1 is built (2026-10-30).** Version 1.1.0 was the first customer release; 1.1.1 contains the first
-> fixes from real TopSolid exports of the customer, plus a button to clear the list of conversions. Real-world tests with
-> the Duivestein warehouse and the machine are still going on. See [Status and roadmap](#status-and-roadmap).
+> **Status: version 1.1.2 is built (2026-11-04).** Version 1.1.0 was the first customer release; 1.1.1 and 1.1.2 contain the
+> first fixes from real TopSolid exports of the customer. Real-world tests with the Duivestein warehouse and the machine are
+> still going on. See [Status and roadmap](#status-and-roadmap).
 >
-> **Important fix, agreed with TopSolid (2026-10-30):** TopSolid puts the project name in front of the sheet name, and so in
-> front of the file name of every CNC program, so that two jobs can never overwrite each other's programs. Version 1.1.1 is
-> ready for it (1.1.0 is not: install 1.1.1 first). See [Important fix still to do](#important-fix-still-to-do).
+> **Important fix, agreed with TopSolid (2026-11-04):** TopSolid writes the CNC programs of every project in a folder of their
+> own, named after the project, so that two jobs can never overwrite each other's programs. Version 1.1.2 is ready for it
+> (older versions are not: install 1.1.2 first). See [Important fix still to do](#important-fix-still-to-do).
 
 ---
 
@@ -110,9 +110,10 @@ A wrong job means a wrong boards on the machine, so the tool is strict:
   `materials.csv` stops the conversion and is named in the message, and so do parts of different materials on one sheet or
   a part without a material.
 - **Never overwrites a job.** If the batch already exists in the warehouse folder, nothing is written. This means that
-- **Jobs cannot overwrite each other's CNC programs.** TopSolid names them after the sheet, so each job's programs are moved
-  to `CNC\<project>\` after conversion, and a program newer than the job's trigger file is refused. This is a safety net; the
-  real cure is the project name in the sheet name, agreed with TopSolid (see [Important fix still to do](#important-fix-still-to-do)).
+- **Jobs cannot overwrite each other's CNC programs.** TopSolid names them after the sheet, but writes them in a folder named
+  after the project (since 1.1.2, see [Important fix still to do](#important-fix-still-to-do)); after conversion they are moved
+  to `CNC\<project>\`. For older exports that still put the programs directly in the export folder, a program newer than the
+  job's trigger file is refused.
 - **The warehouse never sees half a job.** Label files first, batch XML last; every file is renamed into place when complete.
 - **Bad input is refused, not repaired.** Missing columns, unmatched or duplicate parts, unknown materials, unreadable
   dimensions and labels outside their sheet are errors; nothing is written.
@@ -121,15 +122,17 @@ A wrong job means a wrong boards on the machine, so the tool is strict:
 
 ## How the automatic processing works
 
-The program watches the TopSolid export folder. TopSolid writes the two data files (`-LI` and `-LP`) and the CNC
-programs, and the trigger file (`-TR`) as the very last one. When the trigger file appears:
+The program watches the TopSolid export folder. TopSolid writes the two data files (`-LI` and `-LP`), the CNC
+programs (in a folder named after the project, `<project>\`), and the trigger file (`-TR`) as the very last one. When the
+trigger file appears:
 
 1. The program waits until the three files are complete and no longer in use (it checks every 2 seconds, and gives up
    with an error after 2 minutes).
 2. It converts the project (one at a time) and writes the label files and the batch XML for the warehouse.
 3. It moves the three files to `_Verwerkt\<date-time> <project>` in the export folder (`_Effectuee` / `_Converted` in French /
    English, the folder names follow the selected language), and the CNC programs of the job
-   to `CNC\<project>\` (the batch XML points there). The export folder itself then only holds what is not converted yet.
+   from `<project>\` to `CNC\<project>\` (the batch XML points there; the emptied `<project>\` folder is removed). The export
+   folder itself then only holds what is not converted yet.
 4. If something is wrong with the files, they go to `_Fout\<date-time> <project>` (`_Erreur` / `_Error`) together with a `fout.txt` that
    explains in plain language (in the selected language) what to correct. After the cause is fixed (for example a
    material was added to `materials.csv`), the button **Herstart mislukte** / **Réessayez échoué** / **Retry failed** in the
@@ -149,15 +152,17 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 | 2 | **Validation**: all checks and warnings, one clear report, exit code for errors | **Done** |
 | 3 | **Tray application (shell)**: icon with four looks (normal, busy, error, paused), menu, settings window, `settings.json`, start with Windows, log files. | **Done** |
 | 4 | **Folder watching and processing**: trigger file, one conversion at a time, `_Verwerkt` / `_Fout` folders with a readable `fout.txt`, notifications, recovery when the network drive is gone | **Done** |
-| 5 | **Delivery**: one 'installation' file `TsDssConverter.exe` (version 1.1.1, 52 MB, no .NET needed), install at the customer, physical test sheet | **1.1.0 = first customer release; 1.1.1 built; real-world tests going on** |
+| 5 | **Delivery**: one 'installation' file `TsDssConverter.exe` (version 1.1.2, 52 MB, no .NET needed), install at the customer, physical test sheet | **1.1.0 = first customer release; 1.1.2 built; real-world tests going on** |
 
-**1.1.1 (2026-10-30):** the material is read from the TopSolid *Matériau* column (so the project name can go in front of the
-sheet name), parts of different materials on one sheet are refused, and a **Clear conversion list** button empties the list in
-the window (the log files keep everything). **Next:** bug fixes from practice; no new features are planned.
+**1.1.2 (2026-11-04):** the CNC programs are read from a folder named after the project (`<export>\<project>\`), as agreed with
+TopSolid; programs directly in the export folder (older exports) still work.
+**1.1.1 (2026-10-30):** the material is read from the TopSolid *Matériau* column, parts of different materials on one sheet are
+refused, and a **Clear conversion list** button empties the list in the window (the log files keep everything).
+**Next:** bug fixes from practice; no new features are planned.
 
 **What is verified so far**
 
-- 442 automated tests pass. They cover the conversion, every error and warning, the settings window, the folder watching (with a
+- 452 automated tests pass. They cover the conversion, every error and warning, the settings window, the folder watching (with a
   fake clock) and all three languages.
 - The settings window lays out correctly at 100%, 125% and 150% screen scaling (checked on a real screen at each scaling,
   plus automated tests that guard the rules).
@@ -167,6 +172,8 @@ the window (the log files keep everything). **Next:** bug fixes from practice; n
 - A renamed TopSolid column can be followed by editing a text file (the *Config* buttons); this is tested too.
 - A real export of the customer (2026-10-30), in the format agreed with TopSolid, was converted correctly by the 1.1.1 `.exe`
   by itself (folder watching, CNC programs moved, files put away).
+- The 1.1.2 `.exe` converted the sample by itself with its CNC programs in the new project folder (programs found and moved,
+  the emptied folder removed, no warnings).
 
 ## Decisions taken so far
 
@@ -181,39 +188,47 @@ the window (the log files keep everything). **Next:** bug fixes from practice; n
   is silent on success.
 - **TopSolid files:** `-TR` is written last, so everything else is complete when it appears. CNC programs are `.xcs`, with
   drive-letter paths (`Z:`) in the batch XML.
-- **CNC programs are moved** after conversion to `Z:\TopSolid\Export\CNC\<project>\`, so jobs never overwrite each other's programs.
+- **CNC programs:** TopSolid writes them in `Z:\TopSolid\Export\<project>\` (since 1.1.2); after conversion they are moved to
+  `Z:\TopSolid\Export\CNC\<project>\`, so jobs never overwrite each other's programs.
 - **Materials:** the TopSolid name is the master name; the warehouse uses the same names and checks the sheet sizes against its stock.
-  The material is read from the *Matériau* column of the label-info export, not from the sheet name (since 1.1.1), so TopSolid may
-  put anything in front of the sheet name. Keeping `materials.csv` up to date is the customer's responsibility.
+  The material is read from the *Matériau* column of the label-info export, not from the sheet name (since 1.1.1). Keeping
+  `materials.csv` up to date is the customer's responsibility.
 - **By design:** the list of conversions is not saved between runs, and the app runs only while a user is logged in.
 
 ## Important fix still to do
 
-**Every CNC program file must get the project name as a prefix, to be set up in TopSolid.**
+**The CNC programs of every project must be written in a folder of their own, to be set up in TopSolid.**
 
-**Agreed with TopSolid (2026-10-30):** TopSolid puts the project in front of the sheet name, the SAME name in the label-info
-export (`Nom_panneau`), the label-position export (`SP`) and the CNC file name: `{project}_{material}#{sheet number}`, for
-example sheet `P2026-Cuisine-ROGIERS_18 MELA BLANC#01` and program `P2026-Cuisine-ROGIERS_18 MELA BLANC#01.xcs`. The program is
-ready for this since 1.1.1 (the material now comes from the *Matériau* column, so the prefix does not disturb it; checked with a
-real export of 2026-10-30). Waiting for TopSolid to deliver it.
+**Agreed with TopSolid (2026-11-04)**, replacing the project prefix in the sheet name agreed on 2026-10-30 (TopSolid cannot put
+the project in the CAM file name, because a program belongs to parts, not to a project): TopSolid makes a folder named after
+the project inside the export folder and writes the programs there, named after the sheet as before:
 
-Why this matters: TopSolid writes the programs of **all** jobs in one shared folder and names them after the sheet only. A
-second job with the same material and sheet number overwrites the program of the first job before the first job has been
+```
+Z:\TopSolid\Export\P2026-Cuisine-ROGIERS-LI.xlsx
+Z:\TopSolid\Export\P2026-Cuisine-ROGIERS-LP.xlsx
+Z:\TopSolid\Export\P2026-Cuisine-ROGIERS\MELA_BLANC_18#01.xcs
+Z:\TopSolid\Export\P2026-Cuisine-ROGIERS\MELA_BLANC_18#02.xcs
+Z:\TopSolid\Export\P2026-Cuisine-ROGIERS-TR.xlsx      (still the very last file)
+```
+
+The folder name is exactly the project name of the XLSX files; each program name is exactly the sheet name (`Nom_panneau` in the
+label-info export = `SP` in the label-position export) + `.xcs`. The sheet names need no project in them. The program is ready
+for this since 1.1.2 (checked with the sample in this layout). Waiting for TopSolid to deliver it.
+
+Why this matters: TopSolid used to write the programs of **all** jobs in one shared folder and names them after the sheet only.
+A second job with the same material and sheet number overwrote the program of the first job before the first job had been
 converted, and a wrong program on the machine is the most expensive mistake this tool could allow.
 
-What the converter does today (a workaround, not a cure): after a conversion it moves the programs of the job to their own
-folder, `CNC\<project>\`, and it refuses a program that is more than 5 seconds newer than the job's trigger file. That
-check compares file times on a network drive, so it is a good safety net but it cannot be proven complete (for example two
-exports within a few seconds of each other, or clocks that differ between the PCs).
-
-With the project name in the file name the collision **cannot happen at all**. Once TopSolid delivers it and every export has
-the prefix, the "newer than the trigger file" check can be dropped (a separate, small step).
+Until every export uses the project folder, the converter still accepts programs directly in the export folder, and refuses such
+a program when it is more than 5 seconds newer than the job's trigger file (a safety net that compares file times on a network
+drive, so it cannot be proven complete). Programs in the project folder are not checked that way: no other job writes there.
+Once every export uses the project folder, the old place and that check can be dropped (a separate, small step).
 
 ## Still to be confirmed by others
 
 | From | Question |
 |---|---|
-| TopSolid | **Important:** deliver the agreed project prefix in the sheet name and the CNC file name (see [Important fix still to do](#important-fix-still-to-do)). The program looks for `{sheet name}.xcs` in the export folder |
+| TopSolid | **Important:** deliver the agreed project folder for the CNC programs (see [Important fix still to do](#important-fix-still-to-do)). The program looks for `{project}\{sheet name}.xcs` in the export folder, then for `{sheet name}.xcs` |
 | TopSolid | The sheet thickness column in the export was always 18; the export of 2026-10-30 shows the real thickness (8 and 18): to confirm (the tool takes the thickness from `materials.csv` anyway) |
 | Duivestein | Restrictions on batch name (length, characters) and what happens when a batch is sent twice |
 | Physical test | Which point of the label the position refers to, the rotation direction, and whether the zero-point settings change the rotation |

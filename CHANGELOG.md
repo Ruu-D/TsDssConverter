@@ -3,6 +3,24 @@
 The history of TsDssConverter, newest first. `CLAUDE.md` describes the current state; this file says how it got there.
 The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`.
 
+## 1.1.2 — 2026-11-04 — CNC programs in a folder per project
+
+- Delivery file: `dist\v1.1.2\TsDssConverter.exe`, 54,680,389 bytes, file version 1.1.2.0, SHA-256
+  `76ec79913a9379b529838b6ba49698a5106c4cd121ae7847146c5c51a5c5bb60`. Built by `publish.cmd` after all 452 tests passed.
+  The exe was started once with a scratch data folder (all folders in a scratch folder, never `Z:`): it converted the sample
+  by itself with its three programs in `{export}\DAAN_ROGIERS-P2026.09\` (programs moved to `CNC\DAAN_ROGIERS-P2026.09\`,
+  the emptied folder removed, no warnings, files to `_Converted`).
+- **CNC programs in `{export}\{project}\` (2026-11-04, agreed with TopSolid; Daan).** TopSolid cannot put the project in the
+  name of a CAM file (a program belongs to parts, not to a project), so the project prefix in the sheet name agreed on
+  2026-10-30 is replaced: TopSolid makes a folder named after the project (= the project of the XLSX file names) inside the
+  export folder and writes the programs there, `{sheet name}.xcs` as before. `Nom_panneau` / `SP` need no project prefix (they
+  must still be identical in LI and LP). `CncPathBuilder.BuildSourcePath(settings, project, sheet)` is the new place,
+  `BuildOldSourcePath` the old one (directly in the export folder); `CncMover` looks in the project folder first and falls
+  back to the old place, so older exports keep working. The "newer than TR" check is only done for programs found in the old
+  place (no other job writes in a project folder). After the move, the project folder is removed if it is empty (anything
+  else in it stays; a failure there is ignored). The "CNC program not found" warning names the project-folder path. No UI or
+  text change. The XML is unchanged (still `{export}\CNC\{project}\`). 452 tests (was 442).
+
 ## 1.1.1 — 2026-10-30 — first fixes from the customer tests
 
 - Delivery file: `dist\v1.1.1\TsDssConverter.exe`, 54,680,189 bytes, file version 1.1.1.0, SHA-256
