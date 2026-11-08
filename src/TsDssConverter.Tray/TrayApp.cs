@@ -37,6 +37,11 @@ internal class TrayApp : ApplicationContext
     private TrayState _state = TrayState.Ok;
     private volatile bool _paused;
 
+    // settings.json may be edited by hand while the program runs (Shift+click on the logo in the window opens it in
+    // Notepad). Every few seconds the tray looks whether the file changed, and then uses the new values at once.
+    private readonly SettingsFileChecker _settingsFileChecker;
+    private readonly System.Windows.Forms.Timer _settingsFileTimer = new() { Interval = 5000 };
+
     public TrayApp(AppDataFolder dataFolder, StartupOptions options)
     {
         _dataFolder = dataFolder;
@@ -74,6 +79,10 @@ internal class TrayApp : ApplicationContext
         {
             TrySaveSettings(_settings); // first start: write settings.json so it can be found and edited
         }
+
+        _settingsFileChecker = new SettingsFileChecker(dataFolder.SettingsFile); // what is in the file now is known
+        _settingsFileTimer.Tick += (sender, e) => ReloadSettingsIfChanged();
+        _settingsFileTimer.Start();
 
         if (loaded.Problems.Count > 0)
         {
@@ -400,19 +409,57 @@ internal class TrayApp : ApplicationContext
         }
     }
 
-    /// <summary>Called by the window's Save button. Throws IOException if settings.json cannot be written.</summary>
+    /// <summary>
+    /// Called by the window's Save button. settings.json is read again first, so what was edited there by hand is kept
+    /// (see <see cref="SettingsStore.SaveWindowSettings"/>). Throws IOException if settings.json cannot be written or
+    /// has a mistake (it is then not overwritten).
+    /// </summary>
     private void SaveSettings(AppSettings newSettings)
     {
-        SettingsStore.Save(_dataFolder.SettingsFile, newSettings);
-
-        bool languageChanged = newSettings.Language != _settings.Language;
-        _settings = newSettings;
+        SettingsLoadResult saved = SettingsStore.SaveWindowSettings(_dataFolder.SettingsFile, newSettings);
+        _settingsFileChecker.Remember(); // our own change: nothing to reload
         _log.Info(Strings.LogSettingsSaved);
+        UseSettings(saved);
+    }
+
+    /// <summary>
+    /// The timer: settings.json was changed outside the program (by hand) since the last look? Then its values are used
+    /// at once (folders, advanced settings, language). A file with a mistake is reported ONCE (red icon, balloon) and the
+    /// settings in use stay until the file is fixed.
+    /// </summary>
+    private void ReloadSettingsIfChanged()
+    {
+        SettingsLoadResult? loaded = _settingsFileChecker.ReadIfChanged();
+        if (loaded == null)
+        {
+            return;
+        }
+
+        if (loaded.ReadError != "")
+        {
+            ShowProblem(Strings.BalloonSettingsTitle, Strings.SettingsReloadFailed(_dataFolder.SettingsFile, loaded.ReadError));
+            return;
+        }
+
+        _log.Info(Strings.LogSettingsReloaded);
+        UseSettings(loaded);
+    }
+
+    /// <summary>Puts newly saved or read settings in use; repaired values are reported.</summary>
+    private void UseSettings(SettingsLoadResult result)
+    {
+        bool languageChanged = result.Settings.Language != _settings.Language;
+        _settings = result.Settings;
         _watcher.WakeUp(); // a new export folder is watched at once
 
         if (languageChanged)
         {
-            ApplyLanguage(newSettings.Language);
+            ApplyLanguage(result.Settings.Language);
+        }
+
+        if (result.Problems.Count > 0)
+        {
+            ShowProblem(Strings.BalloonSettingsTitle, string.Join(Environment.NewLine, result.Problems));
         }
     }
 
@@ -439,6 +486,14 @@ internal class TrayApp : ApplicationContext
 
     private void OpenFile(string path)
     {
+        if (string.Equals(Path.GetExtension(path), ".json", StringComparison.OrdinalIgnoreCase))
+        {
+            // settings.json: always in Notepad. Windows often has no program for .json, or opens it in a browser where
+            // it cannot be edited.
+            Start(new ProcessStartInfo("notepad.exe") { ArgumentList = { path }, UseShellExecute = false }, Strings.CannotOpenFile);
+            return;
+        }
+
         OpenWithWindows(path, Strings.CannotOpenFile);
     }
 
@@ -463,9 +518,15 @@ internal class TrayApp : ApplicationContext
     /// <summary>Opens a folder in Explorer, or a file in the program Windows uses for it (Excel for .csv).</summary>
     private void OpenWithWindows(string path, Func<string, string> cannotOpenMessage)
     {
+        Start(new ProcessStartInfo(path) { UseShellExecute = true }, cannotOpenMessage);
+    }
+
+    /// <summary>Starts a program; a failure is logged and shown in a balloon, never thrown.</summary>
+    private void Start(ProcessStartInfo start, Func<string, string> cannotOpenMessage)
+    {
         try
         {
-            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            Process.Start(start);
         }
         catch (Exception error) when (error is IOException || error is System.ComponentModel.Win32Exception || error is UnauthorizedAccessException)
         {
@@ -497,6 +558,7 @@ internal class TrayApp : ApplicationContext
     private void ExitProgram()
     {
         _log.Info(Strings.LogExiting);
+        _settingsFileTimer.Stop();
         _watcher.Dispose(); // stops the background thread (waits a few seconds for a conversion that is busy)
 
         if (_settingsForm != null && !_settingsForm.IsDisposed)
@@ -515,6 +577,7 @@ internal class TrayApp : ApplicationContext
         if (disposing)
         {
             _watcher.Dispose(); // harmless if the Exit menu already did this
+            _settingsFileTimer.Dispose();
             _notifyIcon.Dispose();
             foreach (Icon icon in _icons.Values)
             {

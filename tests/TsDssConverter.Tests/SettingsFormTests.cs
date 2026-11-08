@@ -67,6 +67,20 @@ public class SettingsFormTests
     }
 
     [Fact]
+    public void ShiftClickOnTheLogo_OpensSettingsJson()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+
+            // Only the Shift+click is tested: a normal click opens the website in the browser.
+            window.Form.LogoClicked(shiftDown: true);
+
+            Assert.Equal(new[] { window.DataFolder.SettingsFile }, window.OpenedFiles);
+        });
+    }
+
+    [Fact]
     public void ConfigButtons_OpenTheColumnFiles_OpenMaterialsOpensTheMaterialsFile_AndOpenLogOpensTheLogFolder()
     {
         RunOnStaThread(() =>

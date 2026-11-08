@@ -281,6 +281,11 @@ public static class Messages
         $"Impossible de lire settings.json ({reason}). Les paramètres par défaut sont utilisés : {path}",
         $"settings.json could not be read ({reason}). The default settings are used: {path}");
 
+    public static string SettingsFileNotOverwritten(string path, string reason) => T(
+        $"settings.json bevat een fout of kon niet geopend worden ({reason}). Het bestand werd niet overschreven: verbeter het eerst en sla dan opnieuw op. {path}",
+        $"settings.json contient une erreur ou n'a pas pu être ouvert ({reason}). Le fichier n'a pas été écrasé : corrigez-le d'abord, puis enregistrez à nouveau. {path}",
+        $"settings.json contains a mistake or could not be opened ({reason}). The file was not overwritten: fix it first, then save again. {path}");
+
     public static string SettingReset(string setting, string reason) => T(
         $"Instelling {setting} is teruggezet naar de standaardwaarde: {reason}.",
         $"Le paramètre {setting} a été réinitialisé à sa valeur par défaut : {reason}.",

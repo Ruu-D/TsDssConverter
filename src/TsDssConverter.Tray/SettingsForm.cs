@@ -41,9 +41,10 @@ internal class SettingsForm : Form
     internal readonly Label ConfigLabelHint = new();
     internal readonly Label MaterialsHint = new();
 
-    // The banner picture is 540 x 84 pixels. It is shown 1.2 times as big.
-    private const int BannerWidth = 648;
-    private const int BannerHeight = 101;
+    // The banner picture is 540 x 84 pixels. It is shown 1.02 times as big: 15% smaller than the 648 x 101 of before
+    // (Daan, 2026-11-08; the same in DssLabelTemplate). Keep the 540:84 proportions, otherwise blue bars appear.
+    private const int BannerWidth = 551;
+    private const int BannerHeight = 86;
 
     // The window is wider than the banner: the TopSolid and Duivestein folders sit side by side (at 100%).
     private const int WindowWidth = 940;
@@ -178,7 +179,7 @@ internal class SettingsForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(WindowWidth, 780);
         MinimumSize = new Size(BannerWidth + 30, 500); // smaller than the content needs: then the settings scroll
-        MaximizeBox = false;
+        MaximizeBox = true; // the window can be maximized as well as dragged bigger (the layout follows the width)
 
         // Top: the banner, on the brand colour (the banner picture has the same background).
         var banner = new Panel { Dock = DockStyle.Top, Height = BannerHeight, BackColor = Theme.Brand };
@@ -469,8 +470,25 @@ internal class SettingsForm : Form
         LogoPicture.Margin = new Padding(0);
         LogoPicture.Cursor = Cursors.Hand;
         new ToolTip().SetToolTip(LogoPicture, Strings.CompanyName);
-        LogoPicture.Click += (sender, e) => OpenWebsite(Strings.CompanyUrl);
+        LogoPicture.Click += (sender, e) => LogoClicked(shiftDown: (ModifierKeys & Keys.Shift) == Keys.Shift);
         return LogoPicture;
+    }
+
+    /// <summary>
+    /// A click on the logo opens the website. Shift+click opens settings.json in Notepad instead (Daan, 2026-11-08): a
+    /// hidden way in for whoever maintains the program, because the advanced settings are only in that file. It is not
+    /// shown anywhere on purpose. The tray uses a change in the file at once and keeps it when Save is pressed.
+    /// </summary>
+    internal void LogoClicked(bool shiftDown)
+    {
+        if (shiftDown)
+        {
+            _openFile(_dataFolder.SettingsFile); // made again first if someone deleted it
+        }
+        else
+        {
+            OpenWebsite(Strings.CompanyUrl);
+        }
     }
 
     /// <summary>

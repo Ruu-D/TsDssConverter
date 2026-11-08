@@ -11,8 +11,20 @@ public class SettingsLoadResult
     /// <summary>False if settings.json did not exist yet (the defaults are used).</summary>
     public bool FileExisted { get; set; }
 
-    /// <summary>Dutch notes: an unreadable file, or values that were repaired. Empty = all fine.</summary>
+    /// <summary>Notes in the selected language: an unreadable file, or values that were repaired. Empty = all fine.</summary>
     public List<string> Problems { get; } = new();
+
+    /// <summary>
+    /// Not empty when the file exists but could not be used: its text has a mistake, or it could not be opened. The
+    /// <see cref="Settings"/> are then the defaults, NOT what is in the file.
+    /// </summary>
+    public string ReadError { get; set; } = "";
+
+    /// <summary>
+    /// True when the file could not be opened (in use by another program, no permission): reading it again a moment later
+    /// may work. False for a mistake in the text, which stays until someone fixes the file.
+    /// </summary>
+    public bool ReadErrorIsTemporary { get; set; }
 }
 
 /// <summary>Reads and writes settings.json. Never throws for a bad file: the program must keep running.</summary>
@@ -59,10 +71,43 @@ public static class SettingsStore
             // Keep the broken file as it is (the user may want to fix it); start with the defaults.
             result.Settings = new AppSettings();
             result.Problems.Add(Messages.SettingsUnreadable(path, error.Message));
+            result.ReadError = error.Message;
+            result.ReadErrorIsTemporary = error is IOException || error is UnauthorizedAccessException;
         }
 
         result.Problems.AddRange(result.Settings.Normalize());
         return result;
+    }
+
+    /// <summary>
+    /// Saves what the settings window shows WITHOUT losing what someone edited by hand in settings.json meanwhile (in
+    /// Notepad, Shift+click on the logo): the file is read again first, only the window's own settings are replaced
+    /// (<see cref="AppSettings.CopyWindowSettingsFrom"/>), and the advanced settings stay as they are in the file now.
+    /// A file with a mistake is never overwritten: then an IOException is thrown with a message for the user.
+    /// </summary>
+    /// <param name="fromWindow">The settings in use, with the values of the window put in.</param>
+    /// <returns>What was saved (= the settings to use from now on) and the notes about repaired values.</returns>
+    public static SettingsLoadResult SaveWindowSettings(string path, AppSettings fromWindow)
+    {
+        SettingsLoadResult onDisk = Load(path);
+
+        if (onDisk.ReadError != "")
+        {
+            throw new IOException(Messages.SettingsFileNotOverwritten(path, onDisk.ReadError));
+        }
+
+        if (!onDisk.FileExisted)
+        {
+            // Someone deleted the file: there is nothing to keep, write the settings in use as they are.
+            onDisk.Settings = fromWindow.Clone();
+        }
+        else
+        {
+            onDisk.Settings.CopyWindowSettingsFrom(fromWindow);
+        }
+
+        Save(path, onDisk.Settings);
+        return onDisk;
     }
 
     /// <summary>Writes settings.json. First as .tmp, then renamed, so a crash never leaves half a file.</summary>

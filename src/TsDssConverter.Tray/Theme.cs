@@ -29,6 +29,21 @@ internal static class Theme
     }
 
     /// <summary>
+    /// The font of the program name in the banner (drawn by AppIcons.Banner), in pixels of the banner picture.
+    /// The same as in the sister program DssLabelTemplate, so both banners look alike.
+    /// </summary>
+    public static Font CreateBannerTitleFont(float pixels)
+    {
+        return new Font("Segoe UI Semibold", pixels, FontStyle.Regular, GraphicsUnit.Pixel);
+    }
+
+    /// <summary>The font of the line below the program name in the banner (the same as in DssLabelTemplate).</summary>
+    public static Font CreateBannerSubtitleFont(float pixels)
+    {
+        return new Font("Segoe UI", pixels, FontStyle.Regular, GraphicsUnit.Pixel);
+    }
+
+    /// <summary>
     /// Main button: brand blue with navy text (white text on brand blue is too pale to read).
     /// On hover it turns dark blue, and then the text turns white.
     /// </summary>

@@ -189,4 +189,156 @@ public class SettingsTests
         Assert.Equal(@"\\server\share", converterSettings.CncPathPrefixInXml);
         Assert.Equal("windows-1252", converterSettings.CsvEncoding);
     }
+
+    // ---------------------------------------------------------------- settings.json edited by hand while the program runs
+
+    // The settings the window shows; every other setting is "advanced" (only in settings.json).
+    private static readonly string[] WindowSettings =
+        { "TopSolidExportPath", "BatchFolder", "LabelFolder", "FlipX", "FlipY", "PlanRotated", "Language" };
+
+    private static readonly string[] AdvancedSettings =
+        { "CncExtension", "CncPathPrefixInXml", "CsvEncoding", "RescanSeconds", "RequireTriggerFile" };
+
+    [Fact]
+    public void EverySetting_IsEitherShownInTheWindowOrAdvanced()
+    {
+        // A new setting must be put in one of the two lists above, and in AppSettings.CopyWindowSettingsFrom if the window
+        // shows it: otherwise Save would quietly throw away a value edited by hand, or never save the window's value.
+        var names = typeof(AppSettings).GetProperties().Select(property => property.Name).OrderBy(name => name);
+
+        Assert.Equal(WindowSettings.Concat(AdvancedSettings).OrderBy(name => name), names);
+    }
+
+    [Fact]
+    public void SaveWindowSettings_TakesWhatTheWindowShows_AndKeepsWhatWasEditedByHandInTheFile()
+    {
+        using var folder = new TempFolder();
+        string path = folder.File("settings.json");
+
+        // The program started with the defaults; then someone edited the advanced settings (and a folder) in Notepad.
+        var inUse = new AppSettings();
+        SettingsStore.Save(path, inUse);
+        File.WriteAllText(path, """
+            {
+              "TopSolidExportPath": "D:\\EditedByHand\\",
+              "CncExtension": ".pgmx",
+              "CncPathPrefixInXml": "\\\\server\\share\\",
+              "CsvEncoding": "windows-1252",
+              "RescanSeconds": 60,
+              "RequireTriggerFile": false
+            }
+            """);
+
+        // The window (which still had the old values in use) is saved with new values of its own.
+        AppSettings fromWindow = inUse.Clone();
+        fromWindow.TopSolidExportPath = @"E:\FromWindow\";
+        fromWindow.BatchFolder = @"E:\Batch";
+        fromWindow.LabelFolder = @"E:\Label";
+        fromWindow.FlipX = true;
+        fromWindow.FlipY = true;
+        fromWindow.PlanRotated = true;
+        fromWindow.Language = "fr";
+
+        SettingsLoadResult saved = SettingsStore.SaveWindowSettings(path, fromWindow);
+        AppSettings onDisk = SettingsStore.Load(path).Settings;
+
+        foreach (AppSettings settings in new[] { saved.Settings, onDisk })
+        {
+            // The window wins for what it shows ...
+            Assert.Equal(@"E:\FromWindow\", settings.TopSolidExportPath);
+            Assert.Equal(@"E:\Batch", settings.BatchFolder);
+            Assert.Equal(@"E:\Label", settings.LabelFolder);
+            Assert.True(settings.FlipX);
+            Assert.True(settings.FlipY);
+            Assert.True(settings.PlanRotated);
+            Assert.Equal("fr", settings.Language);
+
+            // ... the file for what is only in the file.
+            Assert.Equal(".pgmx", settings.CncExtension);
+            Assert.Equal(@"\\server\share\", settings.CncPathPrefixInXml);
+            Assert.Equal("windows-1252", settings.CsvEncoding);
+            Assert.Equal(60, settings.RescanSeconds);
+            Assert.False(settings.RequireTriggerFile);
+        }
+    }
+
+    [Fact]
+    public void SaveWindowSettings_AFileWithAMistake_IsNotOverwritten()
+    {
+        using var folder = new TempFolder();
+        string path = folder.File("settings.json");
+        const string broken = "{ \"RescanSeconds\": +60 }"; // "+60" is not valid json
+        File.WriteAllText(path, broken);
+
+        var error = Assert.Throws<IOException>(() => SettingsStore.SaveWindowSettings(path, new AppSettings()));
+
+        Assert.Contains("niet overschreven", error.Message); // the window shows this message
+        Assert.Equal(broken, File.ReadAllText(path));
+    }
+
+    [Fact]
+    public void SaveWindowSettings_WithoutAFile_WritesTheSettingsInUse()
+    {
+        using var folder = new TempFolder();
+        string path = folder.File("settings.json");
+        var fromWindow = new AppSettings { BatchFolder = @"E:\Batch", RescanSeconds = 90 };
+
+        SettingsStore.SaveWindowSettings(path, fromWindow);
+
+        AppSettings onDisk = SettingsStore.Load(path).Settings;
+        Assert.Equal(@"E:\Batch", onDisk.BatchFolder);
+        Assert.Equal(90, onDisk.RescanSeconds); // the advanced value in use is kept, not the default
+    }
+
+    [Fact]
+    public void Checker_GivesTheFileOnlyWhenItWasChangedOutsideTheProgram()
+    {
+        using var folder = new TempFolder();
+        string path = folder.File("settings.json");
+        SettingsStore.Save(path, new AppSettings());
+        var checker = new SettingsFileChecker(path);
+
+        Assert.Null(checker.ReadIfChanged()); // nothing changed
+
+        File.WriteAllText(path, "{ \"RescanSeconds\": 60 }");
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(10)); // surely another time than before
+
+        SettingsLoadResult? changed = checker.ReadIfChanged();
+        Assert.NotNull(changed);
+        Assert.Equal("", changed.ReadError);
+        Assert.Equal(60, changed.Settings.RescanSeconds);
+        Assert.Null(checker.ReadIfChanged()); // only once
+
+        // The program saves the file itself and says so: that is not a change from outside.
+        SettingsStore.Save(path, changed.Settings);
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(20));
+        checker.Remember();
+        Assert.Null(checker.ReadIfChanged());
+    }
+
+    [Fact]
+    public void Checker_AFileWithAMistakeIsGivenOnce_AFileInUseIsTriedAgainLater()
+    {
+        using var folder = new TempFolder();
+        string path = folder.File("settings.json");
+        SettingsStore.Save(path, new AppSettings());
+        var checker = new SettingsFileChecker(path);
+
+        File.WriteAllText(path, "{ \"RescanSeconds\": +60 }");
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(10));
+        SettingsLoadResult? broken = checker.ReadIfChanged();
+        Assert.NotNull(broken);
+        Assert.NotEqual("", broken.ReadError);
+        Assert.False(broken.ReadErrorIsTemporary);
+        Assert.Null(checker.ReadIfChanged()); // reported once, not every few seconds
+
+        File.WriteAllText(path, "{ \"RescanSeconds\": 60 }");
+        File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(20));
+        using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) // e.g. Notepad is still writing it
+        {
+            Assert.Null(checker.ReadIfChanged());
+        }
+
+        Assert.Equal(60, checker.ReadIfChanged()!.Settings.RescanSeconds); // the next look finds it
+    }
 }

@@ -179,6 +179,34 @@ public class TrayTests
     }
 
     [Fact]
+    public void TheBanner_HasTheLogoAndTheTextOnTheBrandColour()
+    {
+        using Image banner = AppIcons.Banner();
+        using var picture = new Bitmap(banner);
+
+        Assert.Equal(Theme.Brand.ToArgb(), picture.GetPixel(picture.Width - 2, 2).ToArgb()); // plain brand blue on the right
+        Assert.True(HasColourOtherThanBrand(picture, new Rectangle(20, 20, 150, 130)), "the logo is missing");
+        Assert.True(HasColourOtherThanBrand(picture, new Rectangle(194, 30, 300, 55)), "the title is missing");
+        Assert.True(HasColourOtherThanBrand(picture, new Rectangle(196, 105, 300, 30)), "the subtitle is missing");
+    }
+
+    private static bool HasColourOtherThanBrand(Bitmap picture, Rectangle area)
+    {
+        for (int y = area.Top; y < area.Bottom; y++)
+        {
+            for (int x = area.Left; x < area.Right; x++)
+            {
+                if (picture.GetPixel(x, y).ToArgb() != Theme.Brand.ToArgb())
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    [Fact]
     public void StatusIcons_AreFourDifferentPictures()
     {
         string media = System.IO.Path.Combine(TestPaths.SamplesFolder, "..", "media");

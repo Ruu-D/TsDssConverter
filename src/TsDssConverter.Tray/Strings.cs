@@ -13,6 +13,7 @@ internal static class Strings
 
     // ---- Names that are the same in every language ----
     public const string AppName = "TsDssConverter";
+    public const string BannerSubtitle = "Automatic nesting job transfer from TOPSOLID to DUIVESTEIN"; // English in every language, like DssLabelTemplate's banner
     public const string DeveloperCredit = "Dev.: Daan Verhoost";
     public const string CompanyName = "ROGIERS NV/SA";
     public const string CompanyUrl = "https://www.rogiers.be/";
@@ -264,6 +265,17 @@ internal static class Strings
 
     public static string LogExiting => T("Afgesloten door de gebruiker.", "Fermé par l'utilisateur.", "Closed by the user.");
     public static string LogSettingsSaved => T("Instellingen opgeslagen.", "Paramètres enregistrés.", "Settings saved.");
+
+    public static string LogSettingsReloaded => T(
+        "settings.json werd buiten het programma gewijzigd: de nieuwe instellingen worden gebruikt.",
+        "settings.json a été modifié en dehors du programme : les nouveaux paramètres sont utilisés.",
+        "settings.json was changed outside the program: the new settings are used.");
+
+    /// <summary>settings.json was edited by hand and now has a mistake (balloon, log).</summary>
+    public static string SettingsReloadFailed(string path, string reason) => T(
+        $"settings.json werd gewijzigd maar bevat een fout ({reason}). De vorige instellingen blijven in gebruik tot het bestand verbeterd is: {path}",
+        $"settings.json a été modifié mais contient une erreur ({reason}). Les paramètres précédents restent utilisés jusqu'à ce que le fichier soit corrigé : {path}",
+        $"settings.json was changed but contains a mistake ({reason}). The previous settings stay in use until the file is fixed: {path}");
     public static string LogPaused => T("Gepauzeerd.", "Suspendu.", "Paused.");
     public static string LogResumed => T("Hervat.", "Repris.", "Resumed.");
     public static string LogScanNow => T("Nu scannen gevraagd.", "Analyse immédiate demandée.", "Scan now requested.");

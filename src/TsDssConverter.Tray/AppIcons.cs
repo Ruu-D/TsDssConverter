@@ -25,14 +25,47 @@ internal static class AppIcons
         return new Icon(stream);
     }
 
-    /// <summary>The banner with the name of the program (2x version, scaled down: sharp on high-DPI screens).</summary>
+    // The banner is drawn at twice its size at 100% (1080 x 168 = 2 x 540 x 84) and scaled down by the window, so it
+    // stays sharp on high-DPI screens. It is drawn exactly like the banner of the sister program DssLabelTemplate (same
+    // fonts, sizes and places), so the two programs look alike.
+    private const int BannerPictureWidth = 1080;
+    private const int BannerPictureHeight = 168;
+    private const int BannerLogoWidth = 180;     // the logo is the left part of header@2x.png; its old text starts at x = 194
+    private const int BannerTextLeft = 194;      // where the title starts (the same in DssLabelTemplate)
+
+    /// <summary>
+    /// The banner: the logo on the brand colour, with the name of the program and one line below it. The text is in
+    /// English in every language. Only the logo is taken from the picture header@2x.png (whose text is not used any more).
+    /// </summary>
     public static Image Banner()
     {
-        using var stream = OpenResource("header.png");
-        var copy = new MemoryStream();
-        stream.CopyTo(copy);
-        copy.Position = 0;
-        return Image.FromStream(copy); // the MemoryStream must stay open as long as the image is used
+        var banner = new Bitmap(BannerPictureWidth, BannerPictureHeight);
+        using var graphics = Graphics.FromImage(banner);
+        graphics.Clear(Theme.Brand);
+        graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+
+        using (var stream = OpenResource("header.png"))
+        using (var picture = new Bitmap(stream))
+        {
+            var logo = new Rectangle(0, 0, BannerLogoWidth, BannerPictureHeight);
+            graphics.DrawImage(picture, logo, logo, GraphicsUnit.Pixel); // 1 to 1: the picture is already 1080 x 168
+        }
+
+        // The same places as in DssLabelTemplate: the title's baseline at y = 82, the subtitle's at y = 128.
+        using var titleFont = Theme.CreateBannerTitleFont(54);
+        using var subtitleFont = Theme.CreateBannerSubtitleFont(27);
+        using var navy = new SolidBrush(Theme.Navy);
+        DrawOnBaseline(graphics, Strings.AppName, titleFont, navy, BannerTextLeft, 82);
+        DrawOnBaseline(graphics, Strings.BannerSubtitle, subtitleFont, navy, BannerTextLeft + 2, 128);
+        return banner;
+    }
+
+    /// <summary>Draws a text so that the bottom of its letters (the baseline) is on the given y.</summary>
+    private static void DrawOnBaseline(Graphics graphics, string text, Font font, Brush brush, float left, float baseline)
+    {
+        FontFamily family = font.FontFamily;
+        float ascent = font.Size * family.GetCellAscent(font.Style) / family.GetEmHeight(font.Style);
+        graphics.DrawString(text, font, brush, left, baseline - ascent, StringFormat.GenericTypographic);
     }
 
     /// <summary>

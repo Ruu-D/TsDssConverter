@@ -38,6 +38,23 @@ public class AppSettings
         return (AppSettings)MemberwiseClone(); // all values are numbers, booleans or text: a shallow copy is a full copy
     }
 
+    /// <summary>
+    /// Takes the settings that the settings window shows (the first block above) from <paramref name="window"/>; the
+    /// advanced settings stay as they are. Used when saving: the window wins for what it shows, settings.json wins for
+    /// what is only in the file. A new setting must be added here when it gets a place in the window (a test checks
+    /// that every setting is either here or known as advanced).
+    /// </summary>
+    public void CopyWindowSettingsFrom(AppSettings window)
+    {
+        TopSolidExportPath = window.TopSolidExportPath;
+        BatchFolder = window.BatchFolder;
+        LabelFolder = window.LabelFolder;
+        FlipX = window.FlipX;
+        FlipY = window.FlipY;
+        PlanRotated = window.PlanRotated;
+        Language = window.Language;
+    }
+
     /// <summary>The part of the settings that the conversion itself needs.</summary>
     public ConverterSettings ToConverterSettings()
     {

@@ -3,6 +3,30 @@
 The history of TsDssConverter, newest first. `CLAUDE.md` describes the current state; this file says how it got there.
 The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`.
 
+## 1.1.3 — 2026-11-08 — banner, maximize, settings.json by Shift+click (Daan)
+
+- Delivery file: `dist\v1.1.3\TsDssConverter.exe`, 54,685,249 bytes, file version 1.1.3.0, SHA-256
+  `f28658c64da336e4e89286eb3c6cc0dc4de0aff2ec70b50c72932749e78bbc4f`. Built by `publish.cmd` after all 460 tests passed.
+- **Shift+click on the logo opens `settings.json` in Notepad**; a normal click still opens rogiers.be. Hidden on purpose.
+- **Hand edits of `settings.json` are safe and used at once.** Save in the window reads the file again and only replaces the
+  window's own settings (`SettingsStore.SaveWindowSettings`, `AppSettings.CopyWindowSettingsFrom`); before, it wrote the values
+  read at start and so threw away hand edits made since. A file with a mistake is no longer overwritten by Save (a message
+  instead). The tray looks at the file date every 5 s (`SettingsFileChecker`) and uses a changed file at once; a file with a
+  mistake gives one balloon and the settings in use stay. Checked with the preview exe in a scratch data folder.
+  (While checking, a first start of the preview with an EMPTY scratch data folder got the packed `settings.json` and so
+  watched the real `Z:\TopSolid\Export\` for about 4 seconds; it was stopped at once and its log shows no conversion. Lesson: write
+  a `settings.json` with scratch folders BEFORE starting a test copy with `--data`.)
+- New tests: settings saving / checker (6), Shift+click (1). 460 tests.
+
+- **Banner drawn in code, like DssLabelTemplate's.** The subtitle was "Automatic hand-over of nesting jobs from CAD to the
+  panel warehouse." and is now "Automatic nesting job transfer from TOPSOLID to DUIVESTEIN" (`Strings.BannerSubtitle`, English
+  in every language). Title and subtitle use the fonts, sizes and places of DssLabelTemplate's banner (Segoe UI Semibold 54 px /
+  Segoe UI 27 px on the 1080 x 168 picture, `Theme.CreateBannerTitleFont` / `CreateBannerSubtitleFont`); only the logo is
+  still taken from `header@2x.png`. The README header picture still shows the old subtitle. New test
+  `TheBanner_HasTheLogoAndTheTextOnTheBrandColour`.
+- **The settings window can be maximized** (`MaximizeBox` was false; dragging the edges already worked).
+- **Banner 15% smaller:** 551 x 86 at 100% (was 648 x 101 = 1.2 x 540 x 84), the same in DssLabelTemplate. 453 tests.
+
 ## 1.1.2 — 2026-11-04 — CNC programs in a folder per project
 
 - Delivery file: `dist\v1.1.2\TsDssConverter.exe`, 54,680,389 bytes, file version 1.1.2.0, SHA-256

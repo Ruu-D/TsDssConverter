@@ -5,13 +5,13 @@
 TsDssConverter is a small Windows tray application that watches a folder for TopSolid nesting exports and
 converts them, without any manual work, into a job that the Duivestein automatic warehouse understands.
 
-> **Status: version 1.1.2 is built (2026-11-04).** Version 1.1.0 was the first customer release; 1.1.1 and 1.1.2 contain the
-> first fixes from real TopSolid exports of the customer. Real-world tests with the Duivestein warehouse and the machine are
+> **Status: version 1.1.3 is built (2026-11-08).** Version 1.1.0 was the first customer release; 1.1.1 and 1.1.2 contain the
+> first fixes from real TopSolid exports of the customer, 1.1.3 small improvements to the settings window. Real-world tests with the Duivestein warehouse and the machine are
 > still going on. See [Status and roadmap](#status-and-roadmap).
 >
 > **Important fix, agreed with TopSolid (2026-11-04):** TopSolid writes the CNC programs of every project in a folder of their
-> own, named after the project, so that two jobs can never overwrite each other's programs. Version 1.1.2 is ready for it
-> (older versions are not: install 1.1.2 first). See [Important fix still to do](#important-fix-still-to-do).
+> own, named after the project, so that two jobs can never overwrite each other's programs. Version 1.1.2 and later are ready
+> for it (older versions are not: install 1.1.3 first). See [Important fix still to do](#important-fix-still-to-do).
 
 ---
 
@@ -152,8 +152,12 @@ folder every 30 seconds (in case a file event is missed), and the menu item *Nu 
 | 2 | **Validation**: all checks and warnings, one clear report, exit code for errors | **Done** |
 | 3 | **Tray application (shell)**: icon with four looks (normal, busy, error, paused), menu, settings window, `settings.json`, start with Windows, log files. | **Done** |
 | 4 | **Folder watching and processing**: trigger file, one conversion at a time, `_Verwerkt` / `_Fout` folders with a readable `fout.txt`, notifications, recovery when the network drive is gone | **Done** |
-| 5 | **Delivery**: one 'installation' file `TsDssConverter.exe` (version 1.1.2, 52 MB, no .NET needed), install at the customer, physical test sheet | **1.1.0 = first customer release; 1.1.2 built; real-world tests going on** |
+| 5 | **Delivery**: one 'installation' file `TsDssConverter.exe` (version 1.1.3, 52 MB, no .NET needed), install at the customer, physical test sheet | **1.1.0 = first customer release; 1.1.3 built; real-world tests going on** |
 
+**1.1.3 (2026-11-08):** a new subtitle in the banner, in the same font style as the sister program DssLabelTemplate, and a 15%
+smaller banner (in both programs); the settings window can be maximized; for maintenance, **Shift+click on the ROGIERS logo**
+opens `settings.json` in Notepad (a normal click still opens the website). A changed `settings.json` is used within seconds,
+without a restart, and saving in the window no longer overwrites what was edited in the file.
 **1.1.2 (2026-11-04):** the CNC programs are read from a folder named after the project (`<export>\<project>\`), as agreed with
 TopSolid; programs directly in the export folder (older exports) still work.
 **1.1.1 (2026-10-30):** the material is read from the TopSolid *Matériau* column, parts of different materials on one sheet are
@@ -162,7 +166,7 @@ refused, and a **Clear conversion list** button empties the list in the window (
 
 **What is verified so far**
 
-- 452 automated tests pass. They cover the conversion, every error and warning, the settings window, the folder watching (with a
+- 460 automated tests pass. They cover the conversion, every error and warning, the settings window, the folder watching (with a
   fake clock) and all three languages.
 - The settings window lays out correctly at 100%, 125% and 150% screen scaling (checked on a real screen at each scaling,
   plus automated tests that guard the rules).
