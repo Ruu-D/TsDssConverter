@@ -1,52 +1,40 @@
-<h1 align="center"><img src="media/header@2x.png" width="540" alt="TsDssConverter - Automatic hand-over of nesting jobs from CAD to the panel warehouse."></h1>
+<h1 align="center"><img src="media/preview/Banner.png" width="540" alt="TsDssConverter - Automatic nesting job transfer from TOPSOLID to DUIVESTEIN"></h1>
 
-**Automatic hand-over of nesting jobs from TopSolid to the Duivestein warehouse.**
+**Automatic nesting job transfer from TopSolid to the Duivestein panel warehouse.**
 
-TsDssConverter is a small Windows tray application that watches a folder for TopSolid nesting exports and
-converts them, without any manual work, into a job that the Duivestein automatic warehouse understands.
+TsDssConverter is a small Windows tray application. It watches the folder where TopSolid exports its nesting jobs and turns
+every finished job, without any manual work, into a batch job for the Duivestein automatic warehouse.
+Sister tool: **[DssLabelTemplate](https://github.com/Ruu-D/DssLabelTemplate)** (view, edit and reprint the labels).
 
-> **Status: version 1.1.3 is built (2026-11-08).** Version 1.1.0 was the first customer release; 1.1.1 and 1.1.2 contain the
-> first fixes from real TopSolid exports of the customer, 1.1.3 small improvements to the settings window. Real-world tests with the Duivestein warehouse and the machine are
-> still going on. See [Status and roadmap](#status-and-roadmap).
->
-> **Important fix, agreed with TopSolid (2026-11-04):** TopSolid writes the CNC programs of every project in a folder of their
-> own, named after the project, so that two jobs can never overwrite each other's programs. Version 1.1.2 and later are ready
-> for it (older versions are not: install 1.1.3 first). See [Important fix still to do](#important-fix-still-to-do).
+> **Status:** version **1.1.3** (2026-11-08). In use at the customer since version 1.1.0 (2026-10-24); the real-world tests
+> with the warehouse and the machine are going on. Full history: [CHANGELOG.md](CHANGELOG.md).
 
----
+## At a glance
+
+- **One file**, `TsDssConverter.exe`: no installer, no .NET installation, no Excel or Office. It lives in `C:\TsDssConverter\`,
+  together with its settings, the materials table and the log files. Uninstalling = deleting that folder.
+- **Works silently** in the Windows tray. Only when a job fails: one notification and a red icon.
+- **Dutch, French and English** interface.
+- **Strict on purpose:** it never guesses a material, never overwrites a job and never lets the warehouse see half a job.
 
 ## What it looks like
 
-The program lives in the Windows tray, next to the clock (possibly under the `^` arrow), and always works silently in the
-background. Double-click the icon to open the window to modify settings if needed.
+The program lives in the Windows tray, next to the clock. Double-click the icon to open the settings window.
 
 <p align="center">
   <img src="media/preview/TrayIcon.png" width="420" alt="The TsDssConverter icon in the Windows tray, next to the clock.">
 </p>
 
-The settings window (here in English; the whole interface is also available in Dutch and French) holds the folders,
-the label zero point and the list of the last conversions. The TopSolid folder (left) and the two Duivestein folders
-(right) sit side by side:
-
 <p align="center">
-  <img src="media/preview/MainUI-preview.png" width="720" alt="The TsDssConverter 1.1.0 settings window in English. At the top the language and Start with Windows, with the developer credit and app version at the right. Below, side by side: the TopSolid export folder with two Config buttons and the Open materials table button, and the Duivestein batch and label folders with a Config button. Then the zero point of the nesting sheet with its small schematic, and the list of the last conversions with one successful and two failed jobs, the Retry failed and Open log buttons, the ROGIERS logo and Save / Cancel.">
-</p>
-
-<p align="center">
-  <img src="media/preview/TsDssConverter_DEMO.gif" width="720" alt="Animated demo of the TsDssConverter 1.1.0 settings window in English: language, start with Windows, the TopSolid export folder and the two Duivestein folders side by side, the Config buttons, the zero point of the nesting sheet and the list of the last conversions.">
+  <img src="media/preview/MainUI-preview.png" width="720" alt="The TsDssConverter settings window in English: the TopSolid export folder and the two Duivestein folders side by side, the label zero point with its small schematic, and the list of the last conversions with two successful jobs and one failed job.">
 </p>
 
 ## Why this tool exists
 
-At the customer, panels are nested and programmed in **TopSolid** (CAD/CAM) for a **SCM Morbidelli X200**
-CNC machine. The boards are stored and handled by a **Duivestein automatic warehouse**, which:
-
-1. picks up each sheet from the warehouse and puts it onto the label / alignement table,
-2. prints and places the labels (the label template layout is generated by Duivestein),
-3. sends the CNC program [via supervisor] on the SCM and pushes the sheet onto the nesting machine.
-
-The warehouse needs a *batch job* in XML-format that describes which sheets to pick, which labels to print and where each
-label goes. **TopSolid unfortunately does not produce that format. TsDssConverter is the missing link between the two systems.**
+At the customer, panels are nested and programmed in **TopSolid** (CAD/CAM) for an **SCM Morbidelli X200** CNC machine. The
+boards are handled by a **Duivestein automatic warehouse**, which picks each sheet, prints and places its labels, and pushes
+the sheet onto the machine. The warehouse needs a *batch job* (XML) that says which sheets to pick, which labels to print and
+where each label goes. **TopSolid does not produce that format: TsDssConverter is the missing link.**
 
 ```mermaid
 flowchart LR
@@ -57,193 +45,75 @@ flowchart LR
     D --> E["Duivestein warehouse<br/>picks sheets, prints labels"]
     E --> F["SCM Morbidelli X200"]
 ```
-## What this tool does
 
-For every finished TopSolid drawing, this tool:
+## How it works
 
-- reads the TopSolid XLSX exports (label information '-LI' and label positions '-LP') and joins them per part,
-- translates the TopSolid material names to the warehouse material names,
-- creates **one batch XML** with one plan per material and one entry per sheet (label file + CNC program),
-- creates **one label CSV per sheet**, with a row per part: its position, rotation, dimensions, edge banding
-  and other data that Duivestein can use in the label layout,
-- puts the files in the folders that the Duivestein warehouse reads.
+1. TopSolid writes two XLSX files per project (label information `-LI` and label positions `-LP`), the CNC programs in a
+   folder named after the project, and a trigger file `-TR` as the very last one.
+2. When the trigger file appears, the program converts the project: it joins the two exports per part, translates the
+   TopSolid material names with `materials.csv`, and writes **one batch XML** (one plan per material) and **one label CSV per
+   sheet** (position, rotation, dimensions, edge banding and other data for the label layout).
+3. The CNC programs are moved to `CNC\<project>\` and the XLSX files to `_Converted\` (folder names follow the language), so
+   the export folder only holds what is not converted yet.
+4. If something is wrong with a job, its files go to `_Error\` with a `fout.txt` that explains in plain language what to
+   correct. Once fixed, **Retry failed** puts them back for a new attempt. A network drive that is not there yet only
+   delays the job: it is retried by itself.
 
-Excel or Office is **not** needed on the PC.
-
-**What it does not do:** it does not print labels, does not talk to the machine and does not talk to
-TopSolid. It only reads and converts files.
-
-### Example
-
-The included sample project (22 parts) becomes:
-
-- 1 batch XML with 2 plans (one per material), and
-- 3 label files, one for each physical sheet.
-
-An extract of the batch XML:
-
-```xml
-<Plan>
-  <PlanName>001</PlanName>
-  <MaterialName>Melamine_18</MaterialName>
-  <XDimSize>2850</XDimSize>
-  <YDimSize>2100</YDimSize>
-  <Quantity>2</Quantity>
-  <LabelFilenames>
-    <LabelFilename>Z:\Duivestein\Label\DAAN_ROGIERS-P2026.09_001.csv</LabelFilename>
-    <!-- ... one per sheet ... -->
-  </LabelFilenames>
-  <CNCFilenames>
-    <CNCFilename>Z:\TopSolid\Export\CNC\DAAN_ROGIERS-P2026.09\Melamine_18#01.xcs</CNCFilename>
-    <!-- ... same order as the label files ... -->
-  </CNCFilenames>
-</Plan>
-```
-
-The complete expected output is in [`samples/duivestein/`](samples/duivestein/).
+The sample project in [`samples/`](samples/) (22 parts) becomes one batch XML with 2 plans and 3 label files; the expected
+output is in [`samples/duivestein/`](samples/duivestein/).
 
 ## Built to be safe
 
-A wrong job means a wrong boards on the machine, so the tool is strict:
+A wrong job means a wrong board or a wrong program on the machine, so the tool refuses rather than repairs:
 
-- **Never guesses a material.** The material of a part is the TopSolid *Matériau* column. A material missing from
-  `materials.csv` stops the conversion and is named in the message, and so do parts of different materials on one sheet or
-  a part without a material.
-- **Never overwrites a job.** If the batch already exists in the warehouse folder, nothing is written. This means that
-- **Jobs cannot overwrite each other's CNC programs.** TopSolid names them after the sheet, but writes them in a folder named
-  after the project (since 1.1.2, see [Important fix still to do](#important-fix-still-to-do)); after conversion they are moved
-  to `CNC\<project>\`. For older exports that still put the programs directly in the export folder, a program newer than the
-  job's trigger file is refused.
-- **The warehouse never sees half a job.** Label files first, batch XML last; every file is renamed into place when complete.
-- **Bad input is refused, not repaired.** Missing columns, unmatched or duplicate parts, unknown materials, unreadable
-  dimensions and labels outside their sheet are errors; nothing is written.
-- **Every problem is reported at once,** in plain language (Dutch, French or English), naming the part or column. Non-blocking
-  issues (a CNC program not there yet, a duplicate part number) are warnings only.
+- **No guessed materials:** an unknown material, an empty one or two materials on one sheet stop the job, with the name.
+- **No overwritten jobs:** if the batch already exists in the warehouse folder, nothing is written.
+- **No mixed-up CNC programs:** each project's programs stay in a folder of their own.
+- **Never half a job:** label files first, batch XML last, each file renamed into place only when complete.
+- **Every problem at once,** in plain language, naming the part or column. Small issues are warnings only.
 
-## How the automatic processing works
+## Main milestones
 
-The program watches the TopSolid export folder. TopSolid writes the two data files (`-LI` and `-LP`), the CNC
-programs (in a folder named after the project, `<project>\`), and the trigger file (`-TR`) as the very last one. When the
-trigger file appears:
-
-1. The program waits until the three files are complete and no longer in use (it checks every 2 seconds, and gives up
-   with an error after 2 minutes).
-2. It converts the project (one at a time) and writes the label files and the batch XML for the warehouse.
-3. It moves the three files to `_Verwerkt\<date-time> <project>` in the export folder (`_Effectuee` / `_Converted` in French /
-   English, the folder names follow the selected language), and the CNC programs of the job
-   from `<project>\` to `CNC\<project>\` (the batch XML points there; the emptied `<project>\` folder is removed). The export
-   folder itself then only holds what is not converted yet.
-4. If something is wrong with the files, they go to `_Fout\<date-time> <project>` (`_Erreur` / `_Error`) together with a `fout.txt` that
-   explains in plain language (in the selected language) what to correct. After the cause is fixed (for example a
-   material was added to `materials.csv`), the button **Herstart mislukte** / **Réessayez échoué** / **Retry failed** in the
-   settings window puts the files of all failed projects back in the export folder, which starts a new attempt at once.
-   It never overwrites a file that is already in the export folder (for example a newer export of the same project): such
-   a project is left alone and the user is told. Putting the files back by hand works as well.
-
-Problems that are not the fault of the files, such as a network drive that is not connected yet, do **not** move
-anything: the files wait and the program tries again by itself, and the user is told once. The program also scans the
-folder every 30 seconds (in case a file event is missed), and the menu item *Nu scannen* scans at once.
-
-## Status and roadmap
-
-| Stage | Content | Status |
+| Version | Date | |
 |---|---|---|
-| 1 | **Core + command line tool**: read, join, map, write XML and CSVs; automated tests | **Done** |
-| 2 | **Validation**: all checks and warnings, one clear report, exit code for errors | **Done** |
-| 3 | **Tray application (shell)**: icon with four looks (normal, busy, error, paused), menu, settings window, `settings.json`, start with Windows, log files. | **Done** |
-| 4 | **Folder watching and processing**: trigger file, one conversion at a time, `_Verwerkt` / `_Fout` folders with a readable `fout.txt`, notifications, recovery when the network drive is gone | **Done** |
-| 5 | **Delivery**: one 'installation' file `TsDssConverter.exe` (version 1.1.3, 52 MB, no .NET needed), install at the customer, physical test sheet | **1.1.0 = first customer release; 1.1.3 built; real-world tests going on** |
+| 1.0.0 | 2026-09-20 | First complete version: conversion, all checks, tray application, folder watching, one-file delivery |
+| 1.0.3 | 2026-09-21 | Batch XML in the format accepted by Duivestein's DSSClient |
+| 1.1.0 | 2026-10-24 | **First customer release**, with the redesigned settings window |
+| 1.1.1 | 2026-10-30 | Fixes from the first real customer exports (material from TopSolid's *Matériau* column) |
+| 1.1.2 | 2026-11-04 | CNC programs read from a folder per project, as agreed with TopSolid |
+| 1.1.3 | 2026-11-08 | `settings.json` can be edited while the program runs (see below); banner in the style of DssLabelTemplate |
 
-**1.1.3 (2026-11-08):** a new subtitle in the banner, in the same font style as the sister program DssLabelTemplate, and a 15%
-smaller banner (in both programs); the settings window can be maximized; for maintenance, **Shift+click on the ROGIERS logo**
-opens `settings.json` in Notepad (a normal click still opens the website). A changed `settings.json` is used within seconds,
-without a restart, and saving in the window no longer overwrites what was edited in the file.
-**1.1.2 (2026-11-04):** the CNC programs are read from a folder named after the project (`<export>\<project>\`), as agreed with
-TopSolid; programs directly in the export folder (older exports) still work.
-**1.1.1 (2026-10-30):** the material is read from the TopSolid *Matériau* column, parts of different materials on one sheet are
-refused, and a **Clear conversion list** button empties the list in the window (the log files keep everything).
-**Next:** bug fixes from practice; no new features are planned.
+## Settings that are only in `settings.json`
 
-**What is verified so far**
+The folders, language and zero point are set in the window. A few advanced settings are only in
+`C:\TsDssConverter\settings.json`: **Shift+click on the ROGIERS logo** (bottom left of the window) opens it in Notepad. A saved
+change is used within seconds, without a restart, and is never overwritten by the window.
 
-- 460 automated tests pass. They cover the conversion, every error and warning, the settings window, the folder watching (with a
-  fake clock) and all three languages.
-- The settings window lays out correctly at 100%, 125% and 150% screen scaling (checked on a real screen at each scaling,
-  plus automated tests that guard the rules).
-- The sample TopSolid export converts to exactly the expected files (compared byte for byte).
-- The single-file `.exe` (about 52 MB) starts, creates its files and refuses a second copy. An earlier build ran on a PC without
-  .NET and converted the sample correctly.
-- A renamed TopSolid column can be followed by editing a text file (the *Config* buttons); this is tested too.
-- A real export of the customer (2026-10-30), in the format agreed with TopSolid, was converted correctly by the 1.1.1 `.exe`
-  by itself (folder watching, CNC programs moved, files put away).
-- The 1.1.2 `.exe` converted the sample by itself with its CNC programs in the new project folder (programs found and moved,
-  the emptied folder removed, no warnings).
+| Setting | Default | Meaning |
+|---|---|---|
+| `CncExtension` | `.xcs` | File extension of the CNC programs |
+| `CncPathPrefixInXml` | empty | Replaces the export folder in the CNC paths of the batch XML (e.g. a `\\server\...` path) |
+| `CsvEncoding` | `utf-8` | Encoding of the label CSV files |
+| `RescanSeconds` | `30` | How often the export folder is scanned besides the file events (5 – 3600) |
+| `RequireTriggerFile` | `true` | Wait for the `-TR` file before converting |
 
-## Decisions taken so far
+The TopSolid column names and the extra label columns are set with the *Config* buttons, the materials with
+*Open materials table*.
 
-- **One folder:** everything lives in `C:\TsDssConverter\` (exe, settings, `materials.csv`, column files, logs). Uninstalling means
-  deleting it.
-- **Editable column names:** the header names the program looks for are in small text files (the *Config* buttons), so a renamed
-  TopSolid column does not break it.
-- **Three languages:** Dutch (default), French and English, chosen in the settings. Files for the warehouse are not translated.
-- **Quiet operation:** in the tray, no pop-ups on success; on an error one notification and a red icon until the next success or
-  until the window is opened.
-- **Retry failed:** one button puts all failed projects back in the export folder once the cause is fixed. It never overwrites and
-  is silent on success.
-- **TopSolid files:** `-TR` is written last, so everything else is complete when it appears. CNC programs are `.xcs`, with
-  drive-letter paths (`Z:`) in the batch XML.
-- **CNC programs:** TopSolid writes them in `Z:\TopSolid\Export\<project>\` (since 1.1.2); after conversion they are moved to
-  `Z:\TopSolid\Export\CNC\<project>\`, so jobs never overwrite each other's programs.
-- **Materials:** the TopSolid name is the master name; the warehouse uses the same names and checks the sheet sizes against its stock.
-  The material is read from the *Matériau* column of the label-info export, not from the sheet name (since 1.1.1). Keeping
-  `materials.csv` up to date is the customer's responsibility.
-- **By design:** the list of conversions is not saved between runs, and the app runs only while a user is logged in.
-
-## Important fix still to do
-
-**The CNC programs of every project must be written in a folder of their own, to be set up in TopSolid.**
-
-**Agreed with TopSolid (2026-11-04)**, replacing the project prefix in the sheet name agreed on 2026-10-30 (TopSolid cannot put
-the project in the CAM file name, because a program belongs to parts, not to a project): TopSolid makes a folder named after
-the project inside the export folder and writes the programs there, named after the sheet as before:
-
-```
-Z:\TopSolid\Export\P2026-Cuisine-ROGIERS-LI.xlsx
-Z:\TopSolid\Export\P2026-Cuisine-ROGIERS-LP.xlsx
-Z:\TopSolid\Export\P2026-Cuisine-ROGIERS\MELA_BLANC_18#01.xcs
-Z:\TopSolid\Export\P2026-Cuisine-ROGIERS\MELA_BLANC_18#02.xcs
-Z:\TopSolid\Export\P2026-Cuisine-ROGIERS-TR.xlsx      (still the very last file)
-```
-
-The folder name is exactly the project name of the XLSX files; each program name is exactly the sheet name (`Nom_panneau` in the
-label-info export = `SP` in the label-position export) + `.xcs`. The sheet names need no project in them. The program is ready
-for this since 1.1.2 (checked with the sample in this layout). Waiting for TopSolid to deliver it.
-
-Why this matters: TopSolid used to write the programs of **all** jobs in one shared folder and names them after the sheet only.
-A second job with the same material and sheet number overwrote the program of the first job before the first job had been
-converted, and a wrong program on the machine is the most expensive mistake this tool could allow.
-
-Until every export uses the project folder, the converter still accepts programs directly in the export folder, and refuses such
-a program when it is more than 5 seconds newer than the job's trigger file (a safety net that compares file times on a network
-drive, so it cannot be proven complete). Programs in the project folder are not checked that way: no other job writes there.
-Once every export uses the project folder, the old place and that check can be dropped (a separate, small step).
-
-## Still to be confirmed by others
+## Open points
 
 | From | Question |
 |---|---|
-| TopSolid | **Important:** deliver the agreed project folder for the CNC programs (see [Important fix still to do](#important-fix-still-to-do)). The program looks for `{project}\{sheet name}.xcs` in the export folder, then for `{sheet name}.xcs` |
-| TopSolid | The sheet thickness column in the export was always 18; the export of 2026-10-30 shows the real thickness (8 and 18): to confirm (the tool takes the thickness from `materials.csv` anyway) |
-| Duivestein | Restrictions on batch name (length, characters) and what happens when a batch is sent twice |
-| Physical test | Which point of the label the position refers to, the rotation direction, and whether the zero-point settings change the rotation |
-| Physical test | Does Duivestein's print template pre-rotate the printed content for 180°/270° (so a SQUARE label's edge-banding fields still land on the right edge)? And if the label stock is NOT square, does a 90°/270° rotation squeeze the field layout into the shorter dimension for about half the parts, or does Duivestein's engine avoid that? |
-
+| TopSolid | **Deliver the agreed folder per project for the CNC programs** (`<export>\<project>\<sheet>.xcs`, agreed 2026-11-04). The program is ready for it; until then programs directly in the export folder still work, protected by a time check. |
+| Duivestein | Restrictions on the batch name, what happens when a batch is sent twice, and an import test of the label CSVs |
+| Physical test sheet | Which point of the label the position refers to, the rotation direction, and how square and non-square labels are turned |
 
 ## Technology
 
-C# on .NET 10, [ClosedXML](https://github.com/ClosedXML/ClosedXML) to read XLSX files (no Excel needed),
-xUnit for the tests. The tray application uses Windows Forms.
+C# on .NET 10 with Windows Forms; [ClosedXML](https://github.com/ClosedXML/ClosedXML) reads the XLSX files (no Excel needed).
+460 automated tests (xUnit) cover the conversion, every error and warning, the window at several screen scalings and all three
+languages; the sample converts byte for byte to the expected files.
 
 ## Credits
 
-Developed by Daan Verhoost for [ROGIERS NV/SA](https://www.rogiers.be/).
+Developed by Daan Verhoost, together with my best friend Claude AI for [ROGIERS NV/SA](https://www.rogiers.be/).
