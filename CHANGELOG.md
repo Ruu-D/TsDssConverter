@@ -3,6 +3,14 @@
 The history of TsDssConverter, newest first. `CLAUDE.md` describes the current state; this file says how it got there.
 The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`.
 
+## README banner in the Maestro blues — 2026-11-21 (Daan, no new version)
+
+- `media/preview/Banner.png` (the README header) redrawn in the blues of DssLabelTemplate 2.0.0's "Maestro" skin: the
+  vertical gradient of its bottom bar (`#4C7BC0` → `#3561A6`) with white text (5:1 and more, like the counter on that bar).
+  Same size (1080 x 168), logo, fonts and places as before. Rendered by a throw-away program in the scratchpad (the logo
+  drawn from the geometry of `media/header.svg`, the gap around the badge in the banner's own gradient). The app itself is
+  unchanged: its window still draws the brand-blue banner (`AppIcons.Banner`).
+
 ## 1.1.3 — 2026-11-08 — banner, maximize, settings.json by Shift+click (Daan)
 
 - Delivery file: `dist\v1.1.3\TsDssConverter.exe`, 54,685,249 bytes, file version 1.1.3.0, SHA-256
