@@ -37,9 +37,9 @@ internal class TrayApp : ApplicationContext
     private TrayState _state = TrayState.Ok;
     private volatile bool _paused;
 
-    // settings.json may be edited by hand while the program runs (Shift+click on the logo in the window opens it in
-    // Notepad). Every second the tray looks whether the file changed (only its date: cheap), and then uses the new values at once,
-    // also in an open window (2.0.0-alpha.3; it was every 5 s).
+    // settings.json may still be edited by hand while the program runs (in Notepad; the window's Magic parameters are the
+    // normal way since 2.0.1). Every second the tray looks whether the file changed (only its date: cheap), and then uses
+    // the new values at once, also in an open window (2.0.0-alpha.3; it was every 5 s).
     private readonly SettingsFileChecker _settingsFileChecker;
     private readonly System.Windows.Forms.Timer _settingsFileTimer = new() { Interval = 1000 };
 
@@ -412,7 +412,21 @@ internal class TrayApp : ApplicationContext
             scanNow: ScanNow, togglePause: TogglePause, isPaused: () => _paused,
             getState: () => TrayStateRules.Displayed(_state, _paused),
             saveFolded: SaveFolded, changeLanguage: ChangeLanguage,
-            nextScan: () => _watcher.NextScan);
+            nextScan: () => _watcher.NextScan, saveAdvanced: SaveMagicParameters);
+    }
+
+    /// <summary>
+    /// Save in the Magic parameters popup: only its five values are changed in settings.json (the file is read again first,
+    /// so everything else in it stays exactly as it is, also what was typed in the window but not saved), and they are
+    /// used at once (a new scan interval, CNC extension, ...). Throws IOException if settings.json cannot be written or has
+    /// a mistake (it is then not overwritten).
+    /// </summary>
+    private void SaveMagicParameters(AppSettings fromPopup)
+    {
+        SettingsLoadResult saved = SettingsStore.SaveChange(_dataFolder.SettingsFile, _settings, settings => settings.CopyAdvancedSettingsFrom(fromPopup));
+        _settingsFileChecker.Remember(); // our own change: nothing to reload
+        _log.Info(Strings.LogMagicParametersSaved);
+        UseSettings(saved);
     }
 
     /// <summary>
@@ -600,14 +614,6 @@ internal class TrayApp : ApplicationContext
 
     private void OpenFile(string path)
     {
-        if (string.Equals(Path.GetExtension(path), ".json", StringComparison.OrdinalIgnoreCase))
-        {
-            // settings.json: always in Notepad. Windows often has no program for .json, or opens it in a browser where
-            // it cannot be edited.
-            Start(new ProcessStartInfo("notepad.exe") { ArgumentList = { path }, UseShellExecute = false }, Strings.CannotOpenFile);
-            return;
-        }
-
         OpenWithWindows(path, Strings.CannotOpenFile);
     }
 

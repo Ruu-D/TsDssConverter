@@ -6,9 +6,10 @@ TsDssConverter is a small Windows tray application. It watches the folder where 
 every finished job, without any manual work, into a batch job for the Duivestein automatic warehouse.
 Sister tool: **[DssLabelTemplate](https://github.com/Ruu-D/DssLabelTemplate)** (view, edit and reprint the labels).
 
-> **Status:** version **2.0.0** (2026-11-22): the settings window and the icons in the "Maestro" look of the machine
-> software, like DssLabelTemplate 2.0.0. In use at the customer since version 1.1.0 (2026-10-24); the real-world tests
-> with the warehouse and the machine are going on. Full history: [CHANGELOG.md](CHANGELOG.md).
+> **Status:** version **2.0.1** (2026-11-22): the advanced settings can now be changed in the window, in the *Magic
+> parameters* (see below); since 2.0.0 the window and the icons have the "Maestro" look of the machine software, like
+> DssLabelTemplate 2.0.0. In use at the customer since version 1.1.0 (2026-10-24); the real-world tests with the
+> warehouse and the machine are going on. Full history: [CHANGELOG.md](CHANGELOG.md).
 
 ## At a glance
 
@@ -85,12 +86,15 @@ A wrong job means a wrong board or a wrong program on the machine, so the tool r
 | 1.1.2 | 2026-11-04 | CNC programs read from a folder per project, as agreed with TopSolid |
 | 1.1.3 | 2026-11-08 | `settings.json` can be edited while the program runs (see below); banner in the style of DssLabelTemplate |
 | 2.0.0 | 2026-11-22 | Settings window and icons in the "Maestro" look of the machine software (the same as DssLabelTemplate 2.0.0): the status of the program with a countdown to the next scan, scan / pause / retry / material-list buttons, a folders panel that folds up, and a language switch that works at once |
+| 2.0.1 | 2026-11-22 | *Magic parameters*: the advanced settings in a popup behind a cog, so nobody has to edit `settings.json` |
 
-## Settings that are only in `settings.json`
+## Advanced settings (*Magic parameters*)
 
-The folders, language and zero point are set in the window. A few advanced settings are only in
-`C:\TsDssConverter\settings.json`: **Shift+click on the ROGIERS logo** (top right of the window) opens it in Notepad. A saved
-change is used within seconds, without a restart, and is never overwritten by the window.
+The folders, language and zero point are set in the window. A few advanced settings are stored in
+`C:\TsDssConverter\settings.json`. Since 2.0.1 the **cog** at the top right of the window opens them in a small popup, the
+*Magic parameters* (the window behind it is dimmed), so nobody has to edit the file; the popup changes only
+these values in the file. Up to 2.0.0 they could only be edited in the file itself (Shift+click on the ROGIERS logo). A
+change is used at once, without a restart.
 
 | Setting | Default | Meaning |
 |---|---|---|

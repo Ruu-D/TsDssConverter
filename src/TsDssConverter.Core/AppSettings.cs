@@ -3,9 +3,9 @@ using System.Text;
 namespace TsDssConverter.Core;
 
 /// <summary>
-/// Everything that is stored in settings.json. The first block is what the settings window shows;
-/// the "advanced" block can only be changed by editing settings.json (no window for it).
-/// "Start with Windows" is NOT here: that checkbox shows the real state of the registry.
+/// Everything that is stored in settings.json. The first block is what the settings window shows; the "advanced" block
+/// is shown in the "Magic parameters" popup (the cog at the top right of the window, since 2.0.1) and can still be edited
+/// in settings.json by hand. "Start with Windows" is NOT here: that checkbox shows the real state of the registry.
 /// </summary>
 public class AppSettings
 {
@@ -28,15 +28,16 @@ public class AppSettings
     /// </summary>
     public bool FoldersFolded { get; set; } = false;
 
-    // ---- Advanced: only in settings.json ----
+    // ---- Advanced: the "Magic parameters" popup (and settings.json) ----
     public string CncExtension { get; set; } = ".xcs";
     public string CncPathPrefixInXml { get; set; } = "";
     public string CsvEncoding { get; set; } = "utf-8";
     public int RescanSeconds { get; set; } = 30;
     public bool RequireTriggerFile { get; set; } = true;
 
-    private const int MinRescanSeconds = 5;
-    private const int MaxRescanSeconds = 3600;
+    /// <summary>The allowed range of <see cref="RescanSeconds"/> (the popup's number box uses it too).</summary>
+    public const int MinRescanSeconds = 5;
+    public const int MaxRescanSeconds = 3600;
 
     /// <summary>A separate copy, so the settings window can change values without touching the ones in use.</summary>
     public AppSettings Clone()
@@ -60,6 +61,20 @@ public class AppSettings
         PlanRotated = window.PlanRotated;
         Language = window.Language;
         FoldersFolded = window.FoldersFolded;
+    }
+
+    /// <summary>
+    /// Takes the advanced settings (the second block above) from <paramref name="popup"/>; the window's settings stay as
+    /// they are. Used when the "Magic parameters" popup is saved: it changes only its own five values in settings.json.
+    /// A test checks that this copies exactly the advanced settings.
+    /// </summary>
+    public void CopyAdvancedSettingsFrom(AppSettings popup)
+    {
+        CncExtension = popup.CncExtension;
+        CncPathPrefixInXml = popup.CncPathPrefixInXml;
+        CsvEncoding = popup.CsvEncoding;
+        RescanSeconds = popup.RescanSeconds;
+        RequireTriggerFile = popup.RequireTriggerFile;
     }
 
     /// <summary>The part of the settings that the conversion itself needs.</summary>

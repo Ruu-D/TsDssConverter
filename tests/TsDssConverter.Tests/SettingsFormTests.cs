@@ -55,6 +55,7 @@ public class SettingsFormTests
         public List<bool> SavedFolds { get; } = new();       // what the fold sign asked to save
         public List<string> LanguageChanges { get; } = new(); // the languages chosen in the box
         public (DateTime At, TimeSpan Interval)? NextScan { get; set; } // what the fake watcher plans
+        public List<AppSettings> AdvancedSaves { get; } = new(); // what the Magic parameters asked to save
         public SettingsForm Form { get; }
 
         public TestWindow()
@@ -69,7 +70,8 @@ public class SettingsFormTests
                 getState: () => Paused ? TrayState.Paused : State,
                 saveFolded: folded => { SavedFolds.Add(folded); Current.FoldersFolded = folded; },
                 changeLanguage: LanguageChanges.Add,
-                nextScan: () => NextScan);
+                nextScan: () => NextScan,
+                saveAdvanced: AdvancedSaves.Add);
         }
 
         public void Dispose()
@@ -80,17 +82,166 @@ public class SettingsFormTests
         }
     }
 
+    // The settings that are only in settings.json: the Magic parameters popup must have a row for every one of them (the
+    // same list as SettingsTests.AdvancedSettings, which checks that it is complete).
+    private static readonly string[] AdvancedSettings =
+        { "RescanSeconds", "RequireTriggerFile", "CncExtension", "CncPathPrefixInXml", "CsvEncoding" };
+
     [Fact]
-    public void ShiftClickOnTheLogo_OpensSettingsJson()
+    public void TheCog_OpensTheMagicParameters_WithARowForEveryAdvancedSettingAndNothingElse()
     {
         RunOnStaThread(() =>
         {
             using var window = new TestWindow();
+            window.Current = new AppSettings
+            {
+                RescanSeconds = 45,
+                RequireTriggerFile = false,
+                CncExtension = ".pgmx",
+                CncPathPrefixInXml = @"\\server\share\",
+                CsvEncoding = "windows-1252",
+            };
+            var form = window.Form;
+            form.Show();
+            Assert.Null(form.MagicParameters);
 
-            // Only the Shift+click is tested: a normal click opens the website in the browser.
-            window.Form.LogoClicked(shiftDown: true);
+            form.MagicParametersButton.PerformClick();
+            MagicParametersPopup popup = form.MagicParameters!;
+            Assert.NotNull(popup);
 
-            Assert.Equal(new[] { window.DataFolder.SettingsFile }, window.OpenedFiles);
+            // One row per advanced setting, in the order of Daan's mockup; the window's own settings are not there.
+            Assert.Equal(AdvancedSettings, popup.Rows.Select(row => row.Key));
+            Assert.All(popup.Rows, row => Assert.Equal(row.Key, row.KeyTag.Text));
+            Assert.Equal("Magic parameters", popup.TitleLabel.Text);
+
+            // It shows the values in use.
+            Assert.Equal(45, popup.RescanBox.Value);
+            Assert.False(popup.TriggerBox.Checked);
+            Assert.Equal(".pgmx", popup.ExtensionBox.Text);
+            Assert.Equal(@"\\server\share\", popup.PrefixBox.Text);
+            Assert.Equal("windows-1252", ((MagicParametersPopup.EncodingItem)popup.EncodingBox.SelectedItem!).Code);
+            Assert.EndsWith("settings.json", popup.SettingsPathLabel.Text);
+        });
+    }
+
+    [Fact]
+    public void MagicParameters_FreezeTheWindowBehind_AndGiveEnterAndEscBackWhenClosed()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            var form = window.Form;
+            form.Show();
+            IButtonControl? accept = form.AcceptButton;
+            IButtonControl? cancel = form.CancelButton;
+
+            form.OpenMagicParameters();
+            MagicParametersPopup popup = form.MagicParameters!;
+
+            // The window behind cannot be used: its parts are switched off, the overlay lies over the whole inside.
+            Assert.False(form.TopBar.Enabled);
+            Assert.False(form.Scroller.Enabled);
+            Assert.False(form.BottomBar.Enabled);
+            DimOverlay overlay = (DimOverlay)popup.Parent!;
+            Assert.Equal(form.ClientRectangle, overlay.Bounds);
+            Assert.Equal(0, form.Controls.GetChildIndex(overlay)); // on top of everything
+            Assert.Same(popup.SavePill, form.AcceptButton);       // Enter = Save of the popup
+            Assert.Same(popup.CancelPill, form.CancelButton);     // Esc = Cancel of the popup
+
+            // Cancel: nothing saved, the window works again with its own Enter and Esc.
+            popup.CancelPill.PerformClick();
+            Assert.Null(form.MagicParameters);
+            Assert.Empty(window.AdvancedSaves);
+            Assert.True(form.TopBar.Enabled);
+            Assert.True(form.Scroller.Enabled);
+            Assert.True(form.BottomBar.Enabled);
+            Assert.Same(accept, form.AcceptButton);
+            Assert.Same(cancel, form.CancelButton);
+        });
+    }
+
+    [Fact]
+    public void MagicParameters_Save_PassesTheNewValuesOn_AndCloses()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            var form = window.Form;
+            form.Show();
+            form.OpenMagicParameters();
+            MagicParametersPopup popup = form.MagicParameters!;
+
+            popup.RescanBox.Value = 120;
+            popup.TriggerBox.Checked = false;
+            popup.ExtensionBox.Text = " pgmx ";            // without its dot: it gets one
+            popup.PrefixBox.Text = @" \\server\export\ ";
+            popup.EncodingBox.SelectedIndex = 1;           // windows-1252
+            popup.SavePill.PerformClick();
+
+            AppSettings saved = Assert.Single(window.AdvancedSaves);
+            Assert.Equal(120, saved.RescanSeconds);
+            Assert.False(saved.RequireTriggerFile);
+            Assert.Equal(".pgmx", saved.CncExtension);
+            Assert.Equal(@"\\server\export\", saved.CncPathPrefixInXml);
+            Assert.Equal("windows-1252", saved.CsvEncoding);
+            Assert.Null(form.MagicParameters);
+        });
+    }
+
+    [Fact]
+    public void MagicParameters_AnEmptyExtensionKeepsTheOneInUse_AndAnEncodingTypedByHandIsKept()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            window.Current = new AppSettings { CncExtension = ".xcs", CsvEncoding = "iso-8859-1" };
+            var form = window.Form;
+            form.Show();
+            form.OpenMagicParameters();
+            MagicParametersPopup popup = form.MagicParameters!;
+
+            // An encoding that is not one of the two in the list (typed in settings.json by hand) is shown and kept.
+            Assert.Equal("iso-8859-1", ((MagicParametersPopup.EncodingItem)popup.EncodingBox.SelectedItem!).Code);
+            Assert.Equal(3, popup.EncodingBox.Items.Count);
+
+            popup.ExtensionBox.Text = "  ";
+            AppSettings values = popup.ReadValues();
+            Assert.Equal(".xcs", values.CncExtension);
+            Assert.Equal("iso-8859-1", values.CsvEncoding);
+        });
+    }
+
+    [Fact]
+    public void MagicParameters_TheNumberBoxOnlyAllowsTheRangeOfRescanSeconds()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            window.Form.Show();
+            window.Form.OpenMagicParameters();
+            MagicParametersPopup popup = window.Form.MagicParameters!;
+
+            Assert.Equal(AppSettings.MinRescanSeconds, popup.RescanBox.Minimum);
+            Assert.Equal(AppSettings.MaxRescanSeconds, popup.RescanBox.Maximum);
+        });
+    }
+
+    [Fact]
+    public void ClosingTheWindowWithTheMagicParametersOpen_IsACancel()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            var form = window.Form;
+            form.Show();
+            form.OpenMagicParameters();
+            form.MagicParameters!.RescanBox.Value = 99;
+
+            form.Close(); // the X only hides the window
+            Assert.False(form.Visible);
+            Assert.Null(form.MagicParameters);
+            Assert.Empty(window.AdvancedSaves);
+            Assert.True(form.Scroller.Enabled);
         });
     }
 

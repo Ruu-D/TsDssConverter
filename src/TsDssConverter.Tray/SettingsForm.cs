@@ -31,6 +31,13 @@ internal class SettingsForm : Form
     private readonly Action<bool> _saveFolded;
     private readonly Action<string> _changeLanguage;
     private readonly Func<(DateTime At, TimeSpan Interval)?> _nextScan;
+    private readonly Action<AppSettings> _saveAdvanced;
+
+    // The "Magic parameters" over the window while they are open (null when closed), see MagicParameters.cs.
+    private DimOverlay? _dim;
+    private IButtonControl? _acceptBeforeDim;  // Enter and Esc belong to the popup while it is open
+    private IButtonControl? _cancelBeforeDim;
+    private FormWindowState _lastWindowState;
 
     // Moves the countdown ring of the Status tile while the window is visible (10 times a second: a smooth ring).
     private readonly System.Windows.Forms.Timer _countdownTimer = new() { Interval = 100 };
@@ -86,6 +93,7 @@ internal class SettingsForm : Form
     internal readonly Label VersionLabel = new();    // "App-versie: 2.0.0", below the credit
     internal readonly PictureBox LogoPicture = new(); // the small ROGIERS logo in the top bar (a link to the website)
     internal readonly HelpButton UserGuideButton = new(); // the "?" at the top right (opens the GitHub page)
+    internal readonly HelpButton MagicParametersButton = new() { ShowCog = true }; // the cog right of it (2.0.1)
     internal readonly Panel FolderDivider = new();   // the vertical line between the TopSolid and the Duivestein folders
     internal readonly InfoTile StatusTile = new();
     internal readonly InfoTile LastConversionTile = new();
@@ -174,14 +182,17 @@ internal class SettingsForm : Form
     /// <param name="getState">What the tray icon shows now (OK, busy, error, paused): the Status tile shows the same.</param>
     /// <param name="saveFolded">Saves at once that the folders panel was folded (true) or opened (false).</param>
     /// <param name="changeLanguage">The user chose another language ("nl", "fr", "en"): the tray saves it and switches at once.</param>
+    /// <param name="saveAdvanced">Saves the values of the Magic parameters popup (only those five in settings.json). May
+    /// throw IOException / UnauthorizedAccessException.</param>
     public SettingsForm(
         Func<AppSettings> getSettings, Action<AppSettings> save, Action windowOpened,
         ConversionHistory history, StartWithWindows startup,
         AppDataFolder dataFolder, Action<string> openFile, Action<string> openFolder, Action retryFailed,
         Action? scanNow = null, Action? togglePause = null, Func<bool>? isPaused = null, Func<TrayState>? getState = null,
         Action<bool>? saveFolded = null, Action<string>? changeLanguage = null,
-        Func<(DateTime At, TimeSpan Interval)?>? nextScan = null)
+        Func<(DateTime At, TimeSpan Interval)?>? nextScan = null, Action<AppSettings>? saveAdvanced = null)
     {
+        _saveAdvanced = saveAdvanced ?? (settings => { });
         _nextScan = nextScan ?? (() => null); // no watcher (tests): no countdown ring
         _countdownTimer.Tick += (sender, e) => UpdateCountdown(DateTime.Now);
         _saveFolded = saveFolded ?? (folded => { });
@@ -323,7 +334,8 @@ internal class SettingsForm : Form
         LogoPicture.Margin = new Padding(16, 0, 8, 0);
         LogoPicture.Cursor = Cursors.Hand;
         new ToolTip().SetToolTip(LogoPicture, Strings.CompanyName);
-        LogoPicture.Click += (sender, e) => LogoClicked(shiftDown: (ModifierKeys & Keys.Shift) == Keys.Shift);
+        // Only the website: the hidden Shift+click to settings.json is gone since the Magic parameters (2.0.1, Daan).
+        LogoPicture.Click += (sender, e) => OpenWebsite(Strings.CompanyUrl);
 
         UserGuideButton.Size = new Size(30, 30);
         UserGuideButton.Anchor = AnchorStyles.Left;
@@ -331,6 +343,14 @@ internal class SettingsForm : Form
         UserGuideButton.AccessibleName = Strings.UserGuideTooltip;
         new ToolTip().SetToolTip(UserGuideButton, Strings.UserGuideTooltip);
         UserGuideButton.Click += (sender, e) => OpenWebsite(Strings.UserGuideUrl);
+
+        // The cog right of the "?" opens the Magic parameters (Daan, 2026-11-22).
+        MagicParametersButton.Size = new Size(30, 30);
+        MagicParametersButton.Anchor = AnchorStyles.Left;
+        MagicParametersButton.Margin = new Padding(0);
+        MagicParametersButton.AccessibleName = Strings.MagicParametersTooltip;
+        new ToolTip().SetToolTip(MagicParametersButton, Strings.MagicParametersTooltip);
+        MagicParametersButton.Click += (sender, e) => OpenMagicParameters();
 
         // The right part: one row, every item in the middle of the bar's height, a short grey line between the language
         // and the credit (like the mockup).
@@ -340,13 +360,13 @@ internal class SettingsForm : Form
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             RowCount = 1,
-            ColumnCount = 5,
+            ColumnCount = 6,
             Padding = new Padding(16, 0, 18, 0),
             Margin = new Padding(0),
             BackColor = Theme.TopBar,
         };
         right.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 6; i++)
         {
             right.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         }
@@ -357,6 +377,7 @@ internal class SettingsForm : Form
         right.Controls.Add(credits, 2, 0);
         right.Controls.Add(LogoPicture, 3, 0);
         right.Controls.Add(UserGuideButton, 4, 0);
+        right.Controls.Add(MagicParametersButton, 5, 0);
 
         TopBar.Controls.Add(TitleTab); // Fill: the rest of the width (added first, docked last)
         TopBar.Controls.Add(right);
@@ -861,21 +882,119 @@ internal class SettingsForm : Form
         };
     }
 
+    // ------------------------------------------------------------------ the Magic parameters
+
+    /// <summary>The popup while it is open, else null (the tests look at it).</summary>
+    internal MagicParametersPopup? MagicParameters => _dim?.Popup;
+
+    /// <summary>The three parts of the window that the dim layer covers (and that are switched off meanwhile).</summary>
+    private Control[] CoveredParts => new Control[] { TopBar, Scroller, BottomBar };
+
     /// <summary>
-    /// A click on the logo opens the website. Shift+click opens settings.json in Notepad instead (Daan, 2026-11-08): a
-    /// hidden way in for whoever maintains the program, because the advanced settings are only in that file. It is not
-    /// shown anywhere on purpose. The tray uses a change in the file at once and keeps it when Save is pressed.
+    /// The cog: opens the Magic parameters over the window (MagicParameters.cs). First a picture is taken of the window as
+    /// it is, for the dim layer; then the window's own controls are switched off, so neither the mouse nor the Tab
+    /// key can reach them, and Enter / Esc belong to the popup.
     /// </summary>
-    internal void LogoClicked(bool shiftDown)
+    internal void OpenMagicParameters()
     {
-        if (shiftDown)
+        if (_dim != null)
         {
-            _openFile(_dataFolder.SettingsFile); // made again first if someone deleted it
+            return;
+        }
+
+        var popup = new MagicParametersPopup(_getSettings(), _dataFolder.SettingsFile, Font, SaveMagicParameters, CloseMagicParameters);
+        _dim = new DimOverlay(popup, TakePicture)
+        {
+            Bounds = ClientRectangle,
+            Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top | AnchorStyles.Bottom,
+        };
+        _dim.RefreshBackdrop(); // the picture of the window, before anything is switched off
+
+        foreach (Control part in CoveredParts)
+        {
+            part.Enabled = false;
+        }
+
+        _acceptBeforeDim = AcceptButton;
+        _cancelBeforeDim = CancelButton;
+        AcceptButton = popup.SavePill;
+        CancelButton = popup.CancelPill;
+
+        Controls.Add(_dim);
+        _dim.BringToFront();
+        popup.RescanBox.Select();
+    }
+
+    /// <summary>Closes the popup (Cancel, Esc, or after Save) and gives the window back.</summary>
+    internal void CloseMagicParameters()
+    {
+        if (_dim == null)
+        {
+            return;
+        }
+
+        DimOverlay overlay = _dim;
+        _dim = null;
+        foreach (Control part in CoveredParts)
+        {
+            part.Enabled = true;
+        }
+
+        AcceptButton = _acceptBeforeDim;
+        CancelButton = _cancelBeforeDim;
+        Controls.Remove(overlay);
+
+        // Disposed a moment later: this can be running inside the click of one of its own pills.
+        if (IsHandleCreated)
+        {
+            BeginInvoke(overlay.Dispose);
         }
         else
         {
-            OpenWebsite(Strings.CompanyUrl);
+            overlay.Dispose();
         }
+
+        MagicParametersButton.Select();
+    }
+
+    /// <summary>
+    /// Save in the popup: the tray writes the five values to settings.json (the rest of the file stays as it is). False
+    /// when that failed: the user is told and the popup stays open.
+    /// </summary>
+    private bool SaveMagicParameters(AppSettings values)
+    {
+        try
+        {
+            _saveAdvanced(values);
+        }
+        catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, Strings.SaveFailed(error.Message), Strings.AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return false;
+        }
+
+        RefreshStatus(); // the Status tile shows the scan interval
+        return true;
+    }
+
+    /// <summary>A picture of the window's inside as it is now (the top bar, the panels, the bottom bar), for the overlay.</summary>
+    private Bitmap TakePicture()
+    {
+        var picture = new Bitmap(Math.Max(1, ClientSize.Width), Math.Max(1, ClientSize.Height));
+        using (Graphics g = Graphics.FromImage(picture))
+        {
+            g.Clear(Theme.Frame);
+        }
+
+        foreach (Control part in CoveredParts)
+        {
+            if (part.Width > 0 && part.Height > 0)
+            {
+                part.DrawToBitmap(picture, part.Bounds);
+            }
+        }
+
+        return picture;
     }
 
     private void OpenWebsite(string url)
@@ -1338,6 +1457,7 @@ internal class SettingsForm : Form
         base.OnDpiChanged(e);
         ScaleHistoryColumns();
         UpdateScrollSize();
+        _dim?.RefreshBackdrop(); // the overlay shows the window at its new size
     }
 
     protected override void OnResize(EventArgs e)
@@ -1347,6 +1467,23 @@ internal class SettingsForm : Form
         {
             UpdateScrollSize(); // a narrower window can need more height (the hints wrap)
         }
+
+        // Maximized or restored while the Magic parameters are open: a new picture for the overlay. (While the edge is being
+        // dragged the old one is stretched; OnResizeEnd takes a new one, so it is not taken many times a second.)
+        if (WindowState != _lastWindowState)
+        {
+            _lastWindowState = WindowState;
+            if (WindowState != FormWindowState.Minimized)
+            {
+                _dim?.RefreshBackdrop();
+            }
+        }
+    }
+
+    protected override void OnResizeEnd(EventArgs e)
+    {
+        base.OnResizeEnd(e);
+        _dim?.RefreshBackdrop();
     }
 
     // ------------------------------------------------------------------ hide instead of close
@@ -1366,6 +1503,7 @@ internal class SettingsForm : Form
         else
         {
             _countdownTimer.Stop(); // a hidden window does not need the ring
+            CloseMagicParameters(); // the window was closed with the X while the popup was open: that is a Cancel
         }
     }
 

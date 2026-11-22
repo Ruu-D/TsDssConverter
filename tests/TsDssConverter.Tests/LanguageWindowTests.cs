@@ -271,15 +271,20 @@ public class LanguageWindowTests
             Assert.NotNull(form.LogoPicture.Image);
             Point logo = Place(form.LogoPicture), guide = Place(form.UserGuideButton);
 
-            // Credit, then the logo, then the "?", the last thing of the bar, close to the window's right edge.
+            // Credit, then the logo, then the "?", then the cog of the Magic parameters (2.0.1), the last thing of the bar,
+            // close to the window's right edge.
+            Point cog = Place(form.MagicParametersButton);
             Assert.True(Place(form.VersionLabel).X + form.VersionLabel.Width <= logo.X);
             Assert.True(logo.X + form.LogoPicture.Width <= guide.X);
-            Assert.InRange(form.ClientSize.Width - (guide.X + form.UserGuideButton.Width), 0, form.LogicalToDeviceUnits(30));
+            Assert.True(guide.X + form.UserGuideButton.Width <= cog.X);
+            Assert.InRange(form.ClientSize.Width - (cog.X + form.MagicParametersButton.Width), 0, form.LogicalToDeviceUnits(30));
+            Assert.Equal(form.UserGuideButton.Size, form.MagicParametersButton.Size);
 
-            // Both in the middle of the bar's height.
+            // All three in the middle of the bar's height.
             int barMiddle = form.TopBar.Top + form.TopBar.Height / 2;
             Assert.InRange(Middle(form.LogoPicture) - barMiddle, -form.LogicalToDeviceUnits(2), form.LogicalToDeviceUnits(2));
             Assert.InRange(Middle(form.UserGuideButton) - barMiddle, -form.LogicalToDeviceUnits(2), form.LogicalToDeviceUnits(2));
+            Assert.InRange(Middle(form.MagicParametersButton) - barMiddle, -form.LogicalToDeviceUnits(2), form.LogicalToDeviceUnits(2));
 
             // As high as the disc of the "?" (Daan, 2026-11-22), and as wide as its proportions need: the logo fills its box,
             // so the drawn logo is exactly that high. Not squeezed (it once ended up 2 pixels wide in a Percent column).

@@ -206,6 +206,72 @@ internal static class Strings
     public static string Save => T("Opslaan", "Enregistrer", "Save");
     public static string Cancel => T("Annuleren", "Annuler", "Cancel");
 
+    // ---- The "Magic parameters" popup (2.0.1, Daan): the settings that are not in the window itself ----
+    // The title is the same in every language, like "Config" (Daan's name for it).
+    public const string MagicParametersTitle = "Magic parameters";
+
+    /// <summary>The tooltip of the cog at the top right that opens the popup.</summary>
+    public static string MagicParametersTooltip => T(
+        "Magic parameters (geavanceerde instellingen)",
+        "Magic parameters (paramètres avancés)",
+        "Magic parameters (advanced settings)");
+
+    public static string RescanCaption => T("Scaninterval", "Intervalle d'analyse", "Scan interval");
+
+    public static string RescanHint => T(
+        $"Hoe vaak de exportmap opnieuw wordt nagekeken, ook als Windows geen wijziging meldt ({AppSettings.MinRescanSeconds} – {AppSettings.MaxRescanSeconds} seconden).",
+        $"La fréquence à laquelle le dossier d'export est vérifié, même si Windows ne signale aucun changement ({AppSettings.MinRescanSeconds} – {AppSettings.MaxRescanSeconds} secondes).",
+        $"How often the export folder is checked again, also when Windows reports no change ({AppSettings.MinRescanSeconds} – {AppSettings.MaxRescanSeconds} seconds).");
+
+    public static string Seconds => T("seconden", "secondes", "seconds");
+
+    public static string TriggerCaption => T(
+        "Wachten op het trigger-bestand (-TR.xlsx)",
+        "Attendre le fichier déclencheur (-TR.xlsx)",
+        "Wait for the trigger file (-TR.xlsx)");
+
+    public static string TriggerHint => T(
+        "Aan: pas converteren als TopSolid -TR.xlsx schrijft. Uit: converteren zodra -LI en -LP 10 s ongewijzigd zijn.",
+        "Activé : convertir seulement quand TopSolid écrit -TR.xlsx. Désactivé : convertir dès que -LI et -LP n'ont pas changé pendant 10 s.",
+        "On: convert only when TopSolid writes -TR.xlsx. Off: convert as soon as -LI and -LP have not changed for 10 s.");
+
+    public static string CncExtensionCaption => T(
+        "Extensie van de CNC-programma's", "Extension des programmes CNC", "Extension of the CNC programs");
+
+    public static string CncExtensionHint => T(
+        "De programma's die TopSolid per plaat schrijft, bv. MELA_BLANC_18#01.xcs.",
+        "Les programmes que TopSolid écrit pour chaque panneau, p. ex. MELA_BLANC_18#01.xcs.",
+        "The programs TopSolid writes for every sheet, e.g. MELA_BLANC_18#01.xcs.");
+
+    public static string CncPrefixCaption => T(
+        "Begin van het CNC-pad in de batch-XML",
+        "Début du chemin CNC dans le XML",
+        "Start of the CNC path in the batch XML");
+
+    public static string CncPrefixHint => T(
+        @"Vervangt de exportmap in de XML, bv. \\server\topsolid\Export\. Leeg laten als de machine de Z:-schijf kent.",
+        @"Remplace le dossier d'export dans le XML, p. ex. \\server\topsolid\Export\. Laisser vide si la machine connaît le lecteur Z:.",
+        @"Replaces the export folder in the XML, e.g. \\server\topsolid\Export\. Leave empty when the machine knows the Z: drive.");
+
+    public static string CncPrefixPlaceholder => T("leeg = exportmap", "vide = dossier d'export", "empty = export folder");
+
+    public static string CsvEncodingCaption => T(
+        "Tekencodering van het label-CSV", "Encodage du CSV des étiquettes", "Character encoding of the label CSV");
+
+    public static string CsvEncodingHint => T(
+        "Hoe Duivestein de labelbestanden inleest. utf-8 is getest en werkt.",
+        "Comment Duivestein lit les fichiers d'étiquettes. utf-8 est testé et fonctionne.",
+        "How Duivestein reads the label files. utf-8 is tested and works.");
+
+    public static string EncodingUtf8 => T("utf-8 (zonder BOM)", "utf-8 (sans BOM)", "utf-8 (without BOM)");
+    public const string EncodingAnsi = "windows-1252 (ANSI)"; // the same in every language
+
+    /// <summary>Above the path of settings.json at the bottom left of the popup.</summary>
+    public static string SavedIn => T("Wordt bewaard in", "Enregistré dans", "Saved in");
+
+    public static string LogMagicParametersSaved => T(
+        "Magic parameters opgeslagen.", "Magic parameters enregistrés.", "Magic parameters saved.");
+
     // ---- History list ----
     public static string HistoryTitle => T("Laatste conversies", "Dernières conversions", "Last conversions");
     public static string HistoryTime => T("Tijd", "Heure", "Time");

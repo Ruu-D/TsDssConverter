@@ -80,8 +80,8 @@ public static class SettingsStore
     }
 
     /// <summary>
-    /// Saves what the settings window shows WITHOUT losing what someone edited by hand in settings.json meanwhile (in
-    /// Notepad, Shift+click on the logo): the file is read again first, only the window's own settings are replaced
+    /// Saves what the settings window shows WITHOUT losing what was changed in settings.json meanwhile (by hand in
+    /// Notepad, or in the "Magic parameters" popup): the file is read again first, only the window's own settings are replaced
     /// (<see cref="AppSettings.CopyWindowSettingsFrom"/>), and the advanced settings stay as they are in the file now.
     /// A file with a mistake is never overwritten: then an IOException is thrown with a message for the user.
     /// </summary>
@@ -111,7 +111,8 @@ public static class SettingsStore
     }
 
     /// <summary>
-    /// Saves ONE change at once, without the Save button (2.0.0: folding the folders panel, choosing another language):
+    /// Saves ONE change at once, without the Save button (2.0.0: folding the folders panel, choosing another language;
+    /// 2.0.1: the five values of the "Magic parameters" popup):
     /// like <see cref="SaveWindowSettings"/> the file is read again first, so everything else in it stays exactly as it
     /// is (also values typed in the window but not saved yet are NOT written). A file with a mistake is never overwritten:
     /// then an IOException is thrown with a message for the user.

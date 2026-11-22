@@ -55,6 +55,12 @@ internal static class Theme
     public static readonly Color DarkGrey = ColorTranslator.FromHtml("#3A3D42");
     public static readonly Color DarkGreyHover = ColorTranslator.FromHtml("#55595F");
 
+    // Over the window while the Magic parameters popup is open (2.0.1, Daan chose "navy 35%" from the mockup; the
+    // blurred "frozen glass" of the test build 2.1.0-alpha did not look good): the window stays sharp under this see-through navy (ButtonNavy
+    // at 35%). The popup itself is WorkArea, the dark grey of the bottom bar (Daan's choice).
+    public static readonly Color DimLayer = Color.FromArgb(89, 0x0B, 0x2C, 0x6B);
+    public static readonly Color PopupShadow = Color.FromArgb(90, 0, 0, 0); // the soft shadow under the popup
+
     // The round blue disc behind the logo in the title tab: the blues of the bottom bar, lighter at the top left.
     public static readonly Color LogoDiscLight = ColorTranslator.FromHtml("#6E97D2");
     public static readonly Color LogoDiscMiddle = BarTop;

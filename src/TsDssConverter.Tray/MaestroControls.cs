@@ -39,6 +39,38 @@ internal static class MaestroDrawing
         return path;
     }
 
+    /// <summary>
+    /// A cog wheel (the Magic parameters, 2.0.1): eight flat teeth around a wheel, with a round hole in the middle in
+    /// <paramref name="hole"/> (the colour behind the cog).
+    /// </summary>
+    public static void DrawCog(Graphics g, RectangleF box, Color ink, Color hole)
+    {
+        float centreX = box.Left + box.Width / 2;
+        float centreY = box.Top + box.Height / 2;
+        float outer = Math.Min(box.Width, box.Height) / 2;
+        float inner = outer * 0.74f;
+
+        // Every tooth: from the wheel up to the tip and down again, a little narrower at the tip than at its foot.
+        var points = new List<PointF>();
+        for (int tooth = 0; tooth < 8; tooth++)
+        {
+            double middle = tooth * Math.PI / 4;
+            foreach (var (turn, radius) in new[] { (-0.30, inner), (-0.17, outer), (0.17, outer), (0.30, inner) })
+            {
+                points.Add(new PointF(centreX + radius * (float)Math.Cos(middle + turn), centreY + radius * (float)Math.Sin(middle + turn)));
+            }
+        }
+
+        using (var brush = new SolidBrush(ink))
+        {
+            g.FillPolygon(brush, points.ToArray());
+        }
+
+        float hollow = outer * 0.36f;
+        using var holeBrush = new SolidBrush(hole);
+        g.FillEllipse(holeBrush, centreX - hollow, centreY - hollow, 2 * hollow, 2 * hollow);
+    }
+
     /// <summary>A soft shadow below a shape: the same shape a little lower, in see-through black.</summary>
     public static void FillShadow(Graphics g, GraphicsPath shape, float down, int alpha)
     {
@@ -540,6 +572,9 @@ internal class HelpButton : Button
     internal const int DiscSize = 20; // at 100%; the ROGIERS logo beside it is as high
     private bool _hover;
 
+    /// <summary>True: a cog on the disc instead of the "?" (the Magic parameters button, 2.0.1).</summary>
+    internal bool ShowCog;
+
     public HelpButton()
     {
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
@@ -563,9 +598,16 @@ internal class HelpButton : Button
             g.FillEllipse(grey, round);
         }
 
-        using var sign = new Font(Font, FontStyle.Bold);
-        TextRenderer.DrawText(g, "?", sign, Rectangle.Round(round), Theme.TopBar,
-            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding);
+        if (ShowCog)
+        {
+            MaestroDrawing.DrawCog(g, RectangleF.Inflate(round, -disc * 0.19f, -disc * 0.19f), Theme.TopBar, _hover ? Theme.DarkGreyHover : Theme.DarkGrey);
+        }
+        else
+        {
+            using var sign = new Font(Font, FontStyle.Bold);
+            TextRenderer.DrawText(g, "?", sign, Rectangle.Round(round), Theme.TopBar,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix | TextFormatFlags.NoPadding);
+        }
 
         if (Focused && ShowFocusCues)
         {

@@ -3,6 +3,68 @@
 The history of TsDssConverter, newest first. `CLAUDE.md` describes the current state; this file says how it got there.
 The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`.
 
+## 2.0.1 — 2026-11-22 — the Magic parameters (release)
+
+- Delivery file: `dist\v2.0.1\TsDssConverter.exe`, 54,597,857 bytes, file version 2.0.1.0, SHA-256
+  `8aec397a461a4982fbe70f3bbaac3ffc85c34d3a7e2b2d9e3a8fe68b11c79e57`. Built by `publish.cmd` after all 507 tests passed.
+  The published exe was started once with a scratch data folder (`--data`, its own export / batch / label folders): it
+  converted the sample by itself (1 batch XML, 3 label CSVs, the CNC programs to `CNC\`, LI/LP/TR to `_Verwerkt`).
+- The code is that of the test build 2.1.0-alpha.2 (below); Daan chose to release it as **2.0.1**, so only the number
+  changed (also in the code comments that said "2.1.0").
+- **What 2.0.1 brings compared with 2.0.0:** the cog right of the "?" opens the *Magic parameters*, a popup with the five
+  settings that were only in `settings.json` (scan interval, wait for the trigger file, CNC extension, CNC path in the
+  XML, CSV encoding), over the window dimmed in navy; it changes only those values in `settings.json`. The hidden
+  Shift+click on the ROGIERS logo is gone. The conversion and the files for Duivestein are unchanged.
+- README: status line, milestone row and the advanced-settings section.
+
+## 2.1.0-alpha.2 — 2026-11-22 — a dim layer instead of the blur
+
+- Daan found the "frozen glass" of alpha.1 did not look good (the blur is faked by shrinking a picture of the window and
+  stretching it back: smeary and washed out). From three versions on the mockup canvas (navy 35%, navy 50%, black 40%)
+  he chose **navy 35%**: the window behind the Magic parameters stays SHARP under a see-through navy layer
+  (`Theme.DimLayer` = ButtonNavy at 35%), the shadow under the popup is soft black (`Theme.PopupShadow`).
+- The blur code is gone; `GlassOverlay` is now `DimOverlay`. Everything else stays: the rounded corners, the popup in the
+  middle, the window blocked, Enter / Esc, a new picture after a resize.
+- Rendered at a real 150% (Dutch, French, English) with the render program; it matches the mockup.
+- Test build: `dist\v2.1.0-alpha.2\TsDssConverter.exe`, 54,597,937 bytes, file version 2.1.0.0, SHA-256
+  `5072aa07525a02d2d4e82e5a851af268fd65e877f25e1241c1f199924d30df59`, built by `publish.cmd` after all 507 tests passed
+  (the first attempt stopped on a locked `obj\...\apphost.exe`, most likely the virus scanner; the second one worked).
+
+## 2.1.0-alpha — 2026-11-22 — the Magic parameters
+
+- Daan decided the customer must be able to change the advanced settings without editing `settings.json`. From his mockup
+  (claude.ai Design "TsDssConverter Magic parameters", https://claude.ai/artifact/RyWNixxXLbgxPZU1tvcJeD, with his two
+  changes: more grey around the white panel and rounded corners; a true/false setting as a check box in the right column):
+  - A **cog** right of the "?" in the top bar (`SettingsForm.MagicParametersButton`, a `HelpButton` with `ShowCog`) opens
+    the **Magic parameters** popup (new file `Tray\MagicParameters.cs`): `RescanSeconds` (number box 5 – 3600),
+    `RequireTriggerFile` (check box), `CncExtension`, `CncPathPrefixInXml` and `CsvEncoding` (drop-down utf-8 /
+    windows-1252; another encoding typed in the file by hand is kept). Only the settings that the window does not show.
+    Each row shows its `settings.json` key in a small grey tag.
+  - The popup: the dark grey of the bottom bar (`Theme.WorkArea`), rounded corners, a white rounded panel with the rows,
+    the title "Magic parameters" (the same in every language) in the size of the tile titles, "Wordt bewaard in
+    C:\TsDssConverter\settings.json" at the bottom left, Annuleren / Opslaan as smaller pills. Its area is a third of the
+    window (√(1/3) in each direction, at least 600 px wide at 100%), its height what the rows need; in a very low window
+    the rows scroll.
+  - While it is open the window is **frozen glass**: a picture of the window, blurred (made 8 times smaller and big
+    again) under a light grey haze (`Theme.GlassTint`) with a soft navy shadow around the popup. The popup is not a second
+    window but controls over the window (`GlassOverlay`), so the corners are smooth and it moves and scales with the
+    window; the window's own parts are switched off meanwhile, and Enter / Esc belong to the popup. Closing the window
+    with the X while it is open is a Cancel.
+  - Save writes ONLY these five values (`AppSettings.CopyAdvancedSettingsFrom` through `SettingsStore.SaveChange`: the
+    file is read again first, the rest stays as it is, a file with a mistake is not overwritten) and uses them at once.
+    An empty extension keeps the one in use; an extension without its dot gets one.
+- **Shift+click on the ROGIERS logo removed** (a normal click still opens rogiers.be); `TrayApp.OpenFile` no longer has
+  the Notepad case for `.json`. `settings.json` itself stays: hand edits are still picked up within a second.
+- `AppSettings.MinRescanSeconds` / `MaxRescanSeconds` are public (the number box uses them). `TextBoxFrame` also takes a
+  `NumericUpDown`.
+- Tests: 507 (was 492): the popup has a row for every advanced setting and nothing else, shows and saves the values,
+  freezes the window and gives it back, Cancel / X save nothing, the layout in three languages (normal, narrowest and
+  lowest window), the area of a third, the cog at the end of the top bar, `CopyAdvancedSettingsFrom`, and saving keeps
+  the rest of the file. Rendered with the render program of CLAUDE.md §3 at a real 150% in Dutch, French and English;
+  **125% not seen** (only one monitor, at 150%, connected).
+- Test build: `dist\v2.1.0-alpha\TsDssConverter.exe`, 54,598,089 bytes, file version 2.1.0.0, SHA-256
+  `eead991d8eeaee5721013a26754878ff502a61aa25874d6c428d3afc05bec42f`, built by `publish.cmd` after all 507 tests passed.
+
 ## Open points — 2026-11-22 (docs only, after the 2.0.0 release)
 
 - **Resolved:** TopSolid delivers the CNC programs in a folder per project (`<export>\<project>\<sheet>.xcs`); a batch that

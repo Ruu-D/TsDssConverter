@@ -305,15 +305,24 @@ internal class TextBoxFrame : Panel
 {
     private const int SidePadding = 10; // between the edge and the text, at 100%
 
-    private readonly TextBox _box;
+    private readonly Control _box;
     private bool _focused;
 
-    public TextBoxFrame(TextBox box)
+    /// <param name="box">A TextBox, or a NumericUpDown (the number box of the Magic parameters, 2.0.1).</param>
+    public TextBoxFrame(Control box)
     {
         _box = box;
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
 
-        _box.BorderStyle = BorderStyle.None;
+        if (box is TextBox textBox)
+        {
+            textBox.BorderStyle = BorderStyle.None;
+        }
+        else if (box is UpDownBase upDown)
+        {
+            upDown.BorderStyle = BorderStyle.None;
+        }
+
         _box.BackColor = Theme.Field;
         _box.Enter += (sender, e) => { _focused = true; Invalidate(); };
         _box.Leave += (sender, e) => { _focused = false; Invalidate(); };
@@ -329,7 +338,7 @@ internal class TextBoxFrame : Panel
         base.OnLayout(levent);
 
         int side = LogicalToDeviceUnits(SidePadding);
-        int height = _box.PreferredHeight;
+        int height = _box is TextBox textBox ? textBox.PreferredHeight : _box is UpDownBase upDown ? upDown.PreferredHeight : _box.Height;
         _box.SetBounds(side, (Height - height) / 2, Math.Max(0, Width - 2 * side), height);
     }
 

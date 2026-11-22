@@ -706,4 +706,106 @@ public class WindowSizeTests
             Assert.Equal(before, window.Form.Size);
         });
     }
+
+    // ---------------------------------------------------------------- the Magic parameters popup (2.0.1)
+
+    [Theory]
+    [InlineData(AppLanguage.Dutch, false)]
+    [InlineData(AppLanguage.French, false)]
+    [InlineData(AppLanguage.English, false)]
+    [InlineData(AppLanguage.Dutch, true)]
+    [InlineData(AppLanguage.French, true)]
+    [InlineData(AppLanguage.English, true)]
+    public void MagicParameters_ThePopupSitsInTheMiddle_AndNothingInItOverlapsOrIsCutOff(AppLanguage language, bool narrowestWindow)
+    {
+        RunOnStaThread(() =>
+        {
+            using var scope = new LanguageScope(language);
+            using var window = new Window();
+            var form = window.Opened();
+            if (narrowestWindow)
+            {
+                form.Width = form.MinimumSize.Width; // the height it opens with (a low window: see the test below)
+                form.PerformLayout();
+            }
+
+            form.OpenMagicParameters();
+            MagicParametersPopup popup = form.MagicParameters!;
+            Control overlay = popup.Parent!;
+            overlay.PerformLayout();
+
+            // In the middle of the window, inside it.
+            Assert.True(overlay.ClientRectangle.Contains(popup.Bounds), $"the popup {popup.Bounds} is not inside {overlay.ClientRectangle}");
+            Assert.InRange(popup.Left - (overlay.Width - popup.Right), -1, 1);
+
+            // The rows: one under the other, the text left of the field, everything inside the white panel.
+            RoundedWhitePanel panel = popup.WhitePanel;
+            int previousBottom = 0;
+            foreach (ParameterRow row in popup.Rows)
+            {
+                Assert.True(row.Caption.Top >= previousBottom, $"the row {row.Key} runs into the row above it");
+                Assert.True(row.Hint.Top >= row.Caption.Bottom, row.Key);
+                Assert.True(row.Hint.Right <= row.Field.Left, $"the explanation of {row.Key} runs into its field");
+                Assert.True(row.KeyTag.Right <= row.Field.Left, $"the tag of {row.Key} runs into its field");
+                Assert.True(row.Caption.GetPreferredSize(new Size(row.Caption.Width, 0)).Height <= row.Caption.Height, $"'{row.Caption.Text}' is cut off");
+                Assert.True(row.Hint.GetPreferredSize(new Size(row.Hint.Width, 0)).Height <= row.Hint.Height, $"'{row.Hint.Text}' is cut off");
+                Control last = row.After ?? row.Field;
+                Assert.True(last.Right <= panel.ClientSize.Width, $"the field of {row.Key} sticks out of the panel");
+                previousBottom = Math.Max(row.Hint.Bottom, row.Field.Bottom);
+            }
+
+            // On a normal screen all rows are visible without scrolling.
+            Assert.True(panel.AutoScrollMinSize.Height <= panel.ClientSize.Height, $"the rows need {panel.AutoScrollMinSize.Height} px, the panel has {panel.ClientSize.Height}");
+
+            // The bottom: where it is saved, then Cancel and Save, inside the popup.
+            Assert.True(popup.SavedInLabel.Right < popup.CancelPill.Left);
+            Assert.True(popup.CancelPill.Right < popup.SavePill.Left);
+            Assert.True(popup.SavePill.Right <= popup.Width);
+            Assert.True(popup.SavePill.Bottom <= popup.Height);
+            Assert.True(popup.SavePill.WidthNeeded() <= popup.SavePill.Width);
+            Assert.True(popup.CancelPill.WidthNeeded() <= popup.CancelPill.Width);
+        });
+    }
+
+    [Fact]
+    public void MagicParameters_InTheSmallestWindow_TheRowsScroll_AndCancelAndSaveStayVisible()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new Window();
+            var form = window.Opened();
+            form.Size = form.MinimumSize; // too low for all rows
+            form.PerformLayout();
+
+            form.OpenMagicParameters();
+            MagicParametersPopup popup = form.MagicParameters!;
+            Control overlay = popup.Parent!;
+            overlay.PerformLayout();
+
+            Assert.True(overlay.ClientRectangle.Contains(popup.Bounds));
+            Assert.True(popup.WhitePanel.AutoScroll);
+            Assert.True(popup.WhitePanel.AutoScrollMinSize.Height > popup.WhitePanel.ClientSize.Height); // it scrolls
+            Assert.True(popup.SavePill.Bottom <= popup.Height);
+            Assert.True(popup.WhitePanel.Bottom <= popup.SavePill.Top);
+        });
+    }
+
+    [Fact]
+    public void MagicParameters_ThePopupIsAThirdOfTheWindowsArea_InAWideWindow()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new Window();
+            var form = window.Opened();
+            form.OpenMagicParameters();
+            MagicParametersPopup popup = form.MagicParameters!;
+            Control overlay = popup.Parent!;
+            overlay.PerformLayout();
+
+            // As wide as √(1/3) of the window (so its area is a third of it, Daan); the height is what the rows need.
+            double share = Math.Sqrt(1.0 / 3);
+            Assert.InRange(popup.Width, (int)(overlay.Width * share) - 2, (int)(overlay.Width * share) + 2);
+            Assert.True(popup.Height < overlay.Height);
+        });
+    }
 }

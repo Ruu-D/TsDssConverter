@@ -203,10 +203,70 @@ public class SettingsTests
     public void EverySetting_IsEitherShownInTheWindowOrAdvanced()
     {
         // A new setting must be put in one of the two lists above, and in AppSettings.CopyWindowSettingsFrom if the window
-        // shows it: otherwise Save would quietly throw away a value edited by hand, or never save the window's value.
+        // shows it, or in CopyAdvancedSettingsFrom and the Magic parameters popup if it is advanced (SettingsFormTests
+        // checks the popup has a row for every advanced setting): otherwise a Save would quietly throw a value away.
         var names = typeof(AppSettings).GetProperties().Select(property => property.Name).OrderBy(name => name);
 
         Assert.Equal(WindowSettings.Concat(AdvancedSettings).OrderBy(name => name), names);
+    }
+
+    [Fact]
+    public void CopyAdvancedSettingsFrom_TakesExactlyTheAdvancedSettings_AndCopyWindowSettingsFromExactlyTheOthers()
+    {
+        // Every setting gets a value that differs from the default, then each copy is checked property by property.
+        var changed = new AppSettings
+        {
+            TopSolidExportPath = @"E:\Export\", BatchFolder = @"E:\Batch", LabelFolder = @"E:\Label",
+            FlipX = true, FlipY = true, PlanRotated = true, Language = "fr", FoldersFolded = true,
+            CncExtension = ".pgmx", CncPathPrefixInXml = @"\\server\", CsvEncoding = "windows-1252",
+            RescanSeconds = 99, RequireTriggerFile = false,
+        };
+        var defaults = new AppSettings();
+
+        var advanced = new AppSettings();
+        advanced.CopyAdvancedSettingsFrom(changed);
+        var window = new AppSettings();
+        window.CopyWindowSettingsFrom(changed);
+
+        foreach (var property in typeof(AppSettings).GetProperties())
+        {
+            Assert.NotEqual(property.GetValue(defaults), property.GetValue(changed)); // the test itself is complete
+            bool isAdvanced = AdvancedSettings.Contains(property.Name);
+            Assert.Equal(property.GetValue(isAdvanced ? changed : defaults), property.GetValue(advanced));
+            Assert.Equal(property.GetValue(isAdvanced ? defaults : changed), property.GetValue(window));
+        }
+    }
+
+    [Fact]
+    public void SavingTheMagicParameters_ChangesOnlyTheirValues_AndKeepsTheRestOfTheFile()
+    {
+        using var folder = new TempFolder();
+        string path = folder.File("settings.json");
+
+        // In the file: folders and a language that the program does not have in use (edited elsewhere meanwhile).
+        var inUse = new AppSettings();
+        var onDisk = inUse.Clone();
+        onDisk.TopSolidExportPath = @"D:\InTheFile\";
+        onDisk.Language = "en";
+        SettingsStore.Save(path, onDisk);
+
+        AppSettings fromPopup = inUse.Clone();
+        fromPopup.RescanSeconds = 300;
+        fromPopup.RequireTriggerFile = false;
+        fromPopup.CncExtension = ".pgmx";
+        fromPopup.CncPathPrefixInXml = @"\\server\export\";
+        fromPopup.CsvEncoding = "windows-1252";
+        SettingsLoadResult saved = SettingsStore.SaveChange(path, inUse, settings => settings.CopyAdvancedSettingsFrom(fromPopup));
+
+        AppSettings read = SettingsStore.Load(path).Settings;
+        Assert.Equal(@"D:\InTheFile\", read.TopSolidExportPath); // kept from the file, not the folder in use
+        Assert.Equal("en", read.Language);
+        Assert.Equal(300, read.RescanSeconds);
+        Assert.False(read.RequireTriggerFile);
+        Assert.Equal(".pgmx", read.CncExtension);
+        Assert.Equal(@"\\server\export\", read.CncPathPrefixInXml);
+        Assert.Equal("windows-1252", read.CsvEncoding);
+        Assert.Equal(300, saved.Settings.RescanSeconds); // what the tray puts in use
     }
 
     [Fact]
