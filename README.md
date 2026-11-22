@@ -105,11 +105,11 @@ The TopSolid column names and the extra label columns are set with the *Config* 
 
 ## Open points
 
-| From | Question |
-|---|---|
-| TopSolid | **Deliver the agreed folder per project for the CNC programs** (`<export>\<project>\<sheet>.xcs`, agreed 2026-11-04). The program is ready for it; until then programs directly in the export folder still work, protected by a time check. |
-| Duivestein | Restrictions on the batch name, what happens when a batch is sent twice, and an import test of the label CSVs |
-| Physical test sheet | Which point of the label the position refers to, the rotation direction, and how square and non-square labels are turned |
+| From | Question | Status |
+|---|---|---|
+| Physical test sheet | Compare our label with the one Duivestein's own software (*PrintServer*) prints automatically: some printed elements come out differently (arrows, the rotation of the edge-banding information, underlining and other font styles). Also which point of the label the position refers to, the rotation direction, and how square and non-square labels are turned. | **Open** |
+| TopSolid | Deliver the agreed folder per project for the CNC programs (`<export>\<project>\<sheet>.xcs`, agreed 2026-11-04) | **Resolved** (2026-11-22): TopSolid delivers it |
+| Duivestein | What happens when a batch is sent twice, and an import test of the label CSVs | **Resolved** (2026-11-22): a batch that is already present is ignored by Duivestein; the label import works perfectly |
 
 ## Technology
 

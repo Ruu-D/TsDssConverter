@@ -3,6 +3,15 @@
 The history of TsDssConverter, newest first. `CLAUDE.md` describes the current state; this file says how it got there.
 The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`.
 
+## Open points — 2026-11-22 (docs only, after the 2.0.0 release)
+
+- **Resolved:** TopSolid delivers the CNC programs in a folder per project (`<export>\<project>\<sheet>.xcs`); a batch that
+  is sent twice is ignored by Duivestein (the job is already present); the import of our label CSVs at Duivestein worked
+  perfectly.
+- **Still open:** the physical test sheet: compare our label with the one Duivestein's PrintServer prints automatically
+  (arrows, the rotation of the edge-banding information, underlining and other font styles come out differently).
+- README *Open points* and CLAUDE.md §7, §15 and §16 updated. No code change.
+
 ## 2.0.0 — 2026-11-22 — the "Maestro" settings window (release)
 
 - Delivery file: `dist\v2.0.0\TsDssConverter.exe`, 54,589,530 bytes, file version 2.0.0.0, SHA-256
