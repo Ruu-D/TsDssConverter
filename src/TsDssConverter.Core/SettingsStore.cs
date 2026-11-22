@@ -110,6 +110,33 @@ public static class SettingsStore
         return onDisk;
     }
 
+    /// <summary>
+    /// Saves ONE change at once, without the Save button (2.0.0: folding the folders panel, choosing another language):
+    /// like <see cref="SaveWindowSettings"/> the file is read again first, so everything else in it stays exactly as it
+    /// is (also values typed in the window but not saved yet are NOT written). A file with a mistake is never overwritten:
+    /// then an IOException is thrown with a message for the user.
+    /// </summary>
+    /// <param name="inUse">The settings in use: written as they are when the file was deleted.</param>
+    /// <param name="change">The one change, e.g. <c>settings => settings.FoldersFolded = true</c>.</param>
+    public static SettingsLoadResult SaveChange(string path, AppSettings inUse, Action<AppSettings> change)
+    {
+        SettingsLoadResult onDisk = Load(path);
+
+        if (onDisk.ReadError != "")
+        {
+            throw new IOException(Messages.SettingsFileNotOverwritten(path, onDisk.ReadError));
+        }
+
+        if (!onDisk.FileExisted)
+        {
+            onDisk.Settings = inUse.Clone();
+        }
+
+        change(onDisk.Settings);
+        Save(path, onDisk.Settings);
+        return onDisk;
+    }
+
     /// <summary>Writes settings.json. First as .tmp, then renamed, so a crash never leaves half a file.</summary>
     public static void Save(string path, AppSettings settings)
     {

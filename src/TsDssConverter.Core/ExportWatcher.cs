@@ -41,6 +41,11 @@ public class ExportWatcher : IDisposable
     private string _watchedFolder = "";
     private bool _isWaiting;
 
+    // When the thread scans again, and how long it waits in all (for the countdown in the window). Ticks, so the window's
+    // thread can read them safely with Interlocked; 0 = a scan is running now (or the thread has not started).
+    private long _nextScanTicks;
+    private long _scanIntervalTicks;
+
     // The export folder is not reachable: since when, and did we tell the user?
     private DateTime? _folderProblemSince;
     private bool _folderProblemReported;
@@ -104,6 +109,21 @@ public class ExportWatcher : IDisposable
         _thread.Start();
     }
 
+    /// <summary>
+    /// When the next scan comes by itself (by the clock of this watcher) and how long the whole wait is: RescanSeconds, or
+    /// 2 s while a project waits for its files. Null while a scan is running. A file that appears, "Nu scannen" or a
+    /// wake-up scan earlier; then the next wait starts again. The settings window shows it as a countdown.
+    /// </summary>
+    public (DateTime At, TimeSpan Interval)? NextScan
+    {
+        get
+        {
+            long at = Interlocked.Read(ref _nextScanTicks);
+            long interval = Interlocked.Read(ref _scanIntervalTicks);
+            return at == 0 ? null : (new DateTime(at), new TimeSpan(interval));
+        }
+    }
+
     /// <summary>"Nu scannen": scan right now, also when the program is paused.</summary>
     public void ScanNow()
     {
@@ -139,6 +159,7 @@ public class ExportWatcher : IDisposable
         {
             bool force = _scanRequested;
             _scanRequested = false;
+            Interlocked.Exchange(ref _nextScanTicks, 0); // scanning now
 
             try
             {
@@ -151,6 +172,8 @@ public class ExportWatcher : IDisposable
             }
 
             TimeSpan wait = _isWaiting ? WaitingInterval : TimeSpan.FromSeconds(_getSettings().RescanSeconds);
+            Interlocked.Exchange(ref _scanIntervalTicks, wait.Ticks);
+            Interlocked.Exchange(ref _nextScanTicks, (_now() + wait).Ticks);
             _wakeUp.WaitOne(wait); // ends early when a file appears, or on "scan now", or when stopping
         }
     }

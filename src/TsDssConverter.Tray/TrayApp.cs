@@ -38,9 +38,10 @@ internal class TrayApp : ApplicationContext
     private volatile bool _paused;
 
     // settings.json may be edited by hand while the program runs (Shift+click on the logo in the window opens it in
-    // Notepad). Every few seconds the tray looks whether the file changed, and then uses the new values at once.
+    // Notepad). Every second the tray looks whether the file changed (only its date: cheap), and then uses the new values at once,
+    // also in an open window (2.0.0-alpha.3; it was every 5 s).
     private readonly SettingsFileChecker _settingsFileChecker;
-    private readonly System.Windows.Forms.Timer _settingsFileTimer = new() { Interval = 5000 };
+    private readonly System.Windows.Forms.Timer _settingsFileTimer = new() { Interval = 1000 };
 
     public TrayApp(AppDataFolder dataFolder, StartupOptions options)
     {
@@ -312,6 +313,12 @@ internal class TrayApp : ApplicationContext
         }
 
         _notifyIcon.Text = text.Length <= MaxTooltipLength ? text : text.Substring(0, MaxTooltipLength);
+
+        // The Status tile of the window shows the same as the icon (2.0.0).
+        if (_settingsForm != null && !_settingsForm.IsDisposed && _settingsForm.IsHandleCreated)
+        {
+            _settingsForm.RefreshStatus();
+        }
     }
 
     private void TogglePause()
@@ -381,9 +388,7 @@ internal class TrayApp : ApplicationContext
 
         if (_settingsForm == null || _settingsForm.IsDisposed)
         {
-            _settingsForm = new SettingsForm(
-                () => _settings, SaveSettings, AcknowledgeError, _history, _startWithWindows,
-                _dataFolder, OpenDataFile, OpenFolder, RetryFailed);
+            _settingsForm = CreateSettingsForm();
         }
 
         if (!_settingsForm.Visible)
@@ -397,6 +402,100 @@ internal class TrayApp : ApplicationContext
         }
 
         _settingsForm.Activate();
+    }
+
+    private SettingsForm CreateSettingsForm()
+    {
+        return new SettingsForm(
+            () => _settings, SaveSettings, AcknowledgeError, _history, _startWithWindows,
+            _dataFolder, OpenDataFile, OpenFolder, RetryFailed,
+            scanNow: ScanNow, togglePause: TogglePause, isPaused: () => _paused,
+            getState: () => TrayStateRules.Displayed(_state, _paused),
+            saveFolded: SaveFolded, changeLanguage: ChangeLanguage,
+            nextScan: () => _watcher.NextScan);
+    }
+
+    /// <summary>
+    /// Builds the open settings window again (another language), in the same place and size. With
+    /// <paramref name="keepEdits"/> what the user typed but did not save yet is put in the new window; without it the new
+    /// window shows the settings in use (settings.json was changed by hand: the file wins). A hidden window is built
+    /// again the next time it is opened.
+    /// </summary>
+    private void RebuildSettingsWindow(bool keepEdits)
+    {
+        SettingsForm? old = _settingsForm;
+        if (old == null || old.IsDisposed || !old.Visible)
+        {
+            _settingsFormOutdated = true;
+            return;
+        }
+
+        AppSettings typed = old.ReadSettings();
+        bool startWithWindows = old.StartWithWindowsBox.Checked;
+        FormWindowState state = old.WindowState;
+        Rectangle bounds = state == FormWindowState.Normal ? old.Bounds : old.RestoreBounds;
+
+        _settingsFormOutdated = false;
+        _settingsForm = CreateSettingsForm();
+        _settingsForm.StartPosition = FormStartPosition.Manual;
+        _settingsForm.Show();
+        _settingsForm.Bounds = bounds; // after Show: opening sizes the window to its content first
+        _settingsForm.WindowState = state;
+        if (keepEdits)
+        {
+            _settingsForm.ShowEdits(typed, startWithWindows);
+        }
+
+        _settingsForm.Activate();
+
+        // The old window is closed a moment later: this can be running inside one of its own events (the language box),
+        // and a window cannot be disposed from its own event.
+        _uiThread.BeginInvoke(new Action(() =>
+        {
+            old.AllowClose = true;
+            old.Dispose();
+        }));
+    }
+
+    /// <summary>
+    /// The user chose another language in the window: it is saved at once (only the language: settings.json is read
+    /// again first and the other values in it stay) and the whole interface switches now, the window too.
+    /// </summary>
+    private void ChangeLanguage(string code)
+    {
+        try
+        {
+            SettingsLoadResult saved = SettingsStore.SaveChange(_dataFolder.SettingsFile, _settings, settings => settings.Language = code);
+            _settingsFileChecker.Remember(); // our own change: nothing to reload
+            UseSettings(saved);              // switches the menu, the tooltip and the log (ApplyLanguage)
+        }
+        catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
+        {
+            _log.Warning(Strings.SaveFailed(error.Message));
+            MessageBox.Show(_settingsForm, Strings.SaveFailed(error.Message), Strings.AppName, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        RebuildSettingsWindow(keepEdits: true);
+    }
+
+    /// <summary>The folders panel was folded or opened: saved at once, so the window opens the same way next time.</summary>
+    private void SaveFolded(bool folded)
+    {
+        try
+        {
+            SettingsLoadResult saved = SettingsStore.SaveChange(_dataFolder.SettingsFile, _settings, settings => settings.FoldersFolded = folded);
+            _settingsFileChecker.Remember();
+            _settings = saved.Settings;
+        }
+        catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
+        {
+            // Not worth a message: the panel is folded now anyway, it is only not remembered after a restart.
+            _log.Warning(Strings.SaveFailed(error.Message));
+            AppSettings inUse = _settings.Clone();
+            inUse.FoldersFolded = folded;
+            _settings = inUse;
+        }
     }
 
     /// <summary>The red icon stays until the next success OR until the window is opened.</summary>
@@ -442,7 +541,22 @@ internal class TrayApp : ApplicationContext
         }
 
         _log.Info(Strings.LogSettingsReloaded);
+        bool languageChanged = loaded.Settings.Language != _settings.Language;
         UseSettings(loaded);
+
+        // An open window shows the new values at once (Daan, 2026-11-22): in another language it is built again, otherwise
+        // it is filled again. Here the file wins: what was typed in the window but not saved is replaced.
+        if (_settingsForm != null && !_settingsForm.IsDisposed && _settingsForm.Visible)
+        {
+            if (languageChanged)
+            {
+                RebuildSettingsWindow(keepEdits: false);
+            }
+            else
+            {
+                _settingsForm.LoadFromSettings();
+            }
+        }
     }
 
     /// <summary>Puts newly saved or read settings in use; repaired values are reported.</summary>

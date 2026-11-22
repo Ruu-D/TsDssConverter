@@ -168,7 +168,8 @@ public class LocalizationTests
     // Texts that are the same in another language on purpose (a name, or a word that is the same).
     private static bool MayBeSameAsDutch(string textName, AppLanguage language)
     {
-        return textName == "ResultOk" || (textName == "HistoryProject" && language == AppLanguage.English);
+        return textName == "ResultOk" || textName == "LastConversionValue" // "14:32 OK": the time and OK are the same everywhere
+            || (textName is "HistoryProject" or "StatusTitle" or "FoldedBatch" or "FoldedLabels" && language == AppLanguage.English);
     }
 
     [Theory]
@@ -203,7 +204,7 @@ public class LocalizationTests
             }
 
             // "Message" is the same word in French and English; "OK" everywhere.
-            bool mayBeSameInFrenchAndEnglish = name == "ResultOk" || name == "HistoryMessage";
+            bool mayBeSameInFrenchAndEnglish = name is "ResultOk" or "HistoryMessage" or "LastConversionValue";
             Assert.False(results[AppLanguage.French] == results[AppLanguage.English] && !mayBeSameInFrenchAndEnglish,
                 $"{textClass.Name}.{name} is the same in French and English: {results[AppLanguage.French]}");
         }

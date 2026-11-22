@@ -3,6 +3,174 @@
 The history of TsDssConverter, newest first. `CLAUDE.md` describes the current state; this file says how it got there.
 The version number is `<Version>` in `src/TsDssConverter.Tray/TsDssConverter.Tray.csproj`.
 
+## 2.0.0 — 2026-11-22 — the "Maestro" settings window (release)
+
+- Delivery file: `dist\v2.0.0\TsDssConverter.exe`, 54,589,530 bytes, file version 2.0.0.0, SHA-256
+  `5a4abc73e414cf38096d9e1a4ddc0536c508f3904318f8efc72f3426f51ca713`. Built by `publish.cmd` after all 492 tests passed.
+  The published exe was started once with a scratch data folder (`--data`, its own export / batch / label folders): it
+  converted the sample by itself (1 batch XML, 3 label CSVs, the LI/LP/TR files to `_Verwerkt`).
+- The code is that of 2.0.0-alpha.7, only the version number changed. The first build of the morning that was also
+  called 2.0.0 (`20471edd...`, still the light-blue icons) was moved to `dist\_previous-builds\2026-11-22\`.
+- **What 2.0.0 brings compared with 1.1.3** (the details are in the alpha entries below): the settings window in the look
+  of the SCM machine software Maestro (like DssLabelTemplate 2.0.0), with the normal Windows title bar; the blue bottom bar
+  with round buttons Nu scannen / Herstart mislukte / Pauzeren / Open logmap / Materiaallijst and the pills Annuleren /
+  Opslaan; the Status tile (with a countdown to the next scan) and the Last conversion tile; a folders panel that folds up
+  to one line; a language change and hand edits of `settings.json` shown at once; the flat darker-blue app and tray icons.
+  The conversion, the files for Duivestein and the settings are the same as in 1.1.3 (one new window setting,
+  `FoldersFolded`). Install it at the customer BEFORE TopSolid switches to the project folder for the CNC programs (1.1.2).
+- README: status line, milestone row and the picture of the window (rendered again, with version 2.0.0).
+
+## 2.0.0-alpha.7 — 2026-11-22 — fix: red cross in the Status tile (test build)
+
+- Delivery file: `dist\v2.0.0-alpha.7\TsDssConverter.exe`, 54,589,610 bytes, file version 2.0.0.0, SHA-256
+  `5c7e9e70831c7d97beed26a1720e60b8cd1589bdee87150b33c94f7c21a39732`. Built by `publish.cmd` after all 492 tests passed;
+  `bin\alpha-test\Start TsDssConverter test build.cmd` now starts this build.
+- **The bug (alpha.6, Daan's screenshot):** after a while an "Unhandled exception" dialog, `ExternalException
+  (0x8000FFFF): An object could not be created …` in `InfoTile.DrawCountdown`, and the Status tile became a red cross
+  until the window was closed and opened again. The text is .NET 10's message for GDI+'s OutOfMemory status, which GDI+
+  returns for geometry it refuses; the likely cause is `DrawArc` with round ends and a tiny sweep angle, just before the
+  ring reaches 0. It could not be reproduced here (60,000 drawings at a real 150%, no GDI handle leak).
+- **The fix:** no arc under 1° (invisible anyway); `InfoTile.OnPaint` catches a GDI+ refusal, skips that one picture and
+  paints the whole tile again at the next tick, so WinForms never sees the exception (no dialog, no red cross). NaN or an
+  infinite value can no longer reach the ring. The ring now repaints only its own corner 10 times a second.
+- Tests: the ring is drawn at many moments (also just before 0, NaN, infinite, a whole wait of 0) without an exception.
+
+## 2.0.0-alpha.6 — 2026-11-22 — wider window, 25 | 25 | 50 middle row, countdown to the next scan (Daan; test build)
+
+- Delivery file: `dist\v2.0.0-alpha.6\TsDssConverter.exe`, 54,589,383 bytes, file version 2.0.0.0, SHA-256
+  `635a35d913cefda735af9c3a64aeff46d232b839d6fc878f3b6d4745f643d501`. Built by `publish.cmd` after all 489 tests passed;
+  `bin\alpha-test\Start TsDssConverter test build.cmd` now starts this build.
+- **Window 10% wider:** `WindowWidth` 1120 → 1232 at 100% (1848 at 150%). The minimum width stays 1040.
+- **Middle row 25% | 25% | 50%:** Status and Last conversion each a quarter of the row, the zero point the half. The tile
+  widths are set in pixels by `FitMiddleRow` from the row's width (never under the old 230 at 100%); the zero point takes
+  the rest.
+- **Countdown ring in the Status tile** (top right, like Daan's picture): a navy ring that empties as the time runs out,
+  the seconds left in it ("5m" from 100 s on). It shows the REAL next scan: `ExportWatcher.NextScan` (new) gives the time
+  and the whole wait of the watcher thread (RescanSeconds, or 2 s while a project waits for its files), so the ring starts
+  again after a file event or "Nu scannen". No ring while paused or while a scan runs. Updated 10 times a second, only
+  while the window is visible.
+- Rendered at a real 150% in French, Dutch and English (README picture rendered again).
+
+## 2.0.0-alpha.5 — 2026-11-22 — seven small tweaks of the window (Daan; test build)
+
+- Delivery file: `dist\v2.0.0-alpha.5\TsDssConverter.exe`, 54,587,980 bytes, file version 2.0.0.0, SHA-256
+  `4d73d3caa98ddd1a4e867a0197fe7e90cfa8381cbdef90acd7f13c6d23fe3055`. Built by `publish.cmd` after all 480 tests passed;
+  `bin\alpha-test\Start TsDssConverter test build.cmd` now starts this build.
+- **Bold in the hints:** `-LI.xlsx`, `-LP.xlsx` and `(DESC1 – DESC10)` (new `BoldPartsLabel`: a label that writes chosen
+  parts of its text in bold and wraps word by word; a bold part is never split over two lines). The texts in `Strings`
+  did not change.
+- **The three folder captions are underlined.**
+- **Middle row in a new order:** Status, Last conversion, then the label zero point (which takes the rest of the width).
+- **Last conversion tile:** an error without a project no longer shows "-" under the time (the message moves up); the
+  message wraps over several lines (`InfoTile.Line2Lines`, 3 for this tile; the row is a little higher for it) and only
+  ends in "…" when it still does not fit.
+- **List of conversions:** error rows stay red but are no longer bold.
+- **Signs:** Scan now is a magnifying glass; Material list is a standing wooden board with grain and an edge band (after
+  Daan's picture).
+- **Folded folders panel:** the three paths are bold.
+- Rendered at a real 150% (Dutch, open and folded; English for the README picture, which was rendered again). 125% not
+  seen (no such monitor connected).
+
+## 2.0.0-alpha.4 — 2026-11-22 — Material list in the bar, closer bar buttons, logo height (Daan; test build)
+
+- Delivery file: `dist\v2.0.0-alpha.4\TsDssConverter.exe`, 54,586,527 bytes, file version 2.0.0.0, SHA-256
+  `39251f99d1691772adccce740ca0864295e6be97fd47aa0c5cac25011af8fbcb`. Built by `publish.cmd` after all 478 tests passed;
+  started with `bin\alpha-test\Start TsDssConverter test build.cmd`.
+- **Material list** (`MaterialsButton`, Strings `MaterialsButton`: "Materiaallijst" / "Liste des matériaux" / "Material
+  list"): a round button with a small table sign at the right end of the blue band, just before its round end (there its
+  white name would run onto the grey). It opens `materials.csv`. The grey "Open materiaaltabel" button and its hint under
+  the two Config buttons are gone (the tray menu keeps "Open materiaaltabel"). `BottomBar` takes it as its `end` button;
+  the band is at least long enough for it (`SmallestBandRight`). Minimum window width 1040 (was 980): the French bar needs it.
+- **Bar buttons about 13% closer:** `BarButton.SlotWidth` 140 → 122. "Herstart mislukte" and "Réessayez échoué" now wrap
+  onto two lines under their disc, like "Analyser maintenant".
+- **ROGIERS logo** as high as the disc of the "?" (`HelpButton.DiscSize`, 20 at 100%), as wide as its proportions need.
+- French app version: "Version app : 2.0.0-alpha.4" (was "Version de l'application").
+
+## 2.0.0-alpha.3 — 2026-11-22 — fold the folders, language and settings.json at once (Daan; test build)
+
+- Delivery file: `dist\v2.0.0-alpha.3\TsDssConverter.exe`, 54,586,344 bytes, file version 2.0.0.0, SHA-256
+  `0b180e296c6812e2a4f4a632fbafccae2b7f76ac480ab45a698b12c4113b244d`. Built by `publish.cmd` after all 478 tests passed;
+  started with `bin\alpha-test\Start TsDssConverter test build.cmd`.
+- **Fold the folders panel** (the proposal of alpha.2, approved): a "v" before "Mappen" (`FoldButton`) folds the panel to
+  one line: "> Mappen", then the three folders read only (`FolderSummary`: TopSolid / Batch / Labels, a folder that is not
+  reachable in red), "Start met Windows" stays. The window keeps its size, the list of conversions gets the room (about 230
+  px at 100%); a window that opens folded is as high as an open one. Saved at once in the new window setting
+  `FoldersFolded` (`SettingsStore.SaveChange`: the file is read again, only that value changes, a broken file is never
+  overwritten) and used again after a restart.
+- **Another language at once:** choosing a language in the drop-down saves only the language (`SaveChange`) and switches
+  the whole interface right away: the menu, the tooltip and the window, which is built again in the same place and size
+  and keeps what was typed but not saved yet (`TrayApp.RebuildSettingsWindow`, `SettingsForm.ShowEdits`). Before, the
+  window changed only after Opslaan and the next opening.
+- **Hand edits of `settings.json` at once:** the file is checked every second (was 5 s), and an open window shows the new
+  values right away: in another language it is built again, otherwise filled again (the file wins over unsaved typing).
+- Checked with the REAL tray app on a scratch data folder (a throw-away program): language switch keeps the typed folder and
+  saves only the language, a hand edit to another language switches the open window, a hand edit of RescanSeconds shows in
+  the Status tile, folding is saved at once. Rendered folded at a real 150% in Dutch and French.
+- New tests: fold / unfold (saved at once, the list gets the room, window size kept), opening folded, the folded line with
+  an unreachable folder, choosing a language, keeping typed values, `SaveChange`. 478 tests.
+
+## 2.0.0-alpha.2 — 2026-11-22 — evenly spaced bar buttons, darker icon (Daan; test build)
+
+- Delivery file: `dist\v2.0.0-alpha.2\TsDssConverter.exe`, 54,584,008 bytes, file version 2.0.0.0, SHA-256
+  `a94f5a8d1b1df15cc9aad1f7ec48e3f5dc3a2c8e13f9ed55fc752ba18ec407ce`. Built by `publish.cmd` after all 471 tests passed;
+  started with `bin\alpha-test\Start TsDssConverter test build.cmd` (the start file now has a name that stays the same).
+- **Bottom bar:** every round button is one fixed slot wide (`BarButton.SlotWidth`, 140 at 100%), so the discs are always
+  the same distance apart, in every language (in French the long names had pushed them apart). A name that does not fit
+  its slot wraps onto a second line under its disc ("Analyser / maintenant"); all discs stay on one line. The bar is 100
+  high (was 94) for the two-line names. New test: the same distance between the discs in Dutch, French and English, also
+  after Pause turns into Resume.
+- **Icon** (Daan chose "darker bar blue"): the square of the app and tray icons is now ONE flat `#3561A6` (the darker end of
+  the bar) instead of the gradient. Recoloured again from the original icons.
+- **Shorter Status texts**, so they fit the tile (a new test checks every fixed text in three languages): "elke 30 s en bij
+  wijziging" / "toutes les 30 s et en direct" / "every 30 s and on changes", "Bezig met converteren" / "Conversion en
+  cours", "Opgelost? Herstart mislukte".
+- **Proposal, not built:** fold the Mappen panel up with a "v" (like DssLabelTemplate's file lines), so the list gets more
+  room. Two artboards and a note on the mockup canvas, waiting for Daan.
+
+## 2.0.0-alpha — 2026-11-22 — the settings window in the "Maestro" skin, blue icons (Daan; test build)
+
+- Delivery file: `dist\v2.0.0-alpha\TsDssConverter.exe`, 54,669,414 bytes, file version 2.0.0.0, SHA-256
+  `9c9fd5bd02f4f687bd022b242167b9c9f820ba83d32f722cae2d323715d1c155`. Built by `publish.cmd` after all tests passed; started
+  with `bin\alpha-test\Start TsDssConverter 2.0.0-alpha.cmd` (its own data folder with scratch folders): the window opened,
+  the log says "2.0.0-alpha gestart".
+- A first build the same day was numbered 2.0.0 (`dist\v2.0.0`, SHA-256 `20471edd...`, the old light-blue icons). Daan
+  could not start it: almost certainly the single-instance rule (started without `--data` it uses `C:\TsDssConverter`, where
+  his 1.1.3 runs, and a second copy quits without a word). The start file of `bin\alpha-test\` avoids that.
+- **Blue icons** (Daan): the rounded square of the app and tray icons (all four looks, every size) and the ring around the
+  badge are now the vertical gradient of the bottom bar (`#4C7BC0` → `#3561A6`), like DssLabelTemplate 2.0.0's icon. The
+  icons were recoloured, not redrawn: every pixel of the old brand blue, also the soft edges against the sheets and badges,
+  got the new blue; nothing else changed. `app-icon.svg`, `icon-256.png`, `icon-512.png`, `preview.png` and
+  `tray-states.png` follow.
+- The version may have a suffix (`<Version>2.0.0-alpha</Version>`): `AppInfo.Version` reads the informational version
+  (without the "+commit" of the build), so the window, the log and `dist\v2.0.0-alpha\` show it; the exe's file version
+  stays 2.0.0.0.
+- **Why:** the customer works all day with the SCM machine software Maestro; DssLabelTemplate 2.0.0 took over its look and
+  TsDssConverter follows. Made from a claude.ai Design mockup ("TsDssConverter Maestro skin",
+  https://claude.ai/artifact/H3yc3d9NHcBzsd346bymJ4) that Daan changed: no own clock and window buttons (the normal Windows
+  title bar stays, unlike DssLabelTemplate), "Herstart mislukte" moved from the list to the bottom bar.
+- **The window** (`SettingsForm`, rebuilt): a grey top bar with the white title tab (the logo, now drawn in code, on a blue
+  disc; name and subtitle), the language, credit + version, the ROGIERS logo (Shift+click still opens `settings.json`) and a
+  flat "?" for the user guide. White panels on a grey frame: **Mappen** (TopSolid | Duivestein side by side, navy Browse
+  buttons with a folder sign, flat grey fields, grey Config / Open materiaaltabel buttons with their hint at the right;
+  "Start met Windows" at the right of the title), the **label zero point** (drop-down, Gedraaid, the corner drawing in the
+  bar blues) with two new tiles, **Status** (Actief / Bezig / Gepauzeerd / Fout, the same as the tray icon, with the watched
+  folder) and **Laatste conversie**, then the **list** in a table look (grey bold column titles, thin row lines, error rows
+  red and bold) with "Conversielijst wissen". At the bottom a **blue bar** with round buttons and their names: **Nu
+  scannen**, **Herstart mislukte**, **Pauzeren / Hervatten** (the first two and the pause were tray-menu only before) and
+  **Open logmap**; **Annuleren** and **Opslaan** as pills on the grey at the right.
+- Verdana 8.5 pt like Maestro; the Maestro colours in `Theme` (the same values as DssLabelTemplate 2.0.0). Window 1120 x
+  about 840 at 100% (1680 wide at 150%), minimum width 980 (the French bottom bar fits).
+- New file `MaestroControls.cs` (copied from DssLabelTemplate and adapted: `BarButton`, `PillButton`, `HelpButton`,
+  `TitleTab`, `InfoTile`, `BottomBar`, `HistoryListView`). `FluentControls.cs` restyled (navy / grey buttons with a radius,
+  folder sign, navy check box, flat text field). `AppIcons.DrawLogo` draws the logo; the old banner (`AppIcons.Banner`,
+  `header@2x.png`) and the user-guide picture are no longer built into the exe.
+- `TrayApp` gives the window scan now, pause, the paused state and the icon state; the Status tile follows the icon.
+- Not changed: the conversion, the tray icons and menu, the settings, all behaviour of the window.
+- Tests: the layout tests rewritten for the new layout (what must stay true: panels and grey room, bottom bar order and fit
+  in three languages and at the minimum width, hints beside their buttons also at a simulated 150%, Windows title bar kept),
+  new tests for scan / pause, the two tiles and the logo. 470 tests. Rendered at a real 150% in Dutch, French and English
+  (only one monitor at 150% was connected: 125% not seen).
+
 ## README banner in the Maestro blues — 2026-11-21 (Daan, no new version)
 
 - `media/preview/Banner.png` (the README header) redrawn in the blues of DssLabelTemplate 2.0.0's "Maestro" skin: the

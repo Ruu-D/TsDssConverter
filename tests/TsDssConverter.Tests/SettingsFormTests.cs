@@ -48,6 +48,13 @@ public class SettingsFormTests
         public List<string> OpenedFiles { get; } = new();    // what the Config buttons asked to open
         public List<string> OpenedFolders { get; } = new();  // what the Open log button asked to open
         public int RetryClicks { get; private set; }         // how often the Retry failed button was pressed
+        public int ScanClicks { get; private set; }          // how often Scan now was pressed
+        public int PauseClicks { get; private set; }         // how often Pause / Resume was pressed
+        public bool Paused { get; set; }                     // the fake tray's pause (Pause / Resume turns it over)
+        public TrayState State { get; set; } = TrayState.Ok; // what the fake tray icon shows
+        public List<bool> SavedFolds { get; } = new();       // what the fold sign asked to save
+        public List<string> LanguageChanges { get; } = new(); // the languages chosen in the box
+        public (DateTime At, TimeSpan Interval)? NextScan { get; set; } // what the fake watcher plans
         public SettingsForm Form { get; }
 
         public TestWindow()
@@ -55,7 +62,14 @@ public class SettingsFormTests
             Startup = new StartWithWindows(RegistryPath, @"C:\TsDssConverter\TsDssConverter.exe");
             Form = new SettingsForm(
                 () => Current, saved => { Saved = saved; Current = saved; }, () => TimesOpened++, History, Startup,
-                DataFolder, OpenedFiles.Add, OpenedFolders.Add, () => RetryClicks++);
+                DataFolder, OpenedFiles.Add, OpenedFolders.Add, () => RetryClicks++,
+                scanNow: () => ScanClicks++,
+                togglePause: () => { PauseClicks++; Paused = !Paused; },
+                isPaused: () => Paused,
+                getState: () => Paused ? TrayState.Paused : State,
+                saveFolded: folded => { SavedFolds.Add(folded); Current.FoldersFolded = folded; },
+                changeLanguage: LanguageChanges.Add,
+                nextScan: () => NextScan);
         }
 
         public void Dispose()
@@ -103,8 +117,8 @@ public class SettingsFormTests
             Assert.Equal(@"C:\TsDssTestData\columns-label.txt", window.OpenedFiles.Last());
             window.OpenedFiles.RemoveAt(window.OpenedFiles.Count - 1); // the checks below start from the two column files again
 
-            Assert.Equal("Open materiaaltabel", form.OpenMaterialsButton.Text);
-            form.OpenMaterialsButton.PerformClick();
+            Assert.Equal("Materiaallijst", form.MaterialsButton.Text);   // the round button at the right end of the bar
+            form.MaterialsButton.PerformClick();
             Assert.Equal(@"C:\TsDssTestData\materials.csv", window.OpenedFiles.Last());
             Assert.Equal(3, window.OpenedFiles.Count);
 
@@ -192,7 +206,7 @@ public class SettingsFormTests
 
                 foreach (var (corner, point) in cornerPoints)
                 {
-                    bool isNavy = bitmap.GetPixel(point.X, point.Y).ToArgb() == Theme.Navy.ToArgb();
+                    bool isNavy = bitmap.GetPixel(point.X, point.Y).ToArgb() == Theme.ButtonNavy.ToArgb();
                     Assert.True(isNavy == (corner == selected), $"selected {selected}, corner {corner}: navy dot = {isNavy}");
                 }
             }
@@ -398,88 +412,440 @@ public class SettingsFormTests
         });
     }
 
+    // ---------------------------------------------------------------- the bottom bar and the tiles (2.0.0)
+
+    [Fact]
+    public void ScanNowAndPause_AskTheTray_AndThePauseButtonFollowsThePausedState()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            var form = window.Form;
+            form.Show();
+
+            Assert.Equal("Nu scannen", form.ScanNowButton.Text);   // the tray menu's texts, Dutch is the default language
+            Assert.Equal("Pauzeren", form.PauseButton.Text);
+
+            form.ScanNowButton.PerformClick();
+            Assert.Equal(1, window.ScanClicks);
+
+            form.PauseButton.PerformClick();                         // the fake tray pauses
+            Assert.Equal(1, window.PauseClicks);
+            Assert.Equal("Hervatten", form.PauseButton.Text);
+            Assert.Equal(BarGlyph.Resume, form.PauseButton.Glyph);
+            Assert.Equal(Strings.StatusPaused, form.StatusTile.Value);
+
+            form.PauseButton.PerformClick();
+            Assert.Equal("Pauzeren", form.PauseButton.Text);
+            Assert.Equal(Strings.StatusActive, form.StatusTile.Value);
+
+            Assert.Equal(0, window.RetryClicks);                     // nothing else happened
+            Assert.Empty(window.OpenedFiles);
+            Assert.Empty(window.OpenedFolders);
+        });
+    }
+
+    [Theory]
+    [InlineData(TrayState.Ok)]
+    [InlineData(TrayState.Busy)]
+    [InlineData(TrayState.Paused)]
+    [InlineData(TrayState.Error)]
+    public void TheStatusTile_ShowsWhatTheTrayIconShows_AnErrorInRed(TrayState state)
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            window.State = state;
+            window.Paused = state == TrayState.Paused;
+            window.Current = new AppSettings { TopSolidExportPath = @"D:\Export\", RescanSeconds = 45 };
+
+            window.Form.RefreshStatus();
+            InfoTile tile = window.Form.StatusTile;
+
+            Assert.Equal(Strings.StatusTitle, tile.Caption);
+            string expected = state switch
+            {
+                TrayState.Error => Strings.StatusError,
+                TrayState.Busy => Strings.StatusBusy,
+                TrayState.Paused => Strings.StatusPaused,
+                _ => Strings.StatusActive,
+            };
+            Assert.Equal(expected, tile.Value);
+            Assert.Equal(state == TrayState.Error, tile.ValueColor == Theme.Error);
+            if (state == TrayState.Ok)
+            {
+                Assert.Equal(Strings.StatusWatching(@"D:\Export\"), tile.Line1); // the folder it watches ...
+                Assert.Equal(Strings.StatusRescan(45), tile.Line2);              // ... and how often
+            }
+        });
+    }
+
+    [Fact]
+    public void TheLastConversionTile_ShowsTheNewestLine_AndIsEmptyAgainAfterClearingTheList()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            InfoTile tile = window.Form.LastConversionTile;
+            window.Form.RefreshHistory();
+            Assert.Equal(Strings.NothingYetValue, tile.Value);
+            Assert.Equal(Strings.HistoryEmpty, tile.Line1);
+
+            window.History.Add(new HistoryEntry { Time = new DateTime(2026, 11, 22, 9, 5, 0), Project = "P-1", Success = true, Message = "3 platen, 22 labels" });
+            window.History.Add(new HistoryEntry { Time = new DateTime(2026, 11, 22, 9, 7, 0), Project = "P-2", Success = false, Message = "Regel 1\r\nRegel 2" });
+            window.Form.RefreshHistory();
+
+            Assert.Equal("09:07 Fout", tile.Value);
+            Assert.Equal(Theme.Error, tile.ValueColor);
+            Assert.Equal("P-2", tile.Line1);
+            Assert.Equal("Regel 1 | Regel 2", tile.Line2);
+
+            // An error without a project ("-"): no line for the project, the message moves up.
+            window.History.Add(new HistoryEntry { Time = new DateTime(2026, 11, 22, 9, 9, 0), Project = Strings.NoProject, Success = false, Message = "settings.json" });
+            window.Form.RefreshHistory();
+            Assert.Equal("", tile.Line1);
+            Assert.Equal("settings.json", tile.Line2);
+
+            window.History.Clear();
+            window.Form.RefreshHistory();
+            Assert.Equal(Strings.NothingYetValue, tile.Value);
+            Assert.Equal(Theme.TileValue, tile.ValueColor);
+        });
+    }
+
+    [Fact]
+    public void TheStatusTile_CountsDownToTheNextScan_WithNoRingWhilePausedOrScanning()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            var form = window.Form;
+            var now = new DateTime(2026, 11, 22, 10, 0, 0);
+
+            window.NextScan = (now.AddSeconds(12.3), TimeSpan.FromSeconds(30));
+            form.UpdateCountdown(now);
+            Assert.NotNull(form.StatusTile.Countdown);
+            Assert.Equal(12.3, form.StatusTile.Countdown!.Value.Remaining, 3);
+            Assert.Equal(30, form.StatusTile.Countdown!.Value.Total);
+
+            form.UpdateCountdown(now.AddSeconds(20));                // the scan is late (busy): it stays at 0
+            Assert.Equal(0, form.StatusTile.Countdown!.Value.Remaining);
+
+            window.Paused = true;                                     // paused: nothing is scanned, no ring
+            form.UpdateCountdown(now);
+            Assert.Null(form.StatusTile.Countdown);
+
+            window.Paused = false;
+            window.NextScan = null;                                   // a scan is running now
+            form.UpdateCountdown(now);
+            Assert.Null(form.StatusTile.Countdown);
+            Assert.Null(form.LastConversionTile.Countdown);           // only the Status tile ever has a ring
+        });
+    }
+
+    [Fact]
+    public void TheCountdownRing_CanBeDrawnAtEveryMoment_AlsoJustBeforeZero()
+    {
+        // alpha.6 on Daan's PC: GDI+ threw (ExternalException in DrawArc) for a ring that was almost empty, and WinForms
+        // then showed the Status tile as a red cross until the window was built again.
+        RunOnStaThread(() =>
+        {
+            using var tile = new InfoTile { Size = new Size(440, 190), Caption = "Status", Value = "Actief" };
+            using var picture = new Bitmap(tile.Width, tile.Height);
+            var moments = new List<double> { 30, 29.95, 15, 1, 0.5, 0.1, 0.05, 0.01, 0.001, 0.0001, 1e-7, 1e-12, 0, -1, double.NaN, double.PositiveInfinity };
+            for (double remaining = 0; remaining <= 0.2; remaining += 0.005)
+            {
+                moments.Add(remaining);
+            }
+
+            foreach (double remaining in moments)
+            {
+                foreach (double total in new[] { 30.0, 2.0, 3600.0, 0.0, double.NaN })
+                {
+                    tile.Countdown = (remaining, total);
+                    tile.DrawToBitmap(picture, new Rectangle(Point.Empty, tile.Size)); // must not throw
+                }
+            }
+        });
+    }
+
+    [Theory]
+    [InlineData(15.0, "15")]
+    [InlineData(14.2, "15")]   // whole seconds, rounded up: "0" only when the time is really up
+    [InlineData(0.0, "0")]
+    [InlineData(-1.0, "0")]
+    [InlineData(99.0, "99")]
+    [InlineData(150.0, "3m")]  // from 100 s on minutes, so the number fits in the ring
+    [InlineData(3600.0, "60m")]
+    [InlineData(double.NaN, "0")]
+    [InlineData(double.PositiveInfinity, "0")]
+    public void TheCountdownNumber_FitsInTheRing(double remaining, string expected)
+    {
+        Assert.Equal(expected, InfoTile.CountdownText(remaining));
+    }
+
+    [Fact]
+    public void TheLastConversionTile_HasRoomForAMessageOfSeveralLines()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            InfoTile last = window.Form.LastConversionTile, status = window.Form.StatusTile;
+            Assert.True(last.Line2Lines > 1);
+            Assert.True(last.HeightNeeded() >= status.HeightNeeded() + (last.Line2Lines - 1) * last.Font.Height);
+        });
+    }
+
+    [Fact]
+    public void TheHints_WriteTheFileNamesAndTheDescColumnsInBold_InEveryLanguage()
+    {
+        RunOnStaThread(() =>
+        {
+            foreach (AppLanguage language in Enum.GetValues<AppLanguage>())
+            {
+                using var scope = new LanguageScope(language);
+                using var window = new TestWindow();
+                var form = window.Form;
+                foreach (BoldPartsLabel hint in new[] { form.ConfigInfoHint, form.ConfigPositionHint, form.ConfigLabelHint })
+                {
+                    var words = hint.Words();
+                    Assert.Equal(hint.BoldParts.Single(), words.Single(word => word.Bold).Word); // found in this language, kept in one piece
+                    string again = string.Concat(words.Select(word => (word.SpaceBefore ? " " : "") + word.Word));
+                    Assert.Equal(hint.Text.Trim(), again);                                         // no word or space lost
+                }
+            }
+        });
+    }
+
+    // ---------------------------------------------------------------- folding the folders panel (2.0.0-alpha.3)
+
+    [Fact]
+    public void TheFoldSign_FoldsTheFoldersToOneLine_SavesItAtOnce_AndTheListGetsTheRoom()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            window.Current = new AppSettings { TopSolidExportPath = @"D:\Export\", BatchFolder = @"D:\Batch", LabelFolder = @"D:\Label" };
+            var form = window.Form;
+            form.Show();
+            form.SizeToContent(new Rectangle(0, 0, 4000, 3000));
+            form.PerformLayout();
+            Size windowSize = form.Size;
+            int listHeight = form.HistoryList.Height;
+            int panelHeight = form.Sections[0].Height;
+            Assert.False(form.FoldersFolded);
+            Assert.False(form.FoldFoldersButton.Folded);
+            Assert.False(form.FoldedFolders.Visible);
+
+            form.FoldFoldersButton.PerformClick();
+            form.PerformLayout();
+
+            Assert.True(form.FoldersFolded);
+            Assert.True(form.FoldFoldersButton.Folded);                  // the sign points right now
+            Assert.Equal(new[] { true }, window.SavedFolds);              // saved at once, without Opslaan
+            Assert.False(form.ExportFolderBox.Visible);                    // the two halves are gone ...
+            Assert.False(form.ConfigLabelButton.Visible);
+            Assert.True(form.FoldedFolders.Visible);                       // ... the folders are on the title line
+            Assert.Equal(new[] { @"D:\Export\", @"D:\Batch", @"D:\Label" }, form.FoldedFolders.Entries.Select(entry => entry.Path));
+            Assert.True(form.StartWithWindowsBox.Visible);                 // stays
+            Assert.Equal(windowSize, form.Size);                           // the window keeps its size ...
+            Assert.True(form.Sections[0].Height < panelHeight / 2);        // ... the panel is one line ...
+            Assert.True(form.HistoryList.Height > listHeight + form.LogicalToDeviceUnits(100), $"the list grew from {listHeight} to {form.HistoryList.Height} only"); // ... the list gets the room
+
+            form.FoldFoldersButton.PerformClick();
+            form.PerformLayout();
+
+            Assert.False(form.FoldersFolded);
+            Assert.Equal(new[] { true, false }, window.SavedFolds);
+            Assert.True(form.ExportFolderBox.Visible);
+            Assert.False(form.FoldedFolders.Visible);
+            Assert.Equal(listHeight, form.HistoryList.Height);
+            Assert.Null(window.Saved);                                     // nothing else was saved
+        });
+    }
+
+    [Fact]
+    public void AFoldedWindow_OpensFolded_AsHighAsAnOpenOne_SoTheListIsBigger()
+    {
+        RunOnStaThread(() =>
+        {
+            using var open = new TestWindow();
+            open.Form.Show();
+            open.Form.SizeToContent(new Rectangle(0, 0, 4000, 3000));
+
+            using var folded = new TestWindow();
+            folded.Current = new AppSettings { FoldersFolded = true };
+            folded.Form.Show();
+            folded.Form.SizeToContent(new Rectangle(0, 0, 4000, 3000));
+            folded.Form.PerformLayout();
+
+            Assert.True(folded.Form.FoldersFolded);
+            Assert.True(folded.Form.FoldFoldersButton.Folded);
+            Assert.InRange(folded.Form.Height - open.Form.Height, -4, 4);
+            Assert.True(folded.Form.HistoryList.Height > open.Form.HistoryList.Height + folded.Form.LogicalToDeviceUnits(100));
+            Assert.True(folded.Form.ReadSettings().FoldersFolded);         // Opslaan keeps it folded
+        });
+    }
+
+    [Fact]
+    public void TheFoldedLine_ShowsAFolderThatIsNotReachable_AsSuch()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            window.Current = new AppSettings { FoldersFolded = true };
+            window.Form.LoadFromSettings();
+
+            window.Form.MarkReachable(window.Form.BatchFolderBox, false);   // what the background check reports
+
+            var entries = window.Form.FoldedFolders.Entries;
+            Assert.Equal(new[] { "TopSolid", Strings.FoldedBatch, Strings.FoldedLabels }, entries.Select(entry => entry.Name));
+            Assert.Equal(new[] { true, false, true }, entries.Select(entry => entry.Reachable)); // drawn in red
+
+            window.Form.MarkReachable(window.Form.BatchFolderBox, true);
+            Assert.All(window.Form.FoldedFolders.Entries, entry => Assert.True(entry.Reachable));
+        });
+    }
+
+    // ---------------------------------------------------------------- another language at once (2.0.0-alpha.3)
+
+    [Fact]
+    public void ChoosingAnotherLanguage_AsksTheTrayToSwitchAtOnce_TheSameLanguageDoesNothing()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            var form = window.Form;
+            form.Show();
+
+            form.LanguageBox.SelectedIndex = 0;   // Dutch, the language in use
+            form.LanguageChosen();
+            Assert.Empty(window.LanguageChanges);
+
+            form.LanguageBox.SelectedIndex = 1;   // French
+            form.LanguageChosen();
+            Assert.Equal(new[] { "fr" }, window.LanguageChanges);
+            Assert.Null(window.Saved);            // only the language: the tray saves that, not the whole window
+        });
+    }
+
+    [Fact]
+    public void ShowEdits_PutsWhatWasTypedInTheOldWindowInTheNewOne()
+    {
+        // The window is built again in another language: what the user typed but did not save stays.
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            var form = window.Form;
+            form.Show();
+            var typed = new AppSettings { TopSolidExportPath = @"E:\Typed\", BatchFolder = @"E:\B", LabelFolder = @"E:\L", FlipX = true, FlipY = true, PlanRotated = true, Language = "fr" };
+
+            form.ShowEdits(typed, startWithWindows: true);
+
+            Assert.Equal(@"E:\Typed\", form.ExportFolderBox.Text);
+            Assert.Equal(@"E:\B", form.BatchFolderBox.Text);
+            Assert.Equal(@"E:\L", form.LabelFolderBox.Text);
+            Assert.Equal(ReferenceCorner.TopRight, form.CornerPreview.SelectedCorner);
+            Assert.True(form.PlanRotatedBox.Checked);
+            Assert.True(form.StartWithWindowsBox.Checked);
+            Assert.Equal(1, form.LanguageBox.SelectedIndex);
+        });
+    }
+
     // ---------------------------------------------------------------- layout
 
     [Fact]
-    public void Banner_KeepsTheProportionsOfThePicture_AndFitsInTheWindow()
+    public void TheTitleTab_ShowsTheNameAndTheWholeSubtitle_InTheStandardWindow()
     {
         RunOnStaThread(() =>
         {
             using var window = new TestWindow();
-            window.Form.Show();
-
-            // The size itself is a choice (BannerWidth / BannerHeight in SettingsForm.cs) and is not repeated here.
-            // What must stay true: the panel and the picture have the proportions of the 540 x 84 banner (otherwise the
-            // picture is zoomed smaller and blue bars appear), and the whole banner fits in the window.
-            double pictureRatio = (double)window.Form.BannerPicture.Image!.Width / window.Form.BannerPicture.Image.Height;
-            double bannerRatio = (double)window.Form.BannerPicture.Width / window.Form.BannerPicture.Parent!.Height;
-
-            Assert.InRange(bannerRatio, pictureRatio - 0.05, pictureRatio + 0.05);
-            Assert.True(window.Form.ClientSize.Width >= window.Form.BannerPicture.Width);
-        });
-    }
-
-    [Fact]
-    public void TitlesOfTheFolders_AreBold_ButTheCheckboxesAreNot()
-    {
-        RunOnStaThread(() =>
-        {
-            using var window = new TestWindow();
-
-            Assert.True(window.Form.ExportCaption.Font.Bold);
-            Assert.True(window.Form.BatchCaption.Font.Bold);
-            Assert.True(window.Form.LabelCaption.Font.Bold);
-            Assert.True(window.Form.ZeroPointTitle.Font.Bold);
-
-            Assert.False(window.Form.StartWithWindowsBox.Font.Bold);
-            Assert.False(window.Form.ReferenceCornerBox.Font.Bold);
-            Assert.False(window.Form.PlanRotatedBox.Font.Bold);
-        });
-    }
-
-    [Fact]
-    public void DividerLines_SitBelowStartWithWindows_AboveTheLabelZeroPoint_AndAboveTheLastConversions()
-    {
-        RunOnStaThread(() =>
-        {
-            using var window = new TestWindow();
-            window.Form.Show();
-            window.Form.PerformLayout();
             var form = window.Form;
+            form.Show();
+            form.SizeToContent(new Rectangle(0, 0, 4000, 3000));
+
+            Assert.Equal("TsDssConverter", form.TitleTab.Text);
+            Assert.Equal(Strings.BannerSubtitle, form.TitleTab.Subtitle);
+            Assert.Equal(form.TitleTab.WidthNeeded(), form.TitleTab.TabBounds().Width); // nothing shortened with "…"
+            Assert.Same(form.TopBar, form.TitleTab.Parent);
+            Assert.Equal(0, form.TitleTab.Left);                                         // it starts at the window's edge
+        });
+    }
+
+    [Fact]
+    public void TheTitlesOfThePanels_AreBiggerThanTheText_AndTheCaptionsAndCheckboxesAreNormal()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            var form = window.Form;
+            float body = form.Font.SizeInPoints;
+
+            foreach (var title in new[] { form.FoldersTitle, form.ZeroPointTitle, form.HistoryTitle })
+            {
+                Assert.True(title.Font.SizeInPoints > body, $"'{title.Text}' is not bigger than the text");
+            }
+
+            foreach (Control control in new Control[] { form.ExportCaption, form.BatchCaption, form.LabelCaption, form.StartWithWindowsBox, form.PlanRotatedBox, form.ReferenceCornerBox })
+            {
+                Assert.False(control.Font.Bold, $"'{control.Text}' is bold");
+                Assert.Equal(body, control.Font.SizeInPoints);
+            }
+
+            // The captions of the three folders are underlined (Daan, alpha.5).
+            Assert.All(new[] { form.ExportCaption, form.BatchCaption, form.LabelCaption }, caption => Assert.True(caption.Font.Underline));
+
+            Assert.Equal("Verdana", form.Font.Name); // the font of Maestro (on every Windows PC)
+        });
+    }
+
+    [Fact]
+    public void ThePanels_AreWhiteOnTheGreyFrame_FoldersAboveTheZeroPointAboveTheList_WithTheTilesBesideTheZeroPoint()
+    {
+        RunOnStaThread(() =>
+        {
+            using var window = new TestWindow();
+            var form = window.Form;
+            form.Show();
+            form.SizeToContent(new Rectangle(0, 0, 4000, 3000));
+            form.PerformLayout();
             Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
             int Bottom(Control control) => Place(control).Y + control.Height;
+            int Right(Control control) => Place(control).X + control.Width;
 
-            // The horizontal lines (the vertical one between the two halves of folders is FolderDivider).
-            Assert.Equal(3, form.Dividers.Count);
-            var first = form.Dividers[0];
-            var second = form.Dividers[1];
-            var third = form.Dividers[2];
+            Assert.Equal(3, form.Sections.Count);                  // folders, zero point, list
+            Assert.All(form.Sections, section => Assert.Equal(Theme.White, section.BackColor));
+            Assert.Equal(Theme.Frame, form.BackColor);
+            Assert.Equal(Theme.Frame, form.Scroller.BackColor);
 
-            // First line: right below the "Start met Windows" checkbox and the credit line, and above the folder titles.
-            Assert.True(Place(first).Y >= Bottom(form.StartWithWindowsBox));
-            Assert.True(Place(first).Y >= Bottom(form.CreditLabel));
-            Assert.True(Bottom(first) <= Place(form.ExportCaption).Y);
+            Control folders = form.Sections[0], zeroPoint = form.Sections[1], list = form.Sections[2];
+            Assert.True(Bottom(form.TopBar) <= Place(folders).Y);
+            Assert.True(Bottom(folders) < Place(zeroPoint).Y);     // grey between them
+            Assert.True(Bottom(zeroPoint) < Place(list).Y);
+            Assert.True(Bottom(list) <= Place(form.BottomBar).Y);
 
-            // Second line: below both halves of folders and above "Nulpunt etiket nesting".
-            Assert.True(Place(second).Y >= Bottom(form.OpenMaterialsButton));
-            Assert.True(Place(second).Y >= Bottom(form.ConfigLabelButton));
-            Assert.True(Bottom(second) <= Place(form.ZeroPointTitle).Y);
+            // Status first, then Last conversion, then the zero point (Daan, alpha.5): on one line, as high as each other,
+            // Status starting where the folders start, the zero point ending where the list ends.
+            Assert.True(Right(form.StatusTile) < Place(form.LastConversionTile).X);
+            Assert.True(Right(form.LastConversionTile) < Place(zeroPoint).X);
+            Assert.All(new[] { form.StatusTile, form.LastConversionTile }, tile =>
+            {
+                Assert.Equal(Place(zeroPoint).Y, Place(tile).Y);
+                Assert.InRange(tile.Height - zeroPoint.Height, -1, 1);
+            });
+            Assert.Equal(Place(folders).X, Place(form.StatusTile).X);
+            Assert.InRange(Right(zeroPoint) - Right(list), -1, 1);
 
-            // Third line: below the zero point (checkbox and schematic) and above the title and buttons of the list.
-            Assert.True(Place(third).Y >= Bottom(form.PlanRotatedBox));
-            Assert.True(Place(third).Y >= Bottom(form.CornerPreview));
-            Assert.True(Bottom(third) <= Place(form.OpenLogButton).Y);
-            Assert.True(Bottom(third) <= Place(form.RetryFailedButton).Y);
-
-            // Thin, spanning the width of the window, and all in the same colour.
-            Assert.All(form.Dividers, line => Assert.InRange(line.Height, 1, 3));
-            Assert.All(form.Dividers, line => Assert.True(line.Width > form.ClientSize.Width * 0.8));
-            Assert.All(form.Dividers, line => Assert.Equal(Theme.PaleBlue, line.BackColor));
+            // 25% | 25% | 50% (Daan, 2.0.0): the two tiles equally wide, the zero point twice as wide.
+            Assert.Equal(form.StatusTile.Width, form.LastConversionTile.Width);
+            Assert.InRange(zeroPoint.Width - 2 * form.StatusTile.Width, -4, 4);
+            Assert.InRange(Right(folders) - Right(list), -1, 1);
+            Assert.Equal(Place(folders).X, Place(list).X);
         });
     }
 
     [Fact]
-    public void Window_CanBeDrawn_AndTheBannerIsOnTop()
+    public void Window_CanBeDrawn_WithTheGreyFrame_AndTheBlueBottomBar()
     {
         // A picture of the window: also useful to look at. Set TSDSS_SCREENSHOT to a file name to keep it.
         RunOnStaThread(() =>
@@ -488,23 +854,36 @@ public class SettingsFormTests
             window.Current = new AppSettings { TopSolidExportPath = @"C:\Windows\", BatchFolder = @"C:\Windows\", LabelFolder = @"C:\Windows\" };
             window.History.Add(new HistoryEntry { Time = DateTime.Now.AddMinutes(-9), Project = "DAAN_ROGIERS-P2026.09", Success = true, Message = "3 platen, 22 labels" });
             window.History.Add(new HistoryEntry { Time = DateTime.Now.AddMinutes(-2), Project = "Huppy-002", Success = false, Message = "Materiaal 'Oak_18' staat niet in materials.csv." });
-            window.Form.Show();
-            window.Form.LoadFromSettings();
+            var form = window.Form;
+            form.Show();
+            form.LoadFromSettings();
             Thread.Sleep(600); // let the background folder check finish
             Application.DoEvents();
 
-            using var bitmap = new Bitmap(window.Form.Width, window.Form.Height);
-            window.Form.DrawToBitmap(bitmap, new Rectangle(0, 0, bitmap.Width, bitmap.Height));
+            using var picture = new Bitmap(form.Width, form.Height);
+            form.DrawToBitmap(picture, new Rectangle(0, 0, form.Width, form.Height));
 
             string? target = Environment.GetEnvironmentVariable("TSDSS_SCREENSHOT");
             if (!string.IsNullOrEmpty(target))
             {
-                bitmap.Save(target, System.Drawing.Imaging.ImageFormat.Png);
+                picture.Save(target, System.Drawing.Imaging.ImageFormat.Png);
             }
 
-            // The banner has the brand colour on top of the client area.
-            Point insideBanner = new Point(bitmap.Width - 60, 40 + (window.Form.Height - window.Form.ClientSize.Height));
-            Assert.Equal(Theme.Brand.ToArgb(), bitmap.GetPixel(insideBanner.X, insideBanner.Y).ToArgb());
+            // Where the client area starts inside the picture of the whole window (the Windows title bar and frame).
+            Point origin = form.PointToScreen(Point.Empty);
+            int dx = origin.X - form.Left, dy = origin.Y - form.Top;
+            Color At(int x, int y) => picture.GetPixel(x + dx, y + dy);
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+
+            // The grey frame between the folders panel and the zero point.
+            int gapY = (Place(form.Sections[0]).Y + form.Sections[0].Height + Place(form.Sections[1]).Y) / 2;
+            Assert.Equal(Theme.Frame.ToArgb(), At(form.ClientSize.Width / 2, gapY).ToArgb());
+
+            // The blue band at the left of the bottom bar, between its two blues.
+            Color band = At(form.BottomBar.Left + 4, form.BottomBar.Top + form.BottomBar.Height / 2);
+            Assert.InRange(band.B, Theme.BarBottom.B - 2, Theme.BarTop.B + 2);
+            Assert.InRange(band.R, Theme.BarBottom.R - 2, Theme.BarTop.R + 2);
         });
     }
 }
+

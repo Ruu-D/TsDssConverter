@@ -194,7 +194,7 @@ public class SettingsTests
 
     // The settings the window shows; every other setting is "advanced" (only in settings.json).
     private static readonly string[] WindowSettings =
-        { "TopSolidExportPath", "BatchFolder", "LabelFolder", "FlipX", "FlipY", "PlanRotated", "Language" };
+        { "TopSolidExportPath", "BatchFolder", "LabelFolder", "FlipX", "FlipY", "PlanRotated", "Language", "FoldersFolded" };
 
     private static readonly string[] AdvancedSettings =
         { "CncExtension", "CncPathPrefixInXml", "CsvEncoding", "RescanSeconds", "RequireTriggerFile" };
@@ -288,6 +288,45 @@ public class SettingsTests
         AppSettings onDisk = SettingsStore.Load(path).Settings;
         Assert.Equal(@"E:\Batch", onDisk.BatchFolder);
         Assert.Equal(90, onDisk.RescanSeconds); // the advanced value in use is kept, not the default
+    }
+
+    [Fact]
+    public void SaveChange_WritesOnlyThatOneChange_AndKeepsEverythingElseOfTheFile()
+    {
+        // Folding the folders panel or choosing a language is saved at once (2.0.0); values typed in the window but not
+        // saved, and values edited by hand in the file, must not be touched by that.
+        using var folder = new TempFolder();
+        string path = folder.File("settings.json");
+        File.WriteAllText(path, """{ "TopSolidExportPath": "D:\\EditedByHand\\", "RescanSeconds": 60, "Language": "nl" }""");
+        var inUse = new AppSettings { TopSolidExportPath = @"E:\TypedButNotSaved\" };
+
+        SettingsLoadResult result = SettingsStore.SaveChange(path, inUse, settings => settings.FoldersFolded = true);
+        SettingsStore.SaveChange(path, inUse, settings => settings.Language = "fr");
+
+        AppSettings onDisk = SettingsStore.Load(path).Settings;
+        Assert.True(result.Settings.FoldersFolded);
+        Assert.True(onDisk.FoldersFolded);
+        Assert.Equal("fr", onDisk.Language);
+        Assert.Equal(@"D:\EditedByHand\", onDisk.TopSolidExportPath); // not the value of the window
+        Assert.Equal(60, onDisk.RescanSeconds);
+    }
+
+    [Fact]
+    public void SaveChange_AFileWithAMistake_IsNotOverwritten_AndWithoutAFileTheSettingsInUseAreWritten()
+    {
+        using var folder = new TempFolder();
+        string path = folder.File("settings.json");
+        const string broken = "{ \"RescanSeconds\": +60 }";
+        File.WriteAllText(path, broken);
+
+        Assert.Throws<IOException>(() => SettingsStore.SaveChange(path, new AppSettings(), settings => settings.FoldersFolded = true));
+        Assert.Equal(broken, File.ReadAllText(path));
+
+        File.Delete(path);
+        SettingsStore.SaveChange(path, new AppSettings { RescanSeconds = 90 }, settings => settings.FoldersFolded = true);
+        AppSettings onDisk = SettingsStore.Load(path).Settings;
+        Assert.True(onDisk.FoldersFolded);
+        Assert.Equal(90, onDisk.RescanSeconds);
     }
 
     [Fact]

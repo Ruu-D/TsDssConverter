@@ -23,7 +23,7 @@ internal static class Strings
     /// <summary>At the top right of the settings window, after the credit, e.g. "App version: 1.0.0".</summary>
     public static string AppVersion(string version) => T(
         $"App-versie: {version}",
-        $"Version de l'application : {version}",
+        $"Version app : {version}",
         $"App version: {version}");
 
     /// <summary>The tooltip of the user-guide icon right after the app version.</summary>
@@ -132,11 +132,9 @@ internal static class Strings
         "Modifier les noms des 10 colonnes de description supplémentaires (DESC1 – DESC10) du CSV des étiquettes",
         "Edit the names of the 10 extra description columns (DESC1 – DESC10) in the label CSV");
 
-    // The line under the two column files: opens materials.csv (the button text is the same as in the tray menu).
-    public static string MaterialsHint => T(
-        "TopSolid-materialen koppelen aan Duivestein-materialen (materials.csv)",
-        "Associer les matériaux TopSolid à ceux de Duivestein (materials.csv)",
-        "Link TopSolid materials to Duivestein materials (materials.csv)");
+    // The round button at the right end of the blue bar that opens materials.csv (2.0.0-alpha.4, Daan: it replaces the grey
+    // "Open materiaaltabel" button under the Config buttons; the tray menu keeps its own text).
+    public static string MaterialsButton => T("Materiaallijst", "Liste des matériaux", "Material list");
 
     /// <summary>The button next to the title of the list of conversions: opens the folder with the log files.</summary>
     public static string OpenLogButton => T("Open logmap", "Ouvrir logs", "Open log");
@@ -217,6 +215,55 @@ internal static class Strings
     public static string HistoryEmpty => T("Nog geen conversies.", "Aucune conversion pour l'instant.", "No conversions yet.");
     public static string ResultOk => "OK";
     public static string ResultError => T("Fout", "Erreur", "Error");
+
+    // ---- 2.0.0, the Maestro skin: the title of the folders panel and the two tiles ----
+    public static string FoldersTitle => T("Mappen", "Dossiers", "Folders");
+
+    // The "v" before the title folds the folders panel up to one line (and ">" opens it again): the tooltip of that sign,
+    // and the names before the three folders on the folded line.
+    public static string FoldFolders => T("Mappen inklappen", "Replier les dossiers", "Fold the folders");
+    public static string UnfoldFolders => T("Mappen uitklappen", "Déplier les dossiers", "Unfold the folders");
+    public const string FoldedExport = "TopSolid";
+    public static string FoldedBatch => T("Batch", "Commandes", "Batch");
+    public static string FoldedLabels => T("Labels", "Étiquettes", "Labels");
+
+    public static string StatusTitle => T("Status", "État", "Status");
+    public static string StatusActive => T("Actief", "Actif", "Active");
+    public static string StatusBusy => T("Bezig", "En cours", "Busy");
+    public static string StatusPaused => T("Gepauzeerd", "Suspendu", "Paused");
+    public static string StatusError => T("Fout", "Erreur", "Error");
+
+    /// <summary>The Status tile while it watches: the export folder ...</summary>
+    public static string StatusWatching(string folder) => T($"Bewaakt {folder}", $"Surveille {folder}", $"Watching {folder}");
+
+    /// <summary>... and how often it looks.</summary>
+    public static string StatusRescan(int seconds) => T(
+        $"elke {seconds} s en bij wijziging",
+        $"toutes les {seconds} s et en direct",
+        $"every {seconds} s and on changes");
+
+    public static string StatusBusyLine => T(
+        "Bezig met converteren",
+        "Conversion en cours",
+        "A project is being converted");
+
+    public static string StatusPausedLine1 => T("Er wordt niets geconverteerd", "Rien n'est converti", "Nothing is converted");
+    public static string StatusPausedLine2 => T("Hervatten om verder te gaan", "Reprendre pour continuer", "Resume to continue");
+
+    public static string StatusErrorLine1 => T("Zie de laatste conversies", "Voir les dernières conversions", "See the last conversions");
+
+    public static string StatusErrorLine2 => T(
+        $"Opgelost? {RetryFailedButton}",
+        $"Corrigé ? {RetryFailedButton}",
+        $"Once fixed: {RetryFailedButton}");
+
+    public static string LastConversionTitle => T("Laatste conversie", "Dernière conversion", "Last conversion");
+
+    /// <summary>The big value of the "Last conversion" tile, e.g. "14:32 OK" or "14:32 Fout".</summary>
+    public static string LastConversionValue(DateTime time, bool success) => $"{time:HH:mm} {(success ? ResultOk : ResultError)}";
+
+    /// <summary>The big value of the "Last conversion" tile while the list is empty.</summary>
+    public const string NothingYetValue = "–";
 
     // ---- Messages in dialogs ----
     public static string FillAllFolders => T(

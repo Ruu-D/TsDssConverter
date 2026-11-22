@@ -809,4 +809,26 @@ public class WatcherTests
         watcher.Dispose();                       // must return, also when called twice
         watcher.Dispose();
     }
+
+    [Fact]
+    public void Watcher_OnItsOwnThread_TellsWhenItScansAgain_ForTheCountdown()
+    {
+        using var world = new ExportFixture();
+        world.Settings.RescanSeconds = 30;
+        using var watcher = new ExportWatcher(() => world.Settings, () => false, new LogWriter(Path.Combine(world.Export, "..", "logs5")), world.MaterialsFile);
+        Assert.Null(watcher.NextScan);           // not started: nothing planned
+
+        DateTime before = DateTime.Now;
+        watcher.Start();
+        var waited = System.Diagnostics.Stopwatch.StartNew();
+        while (watcher.NextScan == null && waited.Elapsed < TimeSpan.FromSeconds(10))
+        {
+            Thread.Sleep(20);
+        }
+
+        var next = watcher.NextScan;
+        Assert.NotNull(next);                    // the first scan is done, the thread waits for the next one
+        Assert.Equal(TimeSpan.FromSeconds(30), next.Value.Interval);
+        Assert.InRange(next.Value.At, before.AddSeconds(30), DateTime.Now.AddSeconds(30));
+    }
 }

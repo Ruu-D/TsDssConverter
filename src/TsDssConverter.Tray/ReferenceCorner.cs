@@ -43,8 +43,8 @@ internal static class ReferenceCornerMapping
 }
 
 /// <summary>
-/// A small schematic next to the reference-corner drop-down: a "sheet" (dark blue) with a marker at each of its four
-/// corners (light blue). The corner that matches <see cref="SelectedCorner"/> is drawn bigger and in the brand colour,
+/// A small schematic next to the reference-corner drop-down: a "sheet" (the dark blue of the bottom bar) with a marker at each of its four
+/// corners (light blue). The corner that matches <see cref="SelectedCorner"/> is drawn bigger and in a darker light blue (2.0.0),
 /// so the user sees at a glance which corner is selected, without reading the drop-down text. Purely decorative
 /// (no Click, no tab stop): the drop-down itself is still what is saved.
 /// </summary>
@@ -94,7 +94,7 @@ internal class ReferenceCornerPreview : Control
             return; // the control is too small to draw meaningfully (should not happen: it has a fixed size)
         }
 
-        using (var sheetBrush = new SolidBrush(Theme.DarkBlue))
+        using (var sheetBrush = new SolidBrush(Theme.BarBottom))
         {
             g.FillRectangle(sheetBrush, sheet);
         }
@@ -108,8 +108,8 @@ internal class ReferenceCornerPreview : Control
             (ReferenceCorner.TopRight, new PointF(sheet.Right, sheet.Top)),
         };
 
-        using var markerBrush = new SolidBrush(Theme.LightBlue);
-        using var selectedBrush = new SolidBrush(Theme.Brand);
+        using var markerBrush = new SolidBrush(Theme.DiscMiddle);
+        using var selectedBrush = new SolidBrush(Theme.DiscEdge);
 
         foreach (var (corner, point) in corners)
         {
@@ -120,12 +120,12 @@ internal class ReferenceCornerPreview : Control
         }
 
         // A round dot exactly ON the selected corner: the zero point the label X/Y in the CSV are measured from.
-        // Navy with a white ring, so it stands out on the brand-blue marker and on the dark-blue sheet.
+        // Navy with a white ring, so it stands out on the pale marker and on the blue sheet.
         PointF origin = corners.First(c => c.Corner == _selectedCorner).Point;
         float dot = LogicalToDeviceUnits(OriginDot);
         float ring = LogicalToDeviceUnits(OriginDot + 2 * OriginRing);
         using (var ringBrush = new SolidBrush(Theme.White))
-        using (var dotBrush = new SolidBrush(Theme.Navy))
+        using (var dotBrush = new SolidBrush(Theme.ButtonNavy))
         {
             g.FillEllipse(ringBrush, origin.X - ring / 2f, origin.Y - ring / 2f, ring, ring);
             g.FillEllipse(dotBrush, origin.X - dot / 2f, origin.Y - dot / 2f, dot, dot);

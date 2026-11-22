@@ -22,6 +22,12 @@ public class AppSettings
     /// <summary>Language of the whole interface: "nl" (Dutch, the default), "fr" or "en".</summary>
     public string Language { get; set; } = "nl";
 
+    /// <summary>
+    /// True: the folders panel of the window is folded up to one line, so the list of conversions gets more room
+    /// (2.0.0, Daan). Saved at once when the user folds or unfolds it, and used again after a restart.
+    /// </summary>
+    public bool FoldersFolded { get; set; } = false;
+
     // ---- Advanced: only in settings.json ----
     public string CncExtension { get; set; } = ".xcs";
     public string CncPathPrefixInXml { get; set; } = "";
@@ -53,6 +59,7 @@ public class AppSettings
         FlipY = window.FlipY;
         PlanRotated = window.PlanRotated;
         Language = window.Language;
+        FoldersFolded = window.FoldersFolded;
     }
 
     /// <summary>The part of the settings that the conversion itself needs.</summary>

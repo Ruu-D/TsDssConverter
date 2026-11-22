@@ -12,7 +12,7 @@
     <RootNamespace>TsDssConverter.Tray</RootNamespace>
 
     <!-- The version shown at the bottom of the settings window and written in the log. Change it here. -->
-    <Version>1.1.3</Version>
+    <Version>2.0.0</Version>
 
     <!-- Sharp on high-DPI screens and on a second monitor with another scaling -->
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
@@ -31,9 +31,7 @@
     <EmbeddedResource Include="..\..\media\app-busy.ico" LogicalName="app-busy.ico" />
     <EmbeddedResource Include="..\..\media\app-error.ico" LogicalName="app-error.ico" />
     <EmbeddedResource Include="..\..\media\app-paused.ico" LogicalName="app-paused.ico" />
-    <EmbeddedResource Include="..\..\media\header@2x.png" LogicalName="header.png" />
     <EmbeddedResource Include="..\..\media\ROGIERS-transp-small.png" LogicalName="rogiers-logo.png" />
-    <EmbeddedResource Include="..\..\media\user-guide.png" LogicalName="user-guide.png" />
   </ItemGroup>
 
   <!-- Lets the tests reach the internal classes of this project -->

@@ -67,22 +67,22 @@ public class LanguageWindowTests
     }
 
     [Fact]
-    public void LanguageBox_SitsRightAboveStartWithWindows_WithATitleInAllThreeLanguages()
+    public void LanguageBox_SitsInTheTopBar_UnderATitleInAllThreeLanguages_RightOfTheTitleTab()
     {
         RunOnStaThread(() =>
         {
             using var window = new Window();
             window.Form.Show();
+            window.Form.SizeToContent(new Rectangle(0, 0, 4000, 3000));
             window.Form.PerformLayout();
             var form = window.Form;
-            int CaptionBottom() => form.PointToClient(form.LanguageCaption.PointToScreen(new Point(0, form.LanguageCaption.Height))).Y;
-            int BoxTop() => form.PointToClient(form.LanguageBox.PointToScreen(Point.Empty)).Y;
+            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
 
             Assert.Equal("Taal / Langue / Language", form.LanguageCaption.Text);
-            Assert.True(form.LanguageCaption.Font.Bold);
-            Assert.True(CaptionBottom() <= BoxTop());
-            Assert.True(form.LanguageBox.Bottom <= form.StartWithWindowsBox.Top);          // right above the checkbox
-            Assert.True(form.StartWithWindowsBox.Top - form.LanguageBox.Bottom < 30);       // and close to it
+            Assert.True(Place(form.LanguageCaption).Y + form.LanguageCaption.Height <= Place(form.LanguageBox).Y); // the title above the box
+            Assert.InRange(Place(form.LanguageBox).X - Place(form.LanguageCaption).X, -1, 1);                     // both start at one place
+            Assert.True(Place(form.LanguageBox).Y + form.LanguageBox.Height <= form.TopBar.Bottom);              // both in the top bar
+            Assert.True(Place(form.LanguageCaption).X >= form.TitleTab.TabBounds().Right);                     // not over the title tab
         });
     }
 
@@ -176,10 +176,10 @@ public class LanguageWindowTests
         }
     }
 
-    // ---------------------------------------------------------------- the footer (credit) and the version (top right)
+    // ---------------------------------------------------------------- the credit, the version, the logo and the "?" (top bar)
 
     [Fact]
-    public void Credits_ShowTheDeveloperAndTheVersion_OnOneLine()
+    public void Credits_ShowTheDeveloperAboveTheVersion_RightAligned_InTheTopBar()
     {
         RunOnStaThread(() =>
         {
@@ -193,37 +193,14 @@ public class LanguageWindowTests
             Assert.Equal("Dev.: Daan Verhoost", form.CreditLabel.Text);
             Assert.Equal("App-versie: " + AppInfo.Version, form.VersionLabel.Text); // Dutch is the default language
 
-            // "Dev.: Daan Verhoost | App-versie: ..." : one line, the developer first.
-            Assert.Same(form.CreditLabel.Parent, form.VersionLabel.Parent);
-            Assert.Equal(Place(form.CreditLabel).Y, Place(form.VersionLabel).Y);
-            Assert.True(Place(form.CreditLabel).X + form.CreditLabel.Width <= Place(form.VersionLabel).X);
-        });
-    }
+            // "Dev.: Daan Verhoost" above "App-versie: ...", both ending at the same right edge.
+            Assert.True(Place(form.CreditLabel).Y + form.CreditLabel.Height <= Place(form.VersionLabel).Y);
+            Assert.InRange(Place(form.CreditLabel).X + form.CreditLabel.Width - (Place(form.VersionLabel).X + form.VersionLabel.Width), -1, 1);
 
-    [Fact]
-    public void Version_SitsAtTheTopRight_JustBelowTheBanner_OnTheLineOfTheLanguageTitle()
-    {
-        RunOnStaThread(() =>
-        {
-            using var window = new Window();
-            window.Form.Show();
-            window.Form.SizeToContent(new Rectangle(0, 0, 4000, 3000));
-            window.Form.PerformLayout();
-            var form = window.Form;
-            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
-
-            Point version = Place(form.VersionLabel), caption = Place(form.LanguageCaption);
-            int bannerBottom = form.BannerPicture.Parent!.Bottom;
-            int buttonsRight = Place(form.OpenLogButton).X + form.OpenLogButton.Width;
-
-            Assert.True(version.Y >= bannerBottom);                                   // below the banner ...
-            Assert.True(version.Y - bannerBottom < form.LogicalToDeviceUnits(30));    // ... and close to it
-            Assert.Equal(caption.Y, version.Y);                                        // on the line of "Taal / Langue / Language"
-            Assert.True(version.X > form.ClientSize.Width / 2);                        // on the right side
-            // The user-guide icon right after it ends at the right edge of the buttons.
-            Point guide = Place(form.UserGuidePicture);
-            Assert.True(version.X + form.VersionLabel.Width <= guide.X);
-            Assert.InRange(buttonsRight - (guide.X + form.UserGuidePicture.Width), 0, form.LogicalToDeviceUnits(2));
+            // In the top bar, right of the language box, on the right side of the window.
+            Assert.True(Place(form.VersionLabel).Y + form.VersionLabel.Height <= form.TopBar.Bottom);
+            Assert.True(Place(form.CreditLabel).X > Place(form.LanguageBox).X + form.LanguageBox.Width);
+            Assert.True(Place(form.CreditLabel).X > form.ClientSize.Width / 2);
         });
     }
 
@@ -241,11 +218,12 @@ public class LanguageWindowTests
             using (new LanguageScope(AppLanguage.French))
             using (var window = new Window())
             {
-                Assert.Equal("Version de l'application : " + AppInfo.Version, window.Form.VersionLabel.Text);
+                Assert.Equal("Version app : " + AppInfo.Version, window.Form.VersionLabel.Text);
             }
 
             // The number itself is the <Version> line in TsDssConverter.Tray.csproj (the only place to change it): not repeated here.
-            Assert.Matches(@"^\d+\.\d+\.\d+$", AppInfo.Version);
+            // A test build may have a suffix ("2.0.0-alpha"); never the "+commit" the build adds.
+            Assert.Matches(@"^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$", AppInfo.Version);
         });
     }
 
@@ -278,7 +256,7 @@ public class LanguageWindowTests
     }
 
     [Fact]
-    public void TheUserGuideIcon_SitsRightAfterTheVersion_OnItsLine_AndIsALinkToGitHub()
+    public void TheLogoAndTheUserGuide_SitAtTheRightEndOfTheTopBar_InTheMiddleOfItsHeight()
     {
         RunOnStaThread(() =>
         {
@@ -288,21 +266,31 @@ public class LanguageWindowTests
             window.Form.PerformLayout();
             var form = window.Form;
             Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
+            int Middle(Control control) => Place(control).Y + control.Height / 2;
 
-            Assert.NotNull(form.UserGuidePicture.Image);
-            Assert.Same(form.VersionLabel.Parent, form.UserGuidePicture.Parent);            // on the line of the version
-            Point version = Place(form.VersionLabel), guide = Place(form.UserGuidePicture);
-            int gap = guide.X - (version.X + form.VersionLabel.Width);
-            Assert.InRange(gap, 1, form.LogicalToDeviceUnits(16));                           // right after it, not touching
+            Assert.NotNull(form.LogoPicture.Image);
+            Point logo = Place(form.LogoPicture), guide = Place(form.UserGuideButton);
 
-            // Not higher than the text, so the line does not get higher (and stays in line with the language title) ...
-            Assert.True(form.UserGuidePicture.Height + form.UserGuidePicture.Margin.Vertical <= form.VersionLabel.Height);
-            // ... and its middle on the middle of the text.
-            int iconMiddle = guide.Y + form.UserGuidePicture.Height / 2, textMiddle = version.Y + form.VersionLabel.Height / 2;
-            Assert.InRange(iconMiddle - textMiddle, -form.LogicalToDeviceUnits(2), form.LogicalToDeviceUnits(2));
+            // Credit, then the logo, then the "?", the last thing of the bar, close to the window's right edge.
+            Assert.True(Place(form.VersionLabel).X + form.VersionLabel.Width <= logo.X);
+            Assert.True(logo.X + form.LogoPicture.Width <= guide.X);
+            Assert.InRange(form.ClientSize.Width - (guide.X + form.UserGuideButton.Width), 0, form.LogicalToDeviceUnits(30));
+
+            // Both in the middle of the bar's height.
+            int barMiddle = form.TopBar.Top + form.TopBar.Height / 2;
+            Assert.InRange(Middle(form.LogoPicture) - barMiddle, -form.LogicalToDeviceUnits(2), form.LogicalToDeviceUnits(2));
+            Assert.InRange(Middle(form.UserGuideButton) - barMiddle, -form.LogicalToDeviceUnits(2), form.LogicalToDeviceUnits(2));
+
+            // As high as the disc of the "?" (Daan, 2026-11-22), and as wide as its proportions need: the logo fills its box,
+            // so the drawn logo is exactly that high. Not squeezed (it once ended up 2 pixels wide in a Percent column).
+            int disc = form.UserGuideButton.LogicalToDeviceUnits(TsDssConverter.Tray.HelpButton.DiscSize);
+            Assert.InRange(form.LogoPicture.Height - disc, -1, 1);
+            Image picture = form.LogoPicture.Image!;
+            double expectedWidth = (double)form.LogoPicture.Height * picture.Width / picture.Height;
+            Assert.InRange(form.LogoPicture.Width, expectedWidth - 2, expectedWidth + 2);
 
             // Clicking would open a browser, so only what the user sees is checked: the hand cursor. And the address.
-            Assert.Equal(Cursors.Hand, form.UserGuidePicture.Cursor);
+            Assert.Equal(Cursors.Hand, form.UserGuideButton.Cursor);
             Assert.Equal("https://github.com/Ruu-D/TsDssConverter", Strings.UserGuideUrl);
         });
     }
@@ -321,29 +309,6 @@ public class LanguageWindowTests
     }
 
     [Fact]
-    public void Footer_TheSmallCompanyLogo_SitsBelowTheList_AtTheLeft()
-    {
-        RunOnStaThread(() =>
-        {
-            using var window = new Window();
-            window.Form.Show();
-            window.Form.SizeToContent(new Rectangle(0, 0, 4000, 3000));
-            window.Form.PerformLayout();
-            var form = window.Form;
-            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
-
-            Assert.NotNull(form.LogoPicture.Image);
-            Point logo = Place(form.LogoPicture);
-
-            Assert.True(logo.Y >= Place(form.HistoryList).Y + form.HistoryList.Height);  // below the list
-            Assert.True(logo.X < form.ClientSize.Width / 8);                             // at the far left
-            Assert.True(form.LogoPicture.Height < form.LogicalToDeviceUnits(60));        // small
-            // ... but not squeezed: it once ended up 2 pixels wide (a Percent column in an AutoSize table).
-            Assert.True(form.LogoPicture.Width >= form.LogicalToDeviceUnits(30), $"the logo is only {form.LogoPicture.Width} px wide");
-        });
-    }
-
-    [Fact]
     public void Logo_IsCutToTheVisiblePart_AndMadeSmallOnce()
     {
         // The picture file has a transparent margin. If it was left on, the logo would be indented and look too small.
@@ -356,27 +321,6 @@ public class LanguageWindowTests
         Assert.True(VisibleIn(Enumerable.Range(0, logo.Height).Select(y => new Point(logo.Width - 1, y))), "right edge is empty");
         Assert.True(VisibleIn(Enumerable.Range(0, logo.Width).Select(x => new Point(x, 0))), "top edge is empty");
         Assert.True(VisibleIn(Enumerable.Range(0, logo.Width).Select(x => new Point(x, logo.Height - 1))), "bottom edge is empty");
-    }
-
-    [Fact]
-    public void Credits_SitAtTheTopRight_OnTheLineOfTheLanguageTitle()
-    {
-        RunOnStaThread(() =>
-        {
-            using var window = new Window();
-            window.Form.Show();
-            window.Form.SizeToContent(new Rectangle(0, 0, 4000, 3000)); // a big screen: the result does not depend on this PC
-            window.Form.PerformLayout();
-            var form = window.Form;
-
-            // The controls sit in different panels, so compare their places in the window itself.
-            Point Place(Control control) => form.PointToClient(control.PointToScreen(Point.Empty));
-            Point credit = Place(form.CreditLabel);
-
-            Assert.Equal(Place(form.LanguageCaption).Y, credit.Y);           // the top line of the window body
-            Assert.True(credit.X > form.ClientSize.Width / 2);               // on the right side
-            Assert.True(credit.Y < Place(form.ExportCaption).Y);             // above the folders
-        });
     }
 
     // ---------------------------------------------------------------- pictures of the window in each language

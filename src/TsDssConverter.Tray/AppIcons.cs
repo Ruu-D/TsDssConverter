@@ -25,66 +25,95 @@ internal static class AppIcons
         return new Icon(stream);
     }
 
-    // The banner is drawn at twice its size at 100% (1080 x 168 = 2 x 540 x 84) and scaled down by the window, so it
-    // stays sharp on high-DPI screens. It is drawn exactly like the banner of the sister program DssLabelTemplate (same
-    // fonts, sizes and places), so the two programs look alike.
-    private const int BannerPictureWidth = 1080;
-    private const int BannerPictureHeight = 168;
-    private const int BannerLogoWidth = 180;     // the logo is the left part of header@2x.png; its old text starts at x = 194
-    private const int BannerTextLeft = 194;      // where the title starts (the same in DssLabelTemplate)
-
     /// <summary>
-    /// The banner: the logo on the brand colour, with the name of the program and one line below it. The text is in
-    /// English in every language. Only the logo is taken from the picture header@2x.png (whose text is not used any more).
+    /// The logo (three sheets with nested parts, and the round "convert" badge), drawn in code so it is sharp at every
+    /// size: the title tab of the window shows it on a blue disc. The shapes are those of media/header.svg (the area
+    /// x 26 – 240, y 46 – 240 of its drawing). <paramref name="gapColour"/> is the ring around the badge: the colour
+    /// behind the logo, so the badge looks cut out of the sheets.
     /// </summary>
-    public static Image Banner()
+    public static void DrawLogo(Graphics g, RectangleF box, Color gapColour)
     {
-        var banner = new Bitmap(BannerPictureWidth, BannerPictureHeight);
-        using var graphics = Graphics.FromImage(banner);
-        graphics.Clear(Theme.Brand);
-        graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+        const float left = 26, top = 46, size = 214, height = 194;
+        float scale = Math.Min(box.Width / size, box.Height / height);
+        var state = g.Save();
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        g.TranslateTransform(box.Left + (box.Width - size * scale) / 2, box.Top + (box.Height - height * scale) / 2);
+        g.ScaleTransform(scale, scale);
+        g.TranslateTransform(-left, -top);
 
-        using (var stream = OpenResource("header.png"))
-        using (var picture = new Bitmap(stream))
+        void Fill(Color colour, params float[] xy)
         {
-            var logo = new Rectangle(0, 0, BannerLogoWidth, BannerPictureHeight);
-            graphics.DrawImage(picture, logo, logo, GraphicsUnit.Pixel); // 1 to 1: the picture is already 1080 x 168
+            var points = new PointF[xy.Length / 2];
+            for (int i = 0; i < points.Length; i++)
+            {
+                points[i] = new PointF(xy[2 * i], xy[2 * i + 1]);
+            }
+
+            using var brush = new SolidBrush(colour);
+            g.FillPolygon(brush, points);
         }
 
-        // The same places as in DssLabelTemplate: the title's baseline at y = 82, the subtitle's at y = 128.
-        using var titleFont = Theme.CreateBannerTitleFont(54);
-        using var subtitleFont = Theme.CreateBannerSubtitleFont(27);
-        using var navy = new SolidBrush(Theme.Navy);
-        DrawOnBaseline(graphics, Strings.AppName, titleFont, navy, BannerTextLeft, 82);
-        DrawOnBaseline(graphics, Strings.BannerSubtitle, subtitleFont, navy, BannerTextLeft + 2, 128);
-        return banner;
-    }
+        // Three sheets, the bottom one first: front, side, top.
+        for (int layer = 0; layer < 3; layer++)
+        {
+            float up = -20f * layer;
+            Fill(Theme.VeryPaleBlue, 32, 134 + up, 116, 176 + up, 116, 190 + up, 32, 148 + up);
+            Fill(Theme.PaleBlue, 116, 176 + up, 200, 134 + up, 200, 148 + up, 116, 190 + up);
+            Fill(layer == 2 ? Theme.White : Theme.DarkBlue, 32, 134 + up, 116, 92 + up, 200, 134 + up, 116, 176 + up);
+        }
 
-    /// <summary>Draws a text so that the bottom of its letters (the baseline) is on the given y.</summary>
-    private static void DrawOnBaseline(Graphics graphics, string text, Font font, Brush brush, float left, float baseline)
-    {
-        FontFamily family = font.FontFamily;
-        float ascent = font.Size * family.GetCellAscent(font.Style) / family.GetEmHeight(font.Style);
-        graphics.DrawString(text, font, brush, left, baseline - ascent, StringFormat.GenericTypographic);
+        // The nested parts on the top sheet (the sheet's own skewed grid).
+        var sheet = g.Transform;
+        using (var skew = new System.Drawing.Drawing2D.Matrix(84, -42, 84, 42, 32, 94))
+        {
+            g.MultiplyTransform(skew);
+        }
+
+        using (var parts = new SolidBrush(Theme.LightBlue))
+        {
+            g.FillRectangle(parts, 0.07f, 0.07f, 0.51f, 0.35f);
+            g.FillRectangle(parts, 0.63f, 0.07f, 0.30f, 0.45f);
+            g.FillRectangle(parts, 0.07f, 0.47f, 0.26f, 0.46f);
+            g.FillRectangle(parts, 0.38f, 0.47f, 0.20f, 0.23f);
+            g.FillRectangle(parts, 0.38f, 0.75f, 0.20f, 0.18f);
+            g.FillRectangle(parts, 0.63f, 0.57f, 0.30f, 0.36f);
+        }
+
+        g.Transform = sheet;
+
+        // The badge: a gap in the colour behind the logo, the navy disc and the white arrow going round.
+        using (var gap = new SolidBrush(gapColour))
+        {
+            g.FillEllipse(gap, 190 - 44, 190 - 44, 88, 88);
+        }
+
+        using (var navy = new SolidBrush(Theme.ButtonNavy))
+        {
+            g.FillEllipse(navy, 190 - 37, 190 - 37, 74, 74);
+        }
+
+        using (var arc = new Pen(Theme.White, 7.5f) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round })
+        {
+            g.DrawArc(arc, 190 - 17, 190 - 17, 34, 34, -50f, 253f);
+        }
+
+        var head = new[] { new PointF(181.24f, 172.88f), new PointF(165.88f, 177.38f), new PointF(182.26f, 188.85f) };
+        using (var white = new SolidBrush(Theme.White))
+        {
+            g.FillPolygon(white, head);
+        }
+
+        g.Restore(state);
     }
 
     /// <summary>
-    /// The small logo of ROGIERS for the footer. The picture file has a transparent margin around the logo; that is
+    /// The small logo of ROGIERS in the top bar. The picture file has a transparent margin around the logo; that is
     /// cut off, so the logo itself lines up with the other controls. It is made smaller once, with high quality:
     /// the window then only scales a small picture (a big picture scaled down by a PictureBox looks jagged).
     /// </summary>
     public static Image CompanyLogo()
     {
-        return TrimmedAndScaled("rogiers-logo.png", 128); // enough for a screen at 250%: shown about 44 pixels wide at 100%
-    }
-
-    /// <summary>
-    /// The small "user guide" icon (a book with a question mark) next to the app version. Made smaller once like the
-    /// company logo: shown 16 pixels high at 100%, so 64 is enough for a screen at 400%.
-    /// </summary>
-    public static Image UserGuide()
-    {
-        return TrimmedAndScaled("user-guide.png", 64);
+        return TrimmedAndScaled("rogiers-logo.png", 128); // enough for a screen at 250%: shown about 34 pixels wide at 100%
     }
 
     /// <summary>A built-in picture without its transparent margin, made smaller once (high quality) to the given long side.</summary>

@@ -163,7 +163,7 @@ public class TrayTests
     // ---------------------------------------------------------------- built-in graphics
 
     [Fact]
-    public void AllIconsAndTheBannerAreBuiltIntoTheExe()
+    public void AllIconsAreBuiltIntoTheExe()
     {
         foreach (TrayState state in Enum.GetValues<TrayState>())
         {
@@ -173,37 +173,25 @@ public class TrayTests
 
         using Icon windowIcon = AppIcons.ForWindow();
         Assert.True(windowIcon.Width > 0);
-
-        using Image banner = AppIcons.Banner();
-        Assert.Equal(1080, banner.Width); // the @2x banner
     }
 
     [Fact]
-    public void TheBanner_HasTheLogoAndTheTextOnTheBrandColour()
+    public void TheLogo_IsDrawnInCode_WithTheWhiteTopSheet_AndTheNavyBadgeCutOutOfTheSheets()
     {
-        using Image banner = AppIcons.Banner();
-        using var picture = new Bitmap(banner);
-
-        Assert.Equal(Theme.Brand.ToArgb(), picture.GetPixel(picture.Width - 2, 2).ToArgb()); // plain brand blue on the right
-        Assert.True(HasColourOtherThanBrand(picture, new Rectangle(20, 20, 150, 130)), "the logo is missing");
-        Assert.True(HasColourOtherThanBrand(picture, new Rectangle(194, 30, 300, 55)), "the title is missing");
-        Assert.True(HasColourOtherThanBrand(picture, new Rectangle(196, 105, 300, 30)), "the subtitle is missing");
-    }
-
-    private static bool HasColourOtherThanBrand(Bitmap picture, Rectangle area)
-    {
-        for (int y = area.Top; y < area.Bottom; y++)
+        // The logo of the title tab (2.0.0), drawn at 214 x 194: the size of its drawing, 1 pixel per unit.
+        using var picture = new Bitmap(214, 194);
+        using (Graphics g = Graphics.FromImage(picture))
         {
-            for (int x = area.Left; x < area.Right; x++)
-            {
-                if (picture.GetPixel(x, y).ToArgb() != Theme.Brand.ToArgb())
-                {
-                    return true;
-                }
-            }
+            g.Clear(Color.Magenta);
+            AppIcons.DrawLogo(g, new RectangleF(0, 0, 214, 194), Color.Lime);
         }
 
-        return false;
+        // Units of the drawing minus its top left corner (26, 46).
+        Color At(int x, int y) => picture.GetPixel(x - 26, y - 46);
+        Assert.Equal(Theme.White.ToArgb(), At(77, 113).ToArgb());       // the white edge of the top sheet, beside the parts
+        Assert.Equal(Theme.ButtonNavy.ToArgb(), At(170, 210).ToArgb()); // the badge
+        Assert.Equal(Color.Lime.ToArgb(), At(190, 148).ToArgb());       // the gap around it, in the colour behind the logo
+        Assert.Equal(Color.Magenta.ToArgb(), At(30, 50).ToArgb());      // nothing drawn outside the sheets
     }
 
     [Fact]
